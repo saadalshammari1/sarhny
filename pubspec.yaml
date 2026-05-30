@@ -63,7 +63,7 @@ dependencies:
   image_cropper: ^8.0.2
   photo_view: ^0.15.0
   # Voice recording + playback (live messages)
-  record: ^5.2.0
+  record: ^6.2.1
   just_audio: ^0.9.42
   # Emoji picker (universal — feed/inbox/replies)
   emoji_picker_flutter: ^4.3.0

@@ -155,6 +155,10 @@ workflows:
           keychain initialize
           app-store-connect fetch-signing-files "com.sarhny.sarhny" \
             --type IOS_APP_STORE \
+            --issuer-id=@env:APP_STORE_CONNECT_ISSUER_ID \
+            --key-id=@env:APP_STORE_CONNECT_KEY_IDENTIFIER \
+            --private-key=@env:APP_STORE_CONNECT_PRIVATE_KEY \
+            --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
             --create
           keychain add-certificates
           xcode-project use-profiles

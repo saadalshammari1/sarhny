@@ -778,7 +778,7 @@ class _SwitchTile extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: colors.moment,
+            activeThumbColor: colors.moment,
           ),
         ],
       ),

@@ -1,0 +1,319 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart' as intl;
+
+import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/app_theme.dart';
+import '../../../../core/api/dto.dart';
+import '../../../../core/utils/media.dart';
+import '../../../../core/widgets/app_avatar.dart';
+
+class PostCard extends StatelessWidget {
+  const PostCard({super.key, required this.post});
+  final PostDto post;
+
+  PostSection get _section => switch (post.section) {
+        PostSectionKind.moment => PostSection.moment,
+        PostSectionKind.face => PostSection.face,
+        PostSectionKind.mind => PostSection.mind,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.sarhnyColors;
+    final brightness = Theme.of(context).brightness;
+    final sectionColor = _section.resolve(brightness);
+    final sectionInk = _section.ink(brightness);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: () => context.push('/post/${post.id}'),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: colors.border, width: 0.6),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: 5,
+              decoration: BoxDecoration(
+                color: sectionColor,
+                borderRadius: const BorderRadiusDirectional.only(
+                  topStart: Radius.circular(18),
+                  bottomStart: Radius.circular(18),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Header(
+                      post: post,
+                      sectionColor: sectionColor,
+                      sectionInk: sectionInk,
+                    ),
+                    if (post.originQuestion != null) ...[
+                      const SizedBox(height: 10),
+                      _OriginQuestion(
+                        q: post.originQuestion!,
+                        moment: colors.moment,
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    Text(
+                      post.body,
+                      style: context.textStyles.bodyMedium?.copyWith(
+                        height: 1.55,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _Footer(post: post, colors: colors),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 250.ms);
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.post,
+    required this.sectionColor,
+    required this.sectionInk,
+  });
+  final PostDto post;
+  final Color sectionColor;
+  final Color sectionInk;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.sarhnyColors;
+    final hideSectionBadge = post.originQuestion != null;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () => context.push('/u/${post.author.username}'),
+          child: AppAvatar(
+            url: mediaUrl(post.author.avatarPath),
+            initials: (post.author.displayName ?? post.author.username),
+            size: 38,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      post.author.displayName ?? post.author.username,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: colors.textPrimary,
+                        fontSize: 14,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (post.author.verified) ...[
+                    const SizedBox(width: 4),
+                    Icon(Icons.verified, size: 14, color: colors.face),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      '@${post.author.username}',
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 12,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(' · ',
+                      style: TextStyle(color: colors.textSecondary, fontSize: 12)),
+                  Text(
+                    _formatRelative(post.createdAt),
+                    style:
+                        TextStyle(color: colors.textSecondary, fontSize: 12),
+                  ),
+                  if (!hideSectionBadge) ...[
+                    Text(' · ',
+                        style: TextStyle(color: sectionInk, fontSize: 12)),
+                    Text(
+                      '${switch (post.section) {
+                        PostSectionKind.moment => '⚡',
+                        PostSectionKind.face => '🎨',
+                        PostSectionKind.mind => '🧠',
+                      }} ${switch (post.section) {
+                        PostSectionKind.moment => 'لحظات',
+                        PostSectionKind.face => 'صور',
+                        PostSectionKind.mind => 'أفكار',
+                      }}',
+                      style: TextStyle(color: sectionInk, fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (post.isCrystallized)
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: colors.crystal.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Text(
+              '✦ متبلور',
+              style: TextStyle(
+                color: colors.crystal,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _OriginQuestion extends StatelessWidget {
+  const _OriginQuestion({required this.q, required this.moment});
+  final OriginQuestionDto q;
+  final Color moment;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.sarhnyColors;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: moment.withValues(alpha: 0.06),
+        border: Border.all(color: moment.withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.visibility_off_outlined,
+                  size: 12, color: moment),
+              const SizedBox(width: 4),
+              Text(
+                q.senderHidden || q.senderUsername == null
+                    ? 'سؤال من مجهول'
+                    : 'سؤال من @${q.senderUsername}',
+                style: TextStyle(
+                  color: moment,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            q.questionText,
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Footer extends StatelessWidget {
+  const _Footer({required this.post, required this.colors});
+  final PostDto post;
+  final SarhnyColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _IconStat(
+          icon: Icons.favorite_border,
+          label: '${post.likesCount}',
+          color: colors.textSecondary,
+        ),
+        const SizedBox(width: 18),
+        _IconStat(
+          icon: Icons.chat_bubble_outline,
+          label: '${post.commentsCount}',
+          color: colors.textSecondary,
+        ),
+        const SizedBox(width: 18),
+        if (post.anonRepliesCount > 0)
+          _IconStat(
+            icon: Icons.visibility_off_outlined,
+            label: '${post.anonRepliesCount}',
+            color: colors.moment,
+          ),
+        const Spacer(),
+        Icon(Icons.bookmark_border, size: 18, color: colors.textSecondary),
+        const SizedBox(width: 12),
+        Icon(Icons.share_outlined, size: 18, color: colors.textSecondary),
+      ],
+    );
+  }
+}
+
+class _IconStat extends StatelessWidget {
+  const _IconStat({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+  final IconData icon;
+  final String label;
+  final Color color;
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Icon(icon, size: 18, color: color),
+      const SizedBox(width: 4),
+      Text(label, style: TextStyle(color: color, fontSize: 12)),
+    ]);
+  }
+}
+
+String _formatRelative(String? iso) {
+  if (iso == null) return '';
+  final dt = DateTime.tryParse(iso);
+  if (dt == null) return iso;
+  final delta = DateTime.now().toUtc().difference(dt.toUtc());
+  if (delta.inMinutes < 1) return 'الآن';
+  if (delta.inMinutes < 60) return 'قبل ${delta.inMinutes} د';
+  if (delta.inHours < 24) return 'قبل ${delta.inHours} س';
+  if (delta.inDays < 7) return 'قبل ${delta.inDays} يوم';
+  return intl.DateFormat('d MMM', 'ar').format(dt.toLocal());
+}

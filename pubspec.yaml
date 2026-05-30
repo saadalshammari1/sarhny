@@ -1,0 +1,117 @@
+name: sarhny
+description: "صارحني — تطبيق التعبير الأصيل"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State & Architecture
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+  equatable: ^2.0.5
+
+  # Routing
+  go_router: ^14.6.2
+
+  # Network
+  dio: ^5.7.0
+  retrofit: ^4.4.1
+  pretty_dio_logger: ^1.4.0
+  # Cookie persistence (V2 refresh token is HttpOnly cookie)
+  cookie_jar: ^4.0.8
+  dio_cookie_manager: ^3.1.1
+  path_provider: ^2.1.5
+
+  # Storage
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.4
+  hive_ce: ^2.10.1
+  hive_ce_flutter: ^2.1.0
+
+  # UI & Design
+  google_fonts: ^6.2.1
+  flutter_screenutil: ^5.9.3
+  flex_color_scheme: ^7.3.1
+  shimmer: ^3.0.0
+  cached_network_image: ^3.4.1
+
+  # Icons & Visual
+  hugeicons: ^0.0.11
+  iconsax_plus: ^1.0.0
+  lottie: ^3.2.0
+  flutter_svg: ^2.0.16
+
+  # Animations
+  flutter_animate: ^4.5.2
+  animations: ^2.0.11
+
+  # Forms
+  reactive_forms: ^17.0.1
+
+  # Media
+  image_picker: ^1.1.2
+  image_cropper: ^8.0.2
+  photo_view: ^0.15.0
+  # Voice recording + playback (live messages)
+  record: ^5.2.0
+  just_audio: ^0.9.42
+  # Emoji picker (universal — feed/inbox/replies)
+  emoji_picker_flutter: ^4.3.0
+  # Pull-to-refresh
+  pull_to_refresh: ^2.0.0
+  # Toasts/snackbars
+  fluttertoast: ^8.2.10
+
+  # Firebase & Notifications
+  firebase_core: ^3.8.1
+  firebase_messaging: ^15.1.5
+  flutter_local_notifications: ^18.0.1
+
+  # Auth & Security
+  local_auth: ^2.3.0
+  crypto: ^3.0.6
+
+  # Utilities
+  intl: ^0.19.0
+  url_launcher: ^6.3.1
+  share_plus: ^10.1.3
+  package_info_plus: ^8.1.1
+  connectivity_plus: ^6.1.0
+  flutter_dotenv: ^5.2.1
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Code generation
+  build_runner: ^2.4.13
+  riverpod_generator: ^2.6.3
+  freezed: ^2.5.7
+  json_serializable: ^6.9.0
+  retrofit_generator: ^9.1.5
+
+  # Lints
+  flutter_lints: ^5.0.0
+  very_good_analysis: ^7.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/lottie/
+    - .env

@@ -128,10 +128,10 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.sarhny.sarhny
-      integrations:
-        app_store_connect: app_store_connect
       vars:
         APP_STORE_APP_ID: "1296542666"
+    integrations:
+      app_store_connect: app_store_connect
     triggering:
       events:
         - push

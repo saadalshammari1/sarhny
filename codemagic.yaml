@@ -150,6 +150,9 @@ workflows:
       - name: Install CocoaPods dependencies
         script: |
           find . -name "Podfile" -execdir pod install \;
+      - name: Prepare iOS project
+        script: |
+          flutter build ios --release --config-only --no-codesign
       - name: Set up code signing
         script: |
           keychain initialize

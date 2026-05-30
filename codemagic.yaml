@@ -156,7 +156,7 @@ workflows:
       - name: Set up code signing
         script: |
           keychain initialize
-          app-store-connect fetch-signing-files "com.sarhny.sarhny" \
+          app-store-connect fetch-signing-files "com.sarhny.Sarhny" \
             --type IOS_APP_STORE \
             --issuer-id=@env:APP_STORE_CONNECT_ISSUER_ID \
             --key-id=@env:APP_STORE_CONNECT_KEY_IDENTIFIER \

@@ -125,13 +125,8 @@ workflows:
       cocoapods: default
       groups:
         - sarhny_release
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.sarhny.sarhny
       vars:
         APP_STORE_APP_ID: "1296542666"
-    integrations:
-      app_store_connect: app_store_connect
     triggering:
       events:
         - push
@@ -157,6 +152,11 @@ workflows:
           find . -name "Podfile" -execdir pod install \;
       - name: Set up code signing
         script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "com.sarhny.sarhny" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
           xcode-project use-profiles
       - name: Build iOS IPA
         script: |
@@ -170,8 +170,9 @@ workflows:
       - flutter_drive.log
     publishing:
       app_store_connect:
-        # Codemagic uses the App Store Connect API key configured above.
-        auth: integration
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
         # Set to true once your app is ready for App Store review:
         submit_to_app_store: false

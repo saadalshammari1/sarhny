@@ -77,7 +77,7 @@ class _MirrorCard extends StatelessWidget {
   const _MirrorCard({required this.mirror});
   final MirrorDto mirror;
 
-  String get _shareUrl => 'https://sarhny.app/mirror/${mirror.shareToken}';
+  String get _shareUrl => 'https://sarhny.com/mirror/${mirror.shareToken}';
 
   @override
   Widget build(BuildContext context) {

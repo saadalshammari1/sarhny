@@ -16,9 +16,9 @@ class LegalPage extends StatelessWidget {
       };
 
   String get _webUrl => switch (kind) {
-        LegalKind.terms => 'https://sarhny.app/ar/terms',
-        LegalKind.privacy => 'https://sarhny.app/ar/privacy',
-        LegalKind.contentPolicy => 'https://sarhny.app/ar/content-policy',
+        LegalKind.terms => 'https://sarhny.com/ar/terms',
+        LegalKind.privacy => 'https://sarhny.com/ar/privacy',
+        LegalKind.contentPolicy => 'https://sarhny.com/ar/content-policy',
       };
 
   String get _summary => switch (kind) {

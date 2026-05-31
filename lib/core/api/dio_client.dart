@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
@@ -79,10 +78,9 @@ class DioClient {
   }
 
   static String _defaultBaseUrl() {
-    // Android emulator: host = 10.0.2.2
-    // iOS simulator / desktop: host = 127.0.0.1
-    if (Platform.isAndroid) return 'http://10.0.2.2:8030';
-    return 'http://127.0.0.1:8030';
+    // Production: sarhny.com is the live backend (served via Nginx → uvicorn).
+    // For local development override via `.env`:  API_BASE_URL=http://10.0.2.2:8030
+    return 'https://sarhny.com';
   }
 
   final Dio _dio;

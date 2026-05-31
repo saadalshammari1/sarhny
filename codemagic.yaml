@@ -17,7 +17,7 @@
 #       APP_STORE_CONNECT_ISSUER_ID
 #       APP_STORE_CONNECT_KEY_IDENTIFIER
 #       APP_STORE_CONNECT_PRIVATE_KEY    (encrypted, the .p8 file contents)
-#       API_BASE_URL                     (https://api.sarhny.app for example)
+#       API_BASE_URL                     (https://sarhny.com)
 
 definitions:
   instance_types:

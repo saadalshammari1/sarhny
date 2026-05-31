@@ -11,7 +11,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../data/password_reset_repository.dart';
 
-/// Reached via deep link `sarhny.app/auth/reset/confirm?token=…` after
+/// Reached via deep link `sarhny.com/auth/reset/confirm?token=…` after
 /// the user taps the email link. The token comes in via query param.
 class ResetPasswordPage extends ConsumerStatefulWidget {
   const ResetPasswordPage({super.key, required this.token});

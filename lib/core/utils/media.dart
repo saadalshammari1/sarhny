@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Resolve a backend-relative media path (e.g. `users/123/avatar.jpg`) into a
@@ -16,6 +14,6 @@ String? mediaUrl(String? path) {
 }
 
 String _defaultBase() {
-  if (Platform.isAndroid) return 'http://10.0.2.2:8030';
-  return 'http://127.0.0.1:8030';
+  // Production CDN-fronted media URL.
+  return 'https://sarhny.com';
 }

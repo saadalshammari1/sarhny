@@ -338,7 +338,7 @@ class _Footer extends ConsumerWidget {
 
   Future<void> _share(BuildContext context, PostDto p) async {
     final box = context.findRenderObject() as RenderBox?;
-    final url = 'https://sarhny.app/post/${p.id}';
+    final url = 'https://sarhny.com/post/${p.id}';
     final body = p.body.length > 120 ? '${p.body.substring(0, 117)}…' : p.body;
     await Share.share(
       '$body\n\n— من صارحني\n$url',

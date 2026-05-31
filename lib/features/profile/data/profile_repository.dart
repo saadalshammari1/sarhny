@@ -141,6 +141,20 @@ class ProfileRepository {
     );
   }
 
+  Future<void> block(int userId) {
+    return _client.request<void>(
+      () => _client.raw.post(ApiEndpoints.block(userId)),
+      parser: (_) {},
+    );
+  }
+
+  Future<void> unblock(int userId) {
+    return _client.request<void>(
+      () => _client.raw.delete(ApiEndpoints.block(userId)),
+      parser: (_) {},
+    );
+  }
+
   Future<void> changeUsername(String username) {
     return _client.request<void>(
       () => _client.raw.put(

@@ -68,6 +68,8 @@ class ApiEndpoints {
       '/api/v1/public/mirror/$token';
   static String publicMirrorRespond(String token) =>
       '/api/v1/public/mirror/$token/respond';
+  static String mirrorRespondAuthed(String token) =>
+      '/api/v1/mirrors/$token/respond';
 
   // ────────── Interactions ──────────
   static const String like = '/api/v1/interactions/like';

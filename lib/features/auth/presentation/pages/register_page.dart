@@ -182,8 +182,40 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Center(
+                      child: Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topRight,
+                            end: Alignment.bottomLeft,
+                            colors: [
+                              colors.moment,
+                              colors.moment.withValues(alpha: 0.72),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colors.moment.withValues(alpha: 0.28),
+                              blurRadius: 14,
+                              offset: const Offset(0, 5),
+                              spreadRadius: -2,
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '✨',
+                          style: const TextStyle(fontSize: 28),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Text(
                       'انضم إلى صارحني',
+                      textAlign: TextAlign.center,
                       style: context.textStyles.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -191,6 +223,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     const SizedBox(height: 6),
                     Text(
                       'مساحة للتعبير الأصيل عن الذات — للبالغين فقط',
+                      textAlign: TextAlign.center,
                       style: TextStyle(color: colors.textSecondary),
                     ),
                     const SizedBox(height: 24),

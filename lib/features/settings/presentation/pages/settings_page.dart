@@ -163,14 +163,22 @@ class SettingsPage extends ConsumerWidget {
                 _Tile(
                   icon: Icons.help_outline,
                   title: 'مركز المساعدة',
-                  onTap: () => Fluttertoast.showToast(
-                      msg: 'هذا القسم قيد التطوير'),
+                  onTap: () => context.push(AppRoutes.help),
+                ),
+                _Tile(
+                  icon: Icons.gavel_outlined,
+                  title: 'شروط الاستخدام',
+                  onTap: () => context.push(AppRoutes.terms),
+                ),
+                _Tile(
+                  icon: Icons.shield_outlined,
+                  title: 'سياسة الخصوصية',
+                  onTap: () => context.push(AppRoutes.privacy),
                 ),
                 _Tile(
                   icon: Icons.policy_outlined,
-                  title: 'الشروط والخصوصية',
-                  onTap: () => Fluttertoast.showToast(
-                      msg: 'هذا القسم قيد التطوير'),
+                  title: 'سياسة المحتوى',
+                  onTap: () => context.push(AppRoutes.contentPolicy),
                 ),
                 _SectionTitle('منطقة خطرة'),
                 _Tile(
@@ -778,7 +786,7 @@ class _SwitchTile extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: colors.moment,
+            activeColor: colors.moment,
           ),
         ],
       ),

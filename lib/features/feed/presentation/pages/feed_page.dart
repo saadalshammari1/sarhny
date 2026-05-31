@@ -352,6 +352,14 @@ class _BottomNav extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         border: Border(top: BorderSide(color: colors.divider, width: 0.5)),
+        boxShadow: colors.cardShadow
+            .map((s) => BoxShadow(
+                  color: s.color,
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
+                  spreadRadius: -3,
+                ))
+            .toList(),
       ),
       child: SafeArea(
         top: false,
@@ -368,20 +376,35 @@ class _BottomNav extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        isActive ? fill : out,
-                        size: 22,
-                        color: isActive ? colors.moment : colors.textSecondary,
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? colors.moment.withValues(alpha: 0.12)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Icon(
+                          isActive ? fill : out,
+                          size: 22,
+                          color: isActive
+                              ? colors.moment
+                              : colors.textSecondary,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         label,
                         style: TextStyle(
                           fontSize: 10,
-                          color:
-                              isActive ? colors.textPrimary : colors.textSecondary,
-                          fontWeight:
-                              isActive ? FontWeight.w700 : FontWeight.w500,
+                          color: isActive
+                              ? colors.textPrimary
+                              : colors.textSecondary,
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                         ),
                       ),
                     ],

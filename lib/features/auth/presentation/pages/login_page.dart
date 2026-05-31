@@ -118,7 +118,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     Align(
                       alignment: AlignmentDirectional.centerEnd,
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: () => context.push(AppRoutes.forgotPassword),
                         child: Text(
                           'نسيت كلمة المرور؟',
                           style: TextStyle(color: colors.textSecondary),
@@ -172,23 +172,43 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Column(
       children: [
         Container(
-          width: 60,
-          height: 60,
+          width: 68,
+          height: 68,
           decoration: BoxDecoration(
-            color: colors.moment.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(18),
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [
+                colors.moment,
+                colors.moment.withValues(alpha: 0.72),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: colors.moment.withValues(alpha: 0.30),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+                spreadRadius: -2,
+              ),
+            ],
           ),
           alignment: Alignment.center,
-          child: Text('صـ', style: TextStyle(
-            color: colors.moment,
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-          )),
+          child: Text(
+            'صـ',
+            style: TextStyle(
+              color: isLight ? Colors.white : Colors.black,
+              fontSize: 34,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Text(
           'أهلاً بعودتك',
           style: context.textStyles.headlineSmall?.copyWith(

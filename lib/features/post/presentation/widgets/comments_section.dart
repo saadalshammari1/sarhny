@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
+import '../../../../core/providers/auth_providers.dart';
 import '../../../../core/utils/media.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../data/comment_dto.dart';
@@ -26,6 +27,41 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
   void dispose() {
     _ctrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _confirmDelete(CommentDto c) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف التعليق'),
+        content: const Text('سيُحذف التعليق نهائياً. متابعة؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      // Optimistic remove + API call.
+      ref
+          .read(commentsControllerProvider(widget.postId).notifier)
+          .removeLocal(c.id);
+      await ref.read(postRepositoryProvider).deleteComment(c.id);
+      Fluttertoast.showToast(msg: 'تم الحذف');
+    } catch (_) {
+      Fluttertoast.showToast(msg: 'تعذّر الحذف');
+      ref.invalidate(commentsControllerProvider(widget.postId));
+    }
   }
 
   Future<void> _send() async {
@@ -155,9 +191,16 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                   ),
                 );
               }
+              final myUserId = ref.read(authStateProvider).valueOrNull?.userId;
               return Column(children: [
                 for (final c in s.comments)
-                  _CommentTile(comment: c, colors: colors),
+                  _CommentTile(
+                    comment: c,
+                    colors: colors,
+                    isMine: myUserId != null &&
+                        c.author?.id == myUserId,
+                    onDelete: () => _confirmDelete(c),
+                  ),
                 if (!s.reachedEnd)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
@@ -182,9 +225,16 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
 }
 
 class _CommentTile extends StatelessWidget {
-  const _CommentTile({required this.comment, required this.colors});
+  const _CommentTile({
+    required this.comment,
+    required this.colors,
+    this.isMine = false,
+    this.onDelete,
+  });
   final CommentDto comment;
   final SarhnyColors colors;
+  final bool isMine;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -250,6 +300,15 @@ class _CommentTile extends StatelessWidget {
               ],
             ),
           ),
+          if (isMine && onDelete != null)
+            IconButton(
+              icon: Icon(Icons.delete_outline,
+                  size: 16, color: colors.textSecondary),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              tooltip: 'حذف',
+              onPressed: onDelete,
+            ),
         ],
       ),
     );

@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/dto.dart';
 import '../../../../core/utils/media.dart';
 import '../../../../core/widgets/app_avatar.dart';
+import '../../../post/presentation/providers/interaction_provider.dart';
+import '../../../post/presentation/providers/post_provider.dart';
 
 class PostCard extends StatelessWidget {
   const PostCard({super.key, required this.post});
@@ -26,26 +30,38 @@ class PostCard extends StatelessWidget {
     final sectionColor = _section.resolve(brightness);
     final sectionInk = _section.ink(brightness);
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: () => context.push('/post/${post.id}'),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: colors.border, width: 0.6),
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => context.push('/post/${post.id}'),
+          child: Container(
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: colors.border, width: 0.6),
+              boxShadow: colors.cardShadow,
+            ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
               width: 5,
               decoration: BoxDecoration(
-                color: sectionColor,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    sectionColor,
+                    sectionColor.withValues(alpha: 0.75),
+                  ],
+                ),
                 borderRadius: const BorderRadiusDirectional.only(
-                  topStart: Radius.circular(18),
-                  bottomStart: Radius.circular(18),
+                  topStart: Radius.circular(20),
+                  bottomStart: Radius.circular(20),
                 ),
               ),
             ),
@@ -82,6 +98,8 @@ class PostCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+          ),
         ),
       ),
     ).animate().fadeIn(duration: 250.ms);
@@ -251,58 +269,153 @@ class _OriginQuestion extends StatelessWidget {
   }
 }
 
-class _Footer extends StatelessWidget {
+class _Footer extends ConsumerWidget {
   const _Footer({required this.post, required this.colors});
   final PostDto post;
   final SarhnyColors colors;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final inter = ref.watch(postInteractionProvider(post.id));
+    final repo = ref.read(postRepositoryProvider);
+    final heartColor = inter.liked
+        ? const Color(0xFFE2685A)
+        : colors.textSecondary;
+    final bookmarkColor =
+        inter.saved ? colors.crystal : colors.textSecondary;
     return Row(
       children: [
-        _IconStat(
-          icon: Icons.favorite_border,
-          label: '${post.likesCount}',
-          color: colors.textSecondary,
+        _InteractiveStat(
+          icon: inter.liked ? Icons.favorite : Icons.favorite_border,
+          label: '${post.likesCount + inter.likeDelta}',
+          color: heartColor,
+          onTap: inter.likeBusy
+              ? null
+              : () => ref
+                  .read(postInteractionProvider(post.id).notifier)
+                  .toggleLike(repo),
+          pulse: inter.liked,
         ),
-        const SizedBox(width: 18),
-        _IconStat(
+        const SizedBox(width: 16),
+        _InteractiveStat(
           icon: Icons.chat_bubble_outline,
           label: '${post.commentsCount}',
           color: colors.textSecondary,
+          onTap: () => context.push('/post/${post.id}'),
         ),
-        const SizedBox(width: 18),
-        if (post.anonRepliesCount > 0)
-          _IconStat(
+        if (post.anonRepliesCount > 0) ...[
+          const SizedBox(width: 16),
+          _InteractiveStat(
             icon: Icons.visibility_off_outlined,
             label: '${post.anonRepliesCount}',
             color: colors.moment,
+            onTap: () => context.push('/post/${post.id}'),
           ),
+        ],
         const Spacer(),
-        Icon(Icons.bookmark_border, size: 18, color: colors.textSecondary),
-        const SizedBox(width: 12),
-        Icon(Icons.share_outlined, size: 18, color: colors.textSecondary),
+        _IconButton(
+          icon: inter.saved
+              ? Icons.bookmark_rounded
+              : Icons.bookmark_border_rounded,
+          color: bookmarkColor,
+          tooltip: inter.saved ? 'إلغاء الحفظ' : 'حفظ',
+          onTap: inter.saveBusy
+              ? null
+              : () => ref
+                  .read(postInteractionProvider(post.id).notifier)
+                  .toggleSave(repo),
+        ),
+        const SizedBox(width: 4),
+        _IconButton(
+          icon: Icons.ios_share_rounded,
+          color: colors.textSecondary,
+          tooltip: 'مشاركة',
+          onTap: () => _share(context, post),
+        ),
       ],
+    );
+  }
+
+  Future<void> _share(BuildContext context, PostDto p) async {
+    final box = context.findRenderObject() as RenderBox?;
+    final url = 'https://sarhny.app/post/${p.id}';
+    final body = p.body.length > 120 ? '${p.body.substring(0, 117)}…' : p.body;
+    await Share.share(
+      '$body\n\n— من صارحني\n$url',
+      subject: 'صارحني',
+      sharePositionOrigin:
+          box == null ? null : box.localToGlobal(Offset.zero) & box.size,
     );
   }
 }
 
-class _IconStat extends StatelessWidget {
-  const _IconStat({
+class _InteractiveStat extends StatelessWidget {
+  const _InteractiveStat({
     required this.icon,
     required this.label,
     required this.color,
+    required this.onTap,
+    this.pulse = false,
   });
   final IconData icon;
   final String label;
   final Color color;
+  final VoidCallback? onTap;
+  final bool pulse;
   @override
   Widget build(BuildContext context) {
-    return Row(children: [
-      Icon(icon, size: 18, color: color),
-      const SizedBox(width: 4),
-      Text(label, style: TextStyle(color: color, fontSize: 12)),
-    ]);
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: color)
+                .animate(target: pulse ? 1 : 0)
+                .scaleXY(begin: 1.0, end: 1.25, duration: 120.ms)
+                .then()
+                .scaleXY(begin: 1.25, end: 1.0, duration: 120.ms),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IconButton extends StatelessWidget {
+  const _IconButton({
+    required this.icon,
+    required this.color,
+    required this.tooltip,
+    required this.onTap,
+  });
+  final IconData icon;
+  final Color color;
+  final String tooltip;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon, size: 19, color: color),
+        ),
+      ),
+    );
   }
 }
 

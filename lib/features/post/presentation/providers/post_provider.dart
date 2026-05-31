@@ -74,6 +74,14 @@ class CommentsController extends FamilyAsyncNotifier<CommentsState, int> {
     final current = state.valueOrNull ?? const CommentsState();
     state = AsyncData(current.copyWith(comments: [c, ...current.comments]));
   }
+
+  Future<void> removeLocal(int commentId) async {
+    final current = state.valueOrNull;
+    if (current == null) return;
+    state = AsyncData(current.copyWith(
+      comments: current.comments.where((c) => c.id != commentId).toList(),
+    ));
+  }
 }
 
 final commentsControllerProvider = AsyncNotifierProvider.family<

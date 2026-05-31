@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart' as audio;
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
 import '../../../../core/api/dto.dart';
 import '../../../../core/utils/media.dart';
 import '../../../../core/widgets/app_avatar.dart';
-import '../../../../core/widgets/app_button.dart';
 import '../providers/post_provider.dart';
+import 'media_composer.dart';
 
 class AnonRepliesSection extends ConsumerStatefulWidget {
   const AnonRepliesSection({super.key, required this.postId});
@@ -21,42 +22,35 @@ class AnonRepliesSection extends ConsumerStatefulWidget {
 }
 
 class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
-  final _msgCtrl = TextEditingController();
   bool _hidden = true;
-  bool _sending = false;
 
-  @override
-  void dispose() {
-    _msgCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _send() async {
-    final text = _msgCtrl.text.trim();
-    if (text.isEmpty || _sending) return;
-    setState(() => _sending = true);
+  Future<bool> _handleSend(ComposedMedia m) async {
     try {
       final reply =
           await ref.read(postRepositoryProvider).createAnonReply(
                 widget.postId,
-                message: text,
+                message: m.message ?? '',
                 senderHidden: _hidden,
+                mediaType: m.mediaType,
+                mediaRef: m.mediaRef,
               );
       await ref
           .read(anonRepliesControllerProvider(widget.postId).notifier)
           .add(reply);
-      _msgCtrl.clear();
       Fluttertoast.showToast(msg: 'تم الإرسال 🌙');
-    } on ValidationException catch (e) {
-      Fluttertoast.showToast(msg: e.message);
+      return true;
     } on UnauthorizedException {
       Fluttertoast.showToast(msg: 'سجّل دخولك للرد');
+      return false;
+    } on ValidationException catch (e) {
+      Fluttertoast.showToast(msg: e.message);
+      return false;
     } on RateLimitException {
       Fluttertoast.showToast(msg: 'تمهّل قليلاً قبل الإرسال');
-    } catch (e) {
+      return false;
+    } catch (_) {
       Fluttertoast.showToast(msg: 'تعذّر الإرسال');
-    } finally {
-      if (mounted) setState(() => _sending = false);
+      return false;
     }
   }
 
@@ -97,7 +91,8 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
                   ),
                 ),
                 loading: () => const SizedBox(
-                  width: 12, height: 12,
+                  width: 12,
+                  height: 12,
                   child: CircularProgressIndicator(strokeWidth: 1.5),
                 ),
                 error: (_, __) => const SizedBox(),
@@ -105,13 +100,14 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
             ],
           ),
           const SizedBox(height: 12),
-          _Composer(
-            controller: _msgCtrl,
-            hidden: _hidden,
-            onToggle: (v) => setState(() => _hidden = v),
-            onSend: _send,
-            sending: _sending,
-            colors: colors,
+          MediaComposer(
+            placeholder: 'اكتب ردّك المجهول…',
+            onSend: _handleSend,
+            hiddenSwitch: _HiddenChip(
+              hidden: _hidden,
+              onTap: () => setState(() => _hidden = !_hidden),
+              colors: colors,
+            ),
           ),
           const SizedBox(height: 12),
           state.when(
@@ -168,101 +164,53 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
   }
 }
 
-class _Composer extends StatelessWidget {
-  const _Composer({
-    required this.controller,
+class _HiddenChip extends StatelessWidget {
+  const _HiddenChip({
     required this.hidden,
-    required this.onToggle,
-    required this.onSend,
-    required this.sending,
+    required this.onTap,
     required this.colors,
   });
-  final TextEditingController controller;
   final bool hidden;
-  final ValueChanged<bool> onToggle;
-  final VoidCallback onSend;
-  final bool sending;
+  final VoidCallback onTap;
   final SarhnyColors colors;
-
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-      decoration: BoxDecoration(
-        color: colors.elevated,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.border, width: 0.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: controller,
-            maxLength: 600,
-            minLines: 1,
-            maxLines: 4,
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              hintText: 'اكتب ردك…',
-              hintStyle: TextStyle(color: colors.textSecondary),
-              counterText: '',
-              isCollapsed: true,
+    return InkWell(
+      borderRadius: BorderRadius.circular(99),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: hidden
+              ? colors.moment.withValues(alpha: 0.12)
+              : Colors.transparent,
+          border: Border.all(
+            color: hidden ? colors.moment : colors.border,
+            width: 0.8,
+          ),
+          borderRadius: BorderRadius.circular(99),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              hidden
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+              size: 13,
+              color: hidden ? colors.moment : colors.textSecondary,
             ),
-            style: TextStyle(color: colors.textPrimary, fontSize: 14),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(99),
-                onTap: () => onToggle(!hidden),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: hidden
-                        ? colors.moment.withValues(alpha: 0.12)
-                        : Colors.transparent,
-                    border: Border.all(
-                      color: hidden ? colors.moment : colors.border,
-                      width: 0.8,
-                    ),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        hidden
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        size: 14,
-                        color:
-                            hidden ? colors.moment : colors.textSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        hidden ? 'مجهول' : 'باسمي',
-                        style: TextStyle(
-                          color: hidden ? colors.moment : colors.textSecondary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+            const SizedBox(width: 4),
+            Text(
+              hidden ? 'مجهول' : 'باسمي',
+              style: TextStyle(
+                color: hidden ? colors.moment : colors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
               ),
-              const Spacer(),
-              AppButton(
-                label: 'إرسال',
-                expand: false,
-                loading: sending,
-                onPressed: onSend,
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -275,8 +223,7 @@ class _ReplyTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final senderRevealed =
-        !reply.isSenderHidden && reply.sender != null;
+    final senderRevealed = !reply.isSenderHidden && reply.sender != null;
     return Container(
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.all(12),
@@ -293,8 +240,7 @@ class _ReplyTile extends StatelessWidget {
               onTap: () => context.push('/u/${reply.sender!.username}'),
               child: AppAvatar(
                 url: mediaUrl(reply.sender!.avatarPath),
-                initials: reply.sender!.displayName ??
-                    reply.sender!.username,
+                initials: reply.sender!.displayName ?? reply.sender!.username,
                 size: 32,
               ),
             )
@@ -316,9 +262,7 @@ class _ReplyTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  senderRevealed
-                      ? '@${reply.sender!.username}'
-                      : 'مجهول',
+                  senderRevealed ? '@${reply.sender!.username}' : 'مجهول',
                   style: TextStyle(
                     color: senderRevealed
                         ? colors.textPrimary
@@ -338,7 +282,138 @@ class _ReplyTile extends StatelessWidget {
                     ),
                   ),
                 ],
+                if (reply.mediaType == 'voice' && reply.mediaRef != null) ...[
+                  const SizedBox(height: 6),
+                  _VoiceBubble(url: mediaUrl(reply.mediaRef), colors: colors),
+                ],
+                if (reply.mediaType == 'image' && reply.mediaRef != null) ...[
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      mediaUrl(reply.mediaRef) ?? '',
+                      height: 180,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 60,
+                        color: colors.elevated,
+                        alignment: Alignment.center,
+                        child: Icon(Icons.broken_image,
+                            color: colors.textSecondary),
+                      ),
+                    ),
+                  ),
+                ],
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VoiceBubble extends StatefulWidget {
+  const _VoiceBubble({required this.url, required this.colors});
+  final String? url;
+  final SarhnyColors colors;
+  @override
+  State<_VoiceBubble> createState() => _VoiceBubbleState();
+}
+
+class _VoiceBubbleState extends State<_VoiceBubble> {
+  final _player = audio.AudioPlayer();
+  bool _ready = false;
+  bool _playing = false;
+  Duration _pos = Duration.zero;
+  Duration _dur = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    if (widget.url == null) return;
+    try {
+      await _player.setUrl(widget.url!);
+      _player.positionStream.listen((p) {
+        if (mounted) setState(() => _pos = p);
+      });
+      _player.durationStream.listen((d) {
+        if (mounted) setState(() => _dur = d ?? Duration.zero);
+      });
+      _player.playerStateStream.listen((s) {
+        if (mounted) setState(() => _playing = s.playing);
+      });
+      if (mounted) setState(() => _ready = true);
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.colors;
+    final progress = _dur.inMilliseconds == 0
+        ? 0.0
+        : (_pos.inMilliseconds / _dur.inMilliseconds).clamp(0.0, 1.0);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: c.moment.withValues(alpha: 0.08),
+        border: Border.all(color: c.moment.withValues(alpha: 0.22)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: !_ready
+                ? null
+                : () async {
+                    if (_playing) {
+                      await _player.pause();
+                    } else {
+                      await _player.play();
+                    }
+                  },
+            child: Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: c.moment,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _playing ? Icons.pause : Icons.play_arrow,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 4,
+              backgroundColor: c.moment.withValues(alpha: 0.18),
+              valueColor: AlwaysStoppedAnimation<Color>(c.moment),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${_pos.inSeconds}/${_dur.inSeconds == 0 ? '?' : _dur.inSeconds}',
+            style: TextStyle(
+              color: c.textSecondary,
+              fontSize: 11,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],

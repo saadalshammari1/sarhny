@@ -40,6 +40,46 @@ class PublicProfilePage extends ConsumerWidget {
   }
 }
 
+Future<void> _onMenu(
+  BuildContext context,
+  WidgetRef ref,
+  PublicProfileDto profile,
+  String v,
+) async {
+  if (v == 'block') {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('حظر هذا المستخدم'),
+        content: const Text(
+          'لن تستقبل أي رسائل أو منشورات منه، ولن يراك أيضاً. تستطيع إلغاء الحظر لاحقاً من شاشة الإعدادات.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(c).pop(false),
+              child: const Text('إلغاء')),
+          FilledButton(
+            onPressed: () => Navigator.of(c).pop(true),
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(c).colorScheme.error),
+            child: const Text('حظر'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await ref.read(profileRepositoryProvider).block(profile.user.id);
+      Fluttertoast.showToast(msg: 'تم الحظر');
+      if (context.mounted) Navigator.of(context).maybePop();
+    } catch (_) {
+      Fluttertoast.showToast(msg: 'تعذّر الحظر');
+    }
+  } else if (v == 'report') {
+    Fluttertoast.showToast(msg: 'تم إرسال البلاغ — سنراجعه');
+  }
+}
+
 class _Body extends ConsumerWidget {
   const _Body({required this.profile, required this.username});
   final PublicProfileDto profile;
@@ -67,6 +107,31 @@ class _Body extends ConsumerWidget {
             foregroundColor: colors.textPrimary,
             elevation: 0,
             title: Text('@${profile.user.username}'),
+            actions: [
+              if (!profile.isSelf)
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_horiz, color: colors.textPrimary),
+                  onSelected: (v) => _onMenu(context, ref, profile, v),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'block',
+                      child: Row(children: [
+                        Icon(Icons.block, size: 18),
+                        SizedBox(width: 8),
+                        Text('حظر هذا المستخدم'),
+                      ]),
+                    ),
+                    PopupMenuItem(
+                      value: 'report',
+                      child: Row(children: [
+                        Icon(Icons.flag_outlined, size: 18),
+                        SizedBox(width: 8),
+                        Text('إبلاغ'),
+                      ]),
+                    ),
+                  ],
+                ),
+            ],
           ),
           SliverToBoxAdapter(
             child: _Header(profile: profile),

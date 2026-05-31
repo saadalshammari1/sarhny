@@ -1,5 +1,4 @@
 import 'package:flex_color_scheme/flex_color_scheme.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
@@ -224,6 +223,9 @@ class AppTheme {
           crystal: brightness == Brightness.dark ? AppColors.crystalDark : AppColors.crystalLight,
           danger: AppColors.danger,
           success: AppColors.success,
+          shadow: brightness == Brightness.dark
+              ? Colors.transparent
+              : AppColors.lightShadow,
         ),
       ],
     );
@@ -246,6 +248,7 @@ class SarhnyColors extends ThemeExtension<SarhnyColors> {
     required this.crystal,
     required this.danger,
     required this.success,
+    required this.shadow,
   });
 
   final Color background;
@@ -261,6 +264,21 @@ class SarhnyColors extends ThemeExtension<SarhnyColors> {
   final Color crystal;
   final Color danger;
   final Color success;
+  final Color shadow;
+
+  /// Returns a soft-lifted card shadow appropriate for the current brightness.
+  /// In dark mode returns an empty list (cards are flat / border-defined).
+  List<BoxShadow> get cardShadow {
+    if (shadow.a == 0) return const [];
+    return [
+      BoxShadow(
+        color: shadow,
+        blurRadius: 14,
+        offset: const Offset(0, 4),
+        spreadRadius: -2,
+      ),
+    ];
+  }
 
   @override
   SarhnyColors copyWith({
@@ -277,6 +295,7 @@ class SarhnyColors extends ThemeExtension<SarhnyColors> {
     Color? crystal,
     Color? danger,
     Color? success,
+    Color? shadow,
   }) {
     return SarhnyColors(
       background: background ?? this.background,
@@ -292,6 +311,7 @@ class SarhnyColors extends ThemeExtension<SarhnyColors> {
       crystal: crystal ?? this.crystal,
       danger: danger ?? this.danger,
       success: success ?? this.success,
+      shadow: shadow ?? this.shadow,
     );
   }
 
@@ -312,6 +332,7 @@ class SarhnyColors extends ThemeExtension<SarhnyColors> {
       crystal: Color.lerp(crystal, other.crystal, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
       success: Color.lerp(success, other.success, t)!,
+      shadow: Color.lerp(shadow, other.shadow, t)!,
     );
   }
 }

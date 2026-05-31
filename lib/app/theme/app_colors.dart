@@ -4,14 +4,21 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // ────────── Light Mode (الوضع النهاري) ──────────
-  static const Color lightBackground = Color(0xFFF4F1EA);
-  static const Color lightSurface = Color(0xFFFFFFFF);
-  static const Color lightElevated = Color(0xFFF3EFE7);
+  // ────────── Light Mode (الوضع النهاري — ورقي دافئ، أنيق) ──────────
+  // Background: parchment أفتح بدرجة طفيفة لإحساس "صفحة ورق"
+  static const Color lightBackground = Color(0xFFF7F3EB);
+  // Surface: أبيض دافئ (warm white) بدل الأبيض النقي — يقلل الإجهاد البصري
+  static const Color lightSurface = Color(0xFFFEFCF7);
+  // Elevated: chip/elevated tones — slightly cooler than surface for layered depth
+  static const Color lightElevated = Color(0xFFF1ECE0);
   static const Color lightTextPrimary = Color(0xFF1C1A17);
-  static const Color lightTextSecondary = Color(0xFF6B6358);
-  static const Color lightBorder = Color(0xFFE5DFD3);
-  static const Color lightDivider = Color(0xFFEDE7D9);
+  // Improved secondary: better AA contrast (was 6B6358, now slightly darker)
+  static const Color lightTextSecondary = Color(0xFF635A4D);
+  static const Color lightTextMuted = Color(0xFF8B8273);
+  static const Color lightBorder = Color(0xFFE5DFD0);
+  static const Color lightDivider = Color(0xFFEDE7D6);
+  // Subtle shadow color for elevation (warm sepia tint, very low opacity)
+  static const Color lightShadow = Color(0x14302820);
 
   // ────────── Dark Mode (الوضع الداكن) ──────────
   static const Color darkBackground = Color(0xFF08090D);

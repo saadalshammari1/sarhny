@@ -3,12 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/providers/auth_providers.dart';
+import '../features/auth/presentation/pages/forgot_password_page.dart';
 import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/pages/register_page.dart';
+import '../features/auth/presentation/pages/reset_password_page.dart';
 import '../features/auth/presentation/pages/splash_page.dart';
 import '../features/feed/presentation/pages/feed_page.dart';
 import '../features/compose/presentation/pages/compose_page.dart';
+import '../features/help/presentation/pages/help_page.dart';
+import '../features/help/presentation/pages/legal_page.dart';
 import '../features/inbox/presentation/pages/inbox_page.dart';
+import '../features/mirrors/presentation/pages/mirror_response_page.dart';
 import '../features/mirrors/presentation/pages/my_mirror_page.dart';
 import '../features/notifications/presentation/pages/notifications_page.dart';
 import '../features/post/presentation/pages/post_detail_page.dart';
@@ -28,6 +33,12 @@ class AppRoutes {
   static const settings = '/settings';
   static const compose = '/compose';
   static const notifications = '/notifications';
+  static const forgotPassword = '/forgot';
+  static String resetPassword(String token) => '/reset?token=$token';
+  static const help = '/help';
+  static const terms = '/legal/terms';
+  static const privacy = '/legal/privacy';
+  static const contentPolicy = '/legal/content-policy';
   static String postDetail(int id) => '/post/$id';
   static String userProfile(String username) => '/u/$username';
 }
@@ -43,10 +54,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         error: (_, __) => null,
         data: (s) {
           final loc = state.matchedLocation;
-          final isPublic = loc.startsWith('/u/') || loc.startsWith('/post/');
+          final isPublic = loc.startsWith('/u/') ||
+              loc.startsWith('/post/') ||
+              loc.startsWith('/mirror/');
           final isAuthRoute = loc == AppRoutes.login ||
               loc == AppRoutes.register ||
-              loc == AppRoutes.splash;
+              loc == AppRoutes.splash ||
+              loc == AppRoutes.forgotPassword ||
+              loc.startsWith('/reset');
           if (s.status == AuthStatus.unauthenticated &&
               !isAuthRoute &&
               !isPublic) {
@@ -67,6 +82,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.login, builder: (_, __) => const LoginPage()),
       GoRoute(
           path: AppRoutes.register, builder: (_, __) => const RegisterPage()),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        builder: (_, __) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: '/reset',
+        builder: (_, state) {
+          final token = state.uri.queryParameters['token'] ?? '';
+          return ResetPasswordPage(token: token);
+        },
+      ),
       GoRoute(path: AppRoutes.feed, builder: (_, __) => const FeedPage()),
       GoRoute(path: AppRoutes.profile, builder: (_, __) => const ProfilePage()),
       GoRoute(path: AppRoutes.inbox, builder: (_, __) => const InboxPage()),
@@ -95,6 +121,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           final u = state.pathParameters['username'] ?? '';
           return PublicProfilePage(username: u);
         },
+      ),
+      GoRoute(
+        path: '/mirror/:token',
+        builder: (_, state) {
+          final t = state.pathParameters['token'] ?? '';
+          return MirrorResponsePage(token: t);
+        },
+      ),
+      GoRoute(path: AppRoutes.help, builder: (_, __) => const HelpPage()),
+      GoRoute(
+        path: AppRoutes.terms,
+        builder: (_, __) => const LegalPage(kind: LegalKind.terms),
+      ),
+      GoRoute(
+        path: AppRoutes.privacy,
+        builder: (_, __) => const LegalPage(kind: LegalKind.privacy),
+      ),
+      GoRoute(
+        path: AppRoutes.contentPolicy,
+        builder: (_, __) => const LegalPage(kind: LegalKind.contentPolicy),
       ),
     ],
   );

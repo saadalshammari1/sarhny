@@ -16,6 +16,25 @@ class MirrorsRepository {
     );
   }
 
+  Future<PublicMirrorDto> getPublic(String token) {
+    return _client.request<PublicMirrorDto>(
+      () => _client.raw.get(ApiEndpoints.publicMirror(token)),
+      parser: (data) =>
+          PublicMirrorDto.fromJson((data as Map).cast<String, dynamic>()),
+    );
+  }
+
+  Future<int> respondAuthed(String token, String responseText) {
+    return _client.request<int>(
+      () => _client.raw.post(
+        ApiEndpoints.mirrorRespondAuthed(token),
+        data: {'response_text': responseText},
+      ),
+      parser: (data) =>
+          (((data as Map)['extracted_words'] ?? 0) as num).toInt(),
+    );
+  }
+
   Future<MirrorDto> create(String questionText) {
     return _client.request<MirrorDto>(
       () => _client.raw.post(

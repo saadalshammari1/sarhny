@@ -45,3 +45,27 @@ class WordCloudEntry {
   final String word;
   final int count;
 }
+
+@immutable
+class PublicMirrorDto {
+  const PublicMirrorDto({
+    required this.questionText,
+    required this.ownerUsername,
+    this.ownerDisplayName,
+    this.ownerAvatarPath,
+  });
+  factory PublicMirrorDto.fromJson(Map<String, dynamic> json) {
+    final m = json['mirror'] is Map ? (json['mirror'] as Map) : json;
+    final owner = (m['owner'] as Map?)?.cast<String, dynamic>() ?? const {};
+    return PublicMirrorDto(
+      questionText: '${m['question_text'] ?? ''}',
+      ownerUsername: '${owner['username'] ?? ''}',
+      ownerDisplayName: owner['display_name']?.toString(),
+      ownerAvatarPath: owner['avatar_path']?.toString(),
+    );
+  }
+  final String questionText;
+  final String ownerUsername;
+  final String? ownerDisplayName;
+  final String? ownerAvatarPath;
+}

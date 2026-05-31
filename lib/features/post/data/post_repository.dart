@@ -91,6 +91,13 @@ class PostRepository {
     );
   }
 
+  Future<void> deleteComment(int commentId) {
+    return _client.request<void>(
+      () => _client.raw.delete(ApiEndpoints.deleteComment(commentId)),
+      parser: (_) {},
+    );
+  }
+
   Future<void> like(int postId) {
     return _client.request<void>(
       () =>

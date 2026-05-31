@@ -70,5 +70,11 @@
 	<!-- Local network: needed by some plugins (e.g. firebase_messaging diagnostics). -->
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>يستخدم صارحني الاتصال الشبكي المحلي للتحقّق من الخدمات أثناء التشغيل.</string>
+
+	<!-- Export compliance: app only uses Apple's standard HTTPS/TLS — qualifies
+	     as exempt encryption under U.S. export regs. Declaring NO here skips
+	     the per-build Export Compliance prompt in App Store Connect. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

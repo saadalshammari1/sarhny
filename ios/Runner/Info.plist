@@ -45,5 +45,30 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- Privacy purpose strings — required by App Store review. -->
+	<!-- Microphone: used to record voice messages in the anonymous inbox. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>يحتاج صارحني للميكروفون لتسجيل الرسائل الصوتية المجهولة وإرسالها داخل المنصة.</string>
+
+	<!-- Camera: used to take photos for post Layer 2 and profile avatar/cover. -->
+	<key>NSCameraUsageDescription</key>
+	<string>يحتاج صارحني للكاميرا لالتقاط الصور المرفقة بالمنشورات وصورة الملف الشخصي.</string>
+
+	<!-- Photo library: used to pick existing photos for posts + profile + replies. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>يحتاج صارحني الوصول إلى مكتبة الصور لاختيار الصور المرفقة بالمنشورات والملف الشخصي.</string>
+
+	<!-- Photo library add: only needed if we save images back; future-safe. -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>يحتاج صارحني لحفظ الصور التي تنشئها داخل التطبيق إلى مكتبة الصور.</string>
+
+	<!-- Face ID / biometrics: used by local_auth for fast re-auth. -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>يستخدم صارحني التعرّف على الوجه لتأمين الدخول السريع لحسابك.</string>
+
+	<!-- Local network: needed by some plugins (e.g. firebase_messaging diagnostics). -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>يستخدم صارحني الاتصال الشبكي المحلي للتحقّق من الخدمات أثناء التشغيل.</string>
 </dict>
 </plist>

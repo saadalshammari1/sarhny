@@ -97,6 +97,7 @@ class AuthRepository {
       accessToken: access,
       refreshToken: '',
       userId: uid,
+      username: username,
     );
     return AuthResult(
       accessToken: access,

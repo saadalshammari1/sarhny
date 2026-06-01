@@ -14,6 +14,7 @@ import '../../../../core/api/dto.dart';
 import '../../../../core/providers/auth_providers.dart';
 import '../../../../core/utils/media.dart';
 import '../../../../core/widgets/app_avatar.dart';
+import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/empty_state.dart';
@@ -37,6 +38,7 @@ class ProfilePage extends ConsumerWidget {
       return Scaffold(
         backgroundColor: colors.background,
         appBar: AppBar(title: const Text('حسابي')),
+        bottomNavigationBar: const AppBottomNav(active: 4),
         body: const Center(
           child: EmptyState(
             icon: Icons.account_circle_outlined,
@@ -48,18 +50,12 @@ class ProfilePage extends ConsumerWidget {
     final profile = ref.watch(publicProfileProvider(username));
     return Scaffold(
       backgroundColor: colors.background,
+      bottomNavigationBar: const AppBottomNav(active: 4),
       body: profile.when(
-        loading: () => Scaffold(
-          appBar: AppBar(),
-          body: const Center(child: CircularProgressIndicator()),
-        ),
-        error: (e, _) => Scaffold(
-          appBar: AppBar(),
-          body: ErrorView(
-            message: e.toString(),
-            onRetry: () =>
-                ref.invalidate(publicProfileProvider(username)),
-          ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => ErrorView(
+          message: e.toString(),
+          onRetry: () => ref.invalidate(publicProfileProvider(username)),
         ),
         data: (p) => _AuthedProfileBody(profile: p, username: username),
       ),

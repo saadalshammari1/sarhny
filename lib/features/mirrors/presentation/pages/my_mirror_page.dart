@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
+import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
@@ -23,6 +24,7 @@ class MyMirrorPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(title: const Text('المرايا')),
+      bottomNavigationBar: const AppBottomNav(active: 3),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: colors.mind,
         foregroundColor: Colors.white,
@@ -168,13 +170,31 @@ class _MirrorCard extends StatelessWidget {
                 },
               ),
               const SizedBox(width: 8),
-              FilledButton.icon(
-                icon: const Icon(Icons.share, size: 16),
-                label: const Text('مشاركة'),
-                style: FilledButton.styleFrom(backgroundColor: colors.mind),
-                onPressed: () =>
-                    Share.share('شارك معي إجابتك على هذه المرآة:\n$_shareUrl'),
-              ),
+              Builder(builder: (btnCtx) {
+                return FilledButton.icon(
+                  icon: const Icon(Icons.share, size: 16),
+                  label: const Text('مشاركة'),
+                  style:
+                      FilledButton.styleFrom(backgroundColor: colors.mind),
+                  onPressed: () async {
+                    // sharePositionOrigin is required on iPad (else the popover
+                    // has nowhere to anchor). Passing it on every platform is a
+                    // no-op everywhere else.
+                    final box = btnCtx.findRenderObject() as RenderBox?;
+                    try {
+                      await Share.share(
+                        'شارك معي إجابتك على هذه المرآة:\n$_shareUrl',
+                        subject: 'صارحني — مرآة',
+                        sharePositionOrigin: box == null
+                            ? null
+                            : box.localToGlobal(Offset.zero) & box.size,
+                      );
+                    } catch (e) {
+                      Fluttertoast.showToast(msg: 'تعذّر فتح المشاركة');
+                    }
+                  },
+                );
+              }),
             ],
           ),
         ],

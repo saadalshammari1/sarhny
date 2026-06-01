@@ -40,11 +40,13 @@ class AuthStateNotifier extends AsyncNotifier<AuthState> {
     final storage = ref.read(secureStorageProvider);
     final hasSession = await storage.hasSession();
     final userId = await storage.readUserId();
+    final username = await storage.readUsername();
     return AuthState(
       status: hasSession
           ? AuthStatus.authenticated
           : AuthStatus.unauthenticated,
       userId: userId,
+      username: username,
     );
   }
 

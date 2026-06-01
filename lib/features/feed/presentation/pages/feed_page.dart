@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../data/feed_repository.dart';
@@ -94,7 +94,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           ),
         ),
       ),
-      bottomNavigationBar: const _BottomNav(active: 0),
+      bottomNavigationBar: const AppBottomNav(active: 0),
       floatingActionButton: FloatingActionButton(
         backgroundColor: colors.moment,
         foregroundColor: Colors.black,
@@ -333,88 +333,5 @@ class _SectionChip extends StatelessWidget {
   }
 }
 
-class _BottomNav extends StatelessWidget {
-  const _BottomNav({required this.active});
-  final int active;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.sarhnyColors;
-    final items = [
-      (Icons.home_outlined, Icons.home, 'الرئيسية', AppRoutes.feed),
-      (Icons.mail_outline, Icons.mail, 'صندوق', AppRoutes.inbox),
-      (Icons.add_circle_outline, Icons.add_circle, 'نشر', '/compose'),
-      (Icons.auto_awesome_outlined, Icons.auto_awesome, 'مرآتي',
-          AppRoutes.mirrors),
-      (Icons.person_outline, Icons.person, 'حسابي', AppRoutes.profile),
-    ];
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border(top: BorderSide(color: colors.divider, width: 0.5)),
-        boxShadow: colors.cardShadow
-            .map((s) => BoxShadow(
-                  color: s.color,
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                  spreadRadius: -3,
-                ))
-            .toList(),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: List.generate(items.length, (i) {
-            final isActive = i == active;
-            final (out, fill, label, route) = items[i];
-            return Expanded(
-              child: InkWell(
-                onTap: () =>
-                    i == active ? null : GoRouter.of(context).go(route),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isActive
-                              ? colors.moment.withValues(alpha: 0.12)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                        child: Icon(
-                          isActive ? fill : out,
-                          size: 22,
-                          color: isActive
-                              ? colors.moment
-                              : colors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isActive
-                              ? colors.textPrimary
-                              : colors.textSecondary,
-                          fontWeight: isActive
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
-        ),
-      ),
-    );
-  }
-}
+// _BottomNav was lifted to lib/core/widgets/app_bottom_nav.dart so the inbox /
+// profile / mirrors pages can use the same nav for a consistent tab experience.

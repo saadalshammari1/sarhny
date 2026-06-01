@@ -9,6 +9,7 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/dto.dart';
 import '../../../../core/utils/media.dart';
 import '../../../../core/widgets/app_avatar.dart';
+import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../providers/inbox_provider.dart';
@@ -64,6 +65,7 @@ class _InboxPageState extends ConsumerState<InboxPage> {
           ),
         ),
       ),
+      bottomNavigationBar: const AppBottomNav(active: 1),
       body: RefreshIndicator(
         color: colors.moment,
         onRefresh: () async {

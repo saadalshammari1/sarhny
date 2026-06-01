@@ -33,7 +33,7 @@ android {
         applicationId = "com.sarhny.sarhny"
         // minSdk 23 required by record_android (microphone APIs) +
         // flutter_local_notifications.
-        minSdk = 23
+        minSdkVersion = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

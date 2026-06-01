@@ -1,3 +1,5 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -127,7 +129,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get composeLayer3 => 'Write a deeper article (optional)';
 
   @override
-  String get composeCrystallizeHint => 'Starts with 24h life — crystallizes on resonance';
+  String get composeCrystallizeHint =>
+      'Starts with 24h life — crystallizes on resonance';
 
   @override
   String get composePublish => 'Publish';

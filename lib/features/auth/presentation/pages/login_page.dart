@@ -9,6 +9,7 @@ import '../../../../core/api/api_exceptions.dart';
 import '../../../../core/providers/auth_providers.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import 'diagnostics_page.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -117,11 +118,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     Align(
                       alignment: AlignmentDirectional.centerEnd,
-                      child: TextButton(
-                        onPressed: () => context.push(AppRoutes.forgotPassword),
-                        child: Text(
-                          'نسيت كلمة المرور؟',
-                          style: TextStyle(color: colors.textSecondary),
+                      child: GestureDetector(
+                        onLongPress: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const DiagnosticsPage(),
+                          ),
+                        ),
+                        child: TextButton(
+                          onPressed: () =>
+                              context.push(AppRoutes.forgotPassword),
+                          child: Text(
+                            'نسيت كلمة المرور؟',
+                            style: TextStyle(color: colors.textSecondary),
+                          ),
                         ),
                       ),
                     ),

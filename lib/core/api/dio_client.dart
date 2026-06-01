@@ -35,20 +35,25 @@ class DioClient {
     required OnUnauthorized onUnauthorized,
   }) async {
     final baseUrl = dotenv.maybeGet('API_BASE_URL') ?? _defaultBaseUrl();
+    // Cookie jar dir — using a non-hidden folder name avoids iOS sandbox quirks
+    // with dot-prefixed paths under Application Support.
     final cookieDir = await getApplicationSupportDirectory();
     final cookieJar = PersistCookieJar(
-      storage: FileStorage('${cookieDir.path}/.sarhny_cookies/'),
+      storage: FileStorage('${cookieDir.path}/sarhny_cookies/'),
       ignoreExpires: false,
     );
 
     final dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 30),
-        sendTimeout: const Duration(seconds: 30),
+        // Generous timeouts for slow / cold-edge connections (Cloudflare's
+        // first connection from a mobile carrier can take a few seconds).
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 60),
+        sendTimeout: const Duration(seconds: 60),
         headers: {
           'Accept': 'application/json',
+          'User-Agent': 'Sarhny/3.1.0 (mobile; flutter)',
         },
         responseType: ResponseType.json,
         validateStatus: (status) => status != null && status < 500,

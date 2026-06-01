@@ -34,7 +34,14 @@ class DioClient {
     required SecureStorage secureStorage,
     required OnUnauthorized onUnauthorized,
   }) async {
-    final baseUrl = dotenv.maybeGet('API_BASE_URL') ?? _defaultBaseUrl();
+    // Production base URL is hardcoded for safety. `.env` can ONLY override
+    // in DEBUG mode AND only when it clearly points at a local dev backend.
+    // This protects release builds from a misconfigured CI env var.
+    final envUrl = dotenv.maybeGet('API_BASE_URL') ?? '';
+    final isLocalUrl = envUrl.contains('10.0.2.2') ||
+        envUrl.contains('127.0.0.1') ||
+        envUrl.contains('localhost');
+    final baseUrl = (kDebugMode && isLocalUrl) ? envUrl : _defaultBaseUrl();
     // Cookie jar dir — using a non-hidden folder name avoids iOS sandbox quirks
     // with dot-prefixed paths under Application Support.
     final cookieDir = await getApplicationSupportDirectory();

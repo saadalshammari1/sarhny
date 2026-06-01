@@ -49,10 +49,13 @@ definitions:
     - &set_env_file
       name: Write .env from environment variables
       script: |
-        # Codemagic injects API_BASE_URL etc. We write them into the .env
-        # file the app reads at runtime via flutter_dotenv.
+        # Production fallback: the app hardcodes https://sarhny.com when no
+        # local dev URL is present. We still write a marker .env so the
+        # asset exists; .env is gitignored, so the bundle would be missing
+        # the file otherwise (causing dotenv.load to throw at startup).
         cat > .env <<EOF
-        API_BASE_URL=$API_BASE_URL
+        API_BASE_URL=https://sarhny.com
+        APP_ENV=production
         EOF
 
 workflows:

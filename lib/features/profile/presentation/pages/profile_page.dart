@@ -39,10 +39,40 @@ class ProfilePage extends ConsumerWidget {
         backgroundColor: colors.background,
         appBar: AppBar(title: const Text('حسابي')),
         bottomNavigationBar: const AppBottomNav(active: 4),
-        body: const Center(
-          child: EmptyState(
-            icon: Icons.account_circle_outlined,
-            title: 'سجّل دخولك لعرض حسابك',
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.account_circle_outlined,
+                  size: 70,
+                  color: colors.textSecondary.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'جلستك غير مكتملة',
+                  textAlign: TextAlign.center,
+                  style: context.textStyles.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'سجّل دخولك من جديد ليعمل كل شيء بشكل صحيح.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: colors.textSecondary),
+                ),
+                const SizedBox(height: 24),
+                AppButton(
+                  label: 'تسجيل خروج وإعادة دخول',
+                  expand: false,
+                  onPressed: () async {
+                    await ref.read(authStateProvider.notifier).logout();
+                    if (context.mounted) context.go(AppRoutes.login);
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -102,6 +132,9 @@ class _AuthedProfileBody extends ConsumerWidget {
           ),
           SliverToBoxAdapter(
             child: _BadgesRow(profile: profile),
+          ),
+          SliverToBoxAdapter(
+            child: _QuickLinks(username: profile.user.username),
           ),
           SliverToBoxAdapter(
             child: _TabsBar(
@@ -683,6 +716,95 @@ class _TabsBar extends StatelessWidget {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+class _QuickLinks extends StatelessWidget {
+  const _QuickLinks({required this.username});
+  final String username;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.sarhnyColors;
+    final items = <(IconData, String, VoidCallback)>[
+      (
+        Icons.notifications_outlined,
+        'إشعاراتي',
+        () => context.push(AppRoutes.notifications),
+      ),
+      (
+        Icons.bookmark_outline,
+        'محفوظاتي',
+        () => Fluttertoast.showToast(msg: 'قريباً'),
+      ),
+      (
+        Icons.mail_outline,
+        'صندوقي',
+        () => context.push(AppRoutes.inbox),
+      ),
+      (
+        Icons.help_outline,
+        'المساعدة',
+        () => context.push(AppRoutes.help),
+      ),
+      (
+        Icons.settings_outlined,
+        'الإعدادات',
+        () => context.push(AppRoutes.settings),
+      ),
+    ];
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.border, width: 0.4),
+      ),
+      child: GridView.count(
+        crossAxisCount: 5,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 4,
+        children: items
+            .map(
+              (item) => InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: item.$3,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: colors.moment.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Icon(item.$1,
+                            color: colors.moment, size: 18),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.$2,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+            .toList(),
       ),
     );
   }

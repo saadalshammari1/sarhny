@@ -37,6 +37,17 @@ class SecureStorage {
   Future<String?> readRefreshToken() => _storage.read(key: _kRefreshToken);
   Future<String?> readUsername() => _storage.read(key: _kUsername);
 
+  /// Update the cached user identity without touching the tokens. Used by
+  /// the self-healing flow when an older session was missing the username.
+  Future<void> updateUserInfo({int? userId, String? username}) async {
+    if (userId != null) {
+      await _storage.write(key: _kUserId, value: userId.toString());
+    }
+    if (username != null) {
+      await _storage.write(key: _kUsername, value: username);
+    }
+  }
+
   Future<int?> readUserId() async {
     final raw = await _storage.read(key: _kUserId);
     return raw == null ? null : int.tryParse(raw);

@@ -83,6 +83,33 @@ class AuthRepository {
     await _client.clearCookies();
   }
 
+  /// Self-healing: ask the backend "who am I" using the existing access token.
+  /// Called when the locally persisted username is missing (e.g. a session
+  /// created by an older app version that did not save it).
+  Future<({int userId, String username, String? displayName})>
+      fetchSelf() async {
+    final res = await _client.request<
+        ({int userId, String username, String? displayName})>(
+      () => _client.raw.get(ApiEndpoints.me),
+      parser: (data) {
+        final user = (data as Map)['user'] as Map? ?? const {};
+        final uid = (user['id'] as num?)?.toInt() ?? 0;
+        final username = '${user['username'] ?? ''}';
+        final displayName = user['name']?.toString() ??
+            user['display_name']?.toString();
+        return (userId: uid, username: username, displayName: displayName);
+      },
+    );
+    // Backfill SecureStorage so we don't refetch on every cold start.
+    if (res.username.isNotEmpty) {
+      await _secure.updateUserInfo(
+        userId: res.userId,
+        username: res.username,
+      );
+    }
+    return res;
+  }
+
   AuthResult _persist(Map data) {
     final access = '${data['access_token'] ?? ''}';
     final ttl = (data['access_ttl_seconds'] as num?)?.toInt() ?? 900;

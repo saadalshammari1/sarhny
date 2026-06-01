@@ -40,7 +40,22 @@ class AuthStateNotifier extends AsyncNotifier<AuthState> {
     final storage = ref.read(secureStorageProvider);
     final hasSession = await storage.hasSession();
     final userId = await storage.readUserId();
-    final username = await storage.readUsername();
+    var username = await storage.readUsername();
+
+    // Self-heal: an older app version (≤3.0) didn't persist the username,
+    // so an authenticated user might have a session row without it. Ask
+    // the backend "who am I" and back-fill the cache.
+    if (hasSession && (username == null || username.isEmpty)) {
+      try {
+        final repo = ref.read(authRepositoryProvider);
+        final self = await repo.fetchSelf();
+        username = self.username.isNotEmpty ? self.username : null;
+      } catch (_) {
+        // Network failure — leave username null; profile page will offer
+        // a "log in again" path.
+      }
+    }
+
     return AuthState(
       status: hasSession
           ? AuthStatus.authenticated

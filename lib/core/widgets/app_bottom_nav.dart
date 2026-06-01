@@ -56,7 +56,14 @@ class AppBottomNav extends StatelessWidget {
               child: InkWell(
                 onTap: () {
                   if (i == active) return;
-                  GoRouter.of(context).go(it.route);
+                  // Compose is a *destination* (not a tab) — push so the user
+                  // can swipe / tap back to wherever they were. The four real
+                  // tabs use go() to replace the stack so it stays flat.
+                  if (it.route == AppRoutes.compose) {
+                    GoRouter.of(context).push(it.route);
+                  } else {
+                    GoRouter.of(context).go(it.route);
+                  }
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),

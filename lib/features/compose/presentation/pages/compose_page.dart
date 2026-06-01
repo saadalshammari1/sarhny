@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../app/router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
@@ -127,6 +128,20 @@ class _ComposePageState extends ConsumerState<ComposePage> {
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: 'إغلاق',
+          onPressed: () {
+            // Pop if pushed; otherwise go to feed (safer fallback for the
+            // case where compose was reached via go() and the stack is empty).
+            final nav = Navigator.of(context);
+            if (nav.canPop()) {
+              nav.pop();
+            } else {
+              context.go(AppRoutes.feed);
+            }
+          },
+        ),
         title: const Text('منشور جديد'),
         actions: [
           TextButton(

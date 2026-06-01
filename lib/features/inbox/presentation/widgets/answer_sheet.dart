@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -22,18 +23,42 @@ class _AnswerSheetState extends ConsumerState<AnswerSheet> {
   final _layer3Ctrl = TextEditingController();
   bool _showLayer3 = false;
   bool _sending = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    // Live rebuild as the user types so the "publish" button enables.
+    _bodyCtrl.addListener(_onChanged);
+  }
 
   @override
   void dispose() {
+    _bodyCtrl.removeListener(_onChanged);
     _bodyCtrl.dispose();
     _layer3Ctrl.dispose();
     super.dispose();
   }
 
+  void _onChanged() {
+    if (_error != null) setState(() => _error = null);
+    setState(() {});
+  }
+
+  bool get _canSubmit =>
+      _bodyCtrl.text.trim().isNotEmpty && !_sending;
+
   Future<void> _send() async {
     final body = _bodyCtrl.text.trim();
-    if (body.isEmpty || _sending) return;
-    setState(() => _sending = true);
+    if (body.isEmpty) {
+      setState(() => _error = 'اكتب ردك أولاً');
+      return;
+    }
+    if (_sending) return;
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
     try {
       final postId = await ref.read(inboxRepositoryProvider).answer(
             widget.item.id,
@@ -47,11 +72,20 @@ class _AnswerSheetState extends ConsumerState<AnswerSheet> {
       if (!mounted) return;
       Navigator.of(context).pop();
       Fluttertoast.showToast(msg: 'تم نشر الرد ✨');
-      context.push('/post/$postId');
+      if (postId > 0) context.push('/post/$postId');
     } on ValidationException catch (e) {
-      Fluttertoast.showToast(msg: e.message);
-    } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر النشر');
+      if (mounted) setState(() => _error = e.message);
+    } on UnauthorizedException {
+      if (mounted) setState(() => _error = 'سجّل دخولك من جديد');
+    } on RateLimitException {
+      if (mounted) setState(() => _error = 'مهلاً قليلاً، أعد المحاولة بعد دقيقة');
+    } on DioException catch (e) {
+      if (mounted) {
+        setState(() => _error =
+            'فشل الاتصال — ${e.response?.statusCode ?? e.type.name}');
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = 'خطأ غير متوقع: $e');
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -74,17 +108,30 @@ class _AnswerSheetState extends ConsumerState<AnswerSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 3,
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: colors.divider,
-                  borderRadius: BorderRadius.circular(10),
+            // Drag handle + close button
+            Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.close, color: colors.textSecondary),
+                  onPressed: () => Navigator.of(context).pop(),
+                  tooltip: 'إغلاق',
                 ),
-              ),
+                Expanded(
+                  child: Center(
+                    child: Container(
+                      width: 36,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: colors.divider,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 48), // balance the close icon width
+              ],
             ),
+            const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -125,9 +172,12 @@ class _AnswerSheetState extends ConsumerState<AnswerSheet> {
               controller: _bodyCtrl,
               minLines: 3,
               maxLines: 8,
-              maxLength: 4000,
+              maxLength: 2000,
               autofocus: true,
-              decoration: const InputDecoration(hintText: 'اكتب ردك…'),
+              decoration: InputDecoration(
+                hintText: 'اكتب ردك…',
+                counterText: '${_bodyCtrl.text.length}/2000',
+              ),
             ),
             Row(
               children: [
@@ -155,10 +205,35 @@ class _AnswerSheetState extends ConsumerState<AnswerSheet> {
                 decoration:
                     const InputDecoration(hintText: 'تأمّلك (اختياري)'),
               ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: colors.danger.withValues(alpha: 0.10),
+                  border: Border.all(
+                      color: colors.danger.withValues(alpha: 0.30)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(children: [
+                  Icon(Icons.error_outline,
+                      color: colors.danger, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style:
+                          TextStyle(color: colors.danger, fontSize: 13),
+                    ),
+                  ),
+                ]),
+              ),
+            ],
             const SizedBox(height: 12),
             AppButton(
               label: 'نشر الرد',
-              onPressed: _send,
+              onPressed: _canSubmit ? _send : null,
               loading: _sending,
             ),
           ],

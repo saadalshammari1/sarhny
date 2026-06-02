@@ -1,5 +1,45 @@
 // نماذج بيانات Sarhny V2 — تطابق `web/src/lib/feed/types.ts`.
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+
+// MariaDB JSON columns sometimes surface as raw strings from the driver
+// rather than parsed structures. Decode defensively before casting so a
+// stray string payload doesn't blow up the whole list.
+List<dynamic>? _asListOrDecode(Object? value) {
+  if (value == null) return null;
+  if (value is List) return value;
+  if (value is String && value.isNotEmpty) {
+    try {
+      final decoded = jsonDecode(value);
+      return decoded is List ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
+  return null;
+}
+
+Map<String, dynamic>? _asMapOrDecode(Object? value) {
+  if (value == null) return null;
+  if (value is Map) return value.cast<String, dynamic>();
+  if (value is String && value.isNotEmpty) {
+    try {
+      final decoded = jsonDecode(value);
+      return decoded is Map ? decoded.cast<String, dynamic>() : null;
+    } catch (_) {
+      return null;
+    }
+  }
+  return null;
+}
+
+int _asInt(Object? value, {int fallback = 0}) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? fallback;
+  return fallback;
+}
 
 @immutable
 class AuthorDto {
@@ -181,15 +221,13 @@ class InboxItemDto {
   });
 
   factory InboxItemDto.fromJson(Map<String, dynamic> json) => InboxItemDto(
-        id: (json['id'] as num).toInt(),
+        id: _asInt(json['id']),
         message: '${json['message'] ?? ''}',
         status: '${json['status'] ?? 'unread'}',
         mediaType: '${json['media_type'] ?? 'text'}',
         mediaRef: json['media_ref']?.toString(),
-        mediaMeta: json['media_meta'] is Map
-            ? (json['media_meta'] as Map).cast<String, dynamic>()
-            : null,
-        linkRefs: (json['link_refs'] as List? ?? const [])
+        mediaMeta: _asMapOrDecode(json['media_meta']),
+        linkRefs: (_asListOrDecode(json['link_refs']) ?? const [])
             .whereType<Map>()
             .map((e) => e.cast<String, dynamic>())
             .toList(),

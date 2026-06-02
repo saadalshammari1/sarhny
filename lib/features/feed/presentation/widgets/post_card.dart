@@ -31,7 +31,7 @@ class PostCard extends StatelessWidget {
     final sectionInk = _section.ink(brightness);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
@@ -45,7 +45,8 @@ class PostCard extends StatelessWidget {
               border: Border.all(color: colors.border, width: 0.6),
               boxShadow: colors.cardShadow,
             ),
-        child: Row(
+        child: IntrinsicHeight(
+          child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
@@ -67,7 +68,7 @@ class PostCard extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
+                padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -98,6 +99,7 @@ class PostCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
         ),
           ),
         ),

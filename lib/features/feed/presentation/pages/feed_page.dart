@@ -134,10 +134,20 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 ],
               );
             }
-            return ListView.builder(
+            // Use ListView.separated for guaranteed visible gaps between
+            // posts, with a stable ValueKey per item so Riverpod rebuilds
+            // don't accidentally collapse the list. cacheExtent pre-renders
+            // ~3 cards above/below the viewport so scrolling never reveals
+            // an empty stretch.
+            return ListView.separated(
+              key: const PageStorageKey<String>('feed-list'),
               controller: _scrollCtrl,
               physics: const AlwaysScrollableScrollPhysics(),
+              // ignore: deprecated_member_use
+              cacheExtent: 1200,
+              padding: const EdgeInsets.only(top: 4, bottom: 90),
               itemCount: state.posts.length + (state.reachedEnd ? 0 : 1),
+              separatorBuilder: (_, __) => const SizedBox(height: 4),
               itemBuilder: (_, i) {
                 if (i >= state.posts.length) {
                   return Padding(
@@ -154,7 +164,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                     ),
                   );
                 }
-                return PostCard(post: state.posts[i]);
+                final p = state.posts[i];
+                return PostCard(key: ValueKey<int>(p.id), post: p);
               },
             );
           },

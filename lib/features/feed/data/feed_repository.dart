@@ -12,7 +12,7 @@ class FeedRepository {
     required FeedScope scope,
     required String section,
     FeedCursor? cursor,
-    int limit = 20,
+    int limit = 10,
   }) {
     final url = scope == FeedScope.global
         ? ApiEndpoints.feedGlobal

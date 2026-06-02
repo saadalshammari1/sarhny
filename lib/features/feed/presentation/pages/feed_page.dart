@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../core/widgets/empty_state.dart';
@@ -85,14 +84,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             onPressed: () => context.push('/compose'),
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: _SectionTabs(
-            current: section,
-            onChanged: (s) =>
-                ref.read(feedSectionProvider.notifier).state = s,
-          ),
-        ),
       ),
       bottomNavigationBar: const AppBottomNav(active: 0),
       floatingActionButton: FloatingActionButton(
@@ -229,104 +220,6 @@ class _Pill extends StatelessWidget {
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             fontSize: 13,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionTabs extends StatelessWidget {
-  const _SectionTabs({required this.current, required this.onChanged});
-  final SectionFilter current;
-  final ValueChanged<SectionFilter> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.sarhnyColors;
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border(bottom: BorderSide(color: colors.divider, width: 0.5)),
-      ),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        children: SectionFilter.values
-            .map((s) => Padding(
-                  padding: const EdgeInsetsDirectional.only(end: 8),
-                  child: _SectionChip(
-                    section: s,
-                    selected: s == current,
-                    onTap: () => onChanged(s),
-                    colors: colors,
-                  ),
-                ))
-            .toList(),
-      ),
-    );
-  }
-}
-
-class _SectionChip extends StatelessWidget {
-  const _SectionChip({
-    required this.section,
-    required this.selected,
-    required this.onTap,
-    required this.colors,
-  });
-  final SectionFilter section;
-  final bool selected;
-  final VoidCallback onTap;
-  final SarhnyColors colors;
-
-  Color _accent() {
-    switch (section) {
-      case SectionFilter.moment:
-        return colors.moment;
-      case SectionFilter.face:
-        return colors.face;
-      case SectionFilter.mind:
-        return colors.mind;
-      case SectionFilter.questions:
-        return colors.moment;
-      case SectionFilter.all:
-        return colors.textPrimary;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = _accent();
-    return InkWell(
-      borderRadius: BorderRadius.circular(99),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected
-              ? accent.withValues(alpha: 0.12)
-              : colors.elevated,
-          border: Border.all(
-            color: selected ? accent : colors.border,
-            width: selected ? 1.2 : 0.6,
-          ),
-          borderRadius: BorderRadius.circular(99),
-        ),
-        child: Row(
-          children: [
-            Text(section.glyph, style: const TextStyle(fontSize: 14)),
-            const SizedBox(width: 4),
-            Text(
-              section.arabicLabel,
-              style: TextStyle(
-                color: selected ? accent : colors.textSecondary,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 12,
-              ),
-            ),
-          ],
         ),
       ),
     );

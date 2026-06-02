@@ -110,8 +110,7 @@ final feedControllerProvider = AsyncNotifierProvider.family<
 /// (e.g. the bottom tab) can read the current scope without prop-drilling.
 final feedScopeProvider =
     StateProvider<FeedScope>((_) => FeedScope.global);
-// Default to the Q&A surface ("أجوبة") since the legacy archive has 1.17M
-// answers — that's the bulk of meaningful content. The "all" tab only shows
-// the 54-and-growing V2-native posts.
+// Unified feed: merges V2 native posts + legacy answer archive (1.17M rows)
+// by recency, with the origin question rendered above each answer-style post.
 final feedSectionProvider =
-    StateProvider<SectionFilter>((_) => SectionFilter.questions);
+    StateProvider<SectionFilter>((_) => SectionFilter.all);

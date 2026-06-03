@@ -121,10 +121,38 @@ class PostRepository {
     );
   }
 
+  Future<SavedPostsPage> listSavedPosts({int? cursor, int limit = 10}) {
+    return _client.request<SavedPostsPage>(
+      () => _client.raw.get(
+        ApiEndpoints.savedPosts,
+        queryParameters: {
+          'limit': limit,
+          if (cursor != null) 'cursor_id': cursor,
+        },
+      ),
+      parser: (data) {
+        final map = (data as Map).cast<String, dynamic>();
+        return SavedPostsPage(
+          posts: (map['posts'] as List? ?? const [])
+              .whereType<Map>()
+              .map((e) => PostDto.fromJson(e.cast<String, dynamic>()))
+              .toList(),
+          nextCursor: (map['next_cursor'] as num?)?.toInt(),
+        );
+      },
+    );
+  }
+
   Future<void> unsave(int postId) {
     return _client.request<void>(
       () => _client.raw.delete(ApiEndpoints.unsave(postId)),
       parser: (_) {},
     );
   }
+}
+
+class SavedPostsPage {
+  const SavedPostsPage({required this.posts, this.nextCursor});
+  final List<PostDto> posts;
+  final int? nextCursor;
 }

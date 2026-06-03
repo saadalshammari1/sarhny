@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/dto.dart';
@@ -240,8 +241,9 @@ class _Header extends ConsumerWidget {
                         label: 'تعديل البروفايل',
                         variant: AppButtonVariant.secondary,
                         expand: false,
-                        onPressed: () => Fluttertoast.showToast(
-                            msg: 'صفحة التعديل قريبًا'),
+                        // Own profile edit lives in /profile (the private
+                        // route) — push so back returns to the public view.
+                        onPressed: () => context.push('/profile'),
                       ),
                   ],
                 ),

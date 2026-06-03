@@ -77,6 +77,7 @@ class ApiEndpoints {
   static String unlike(int postId) => '/api/v1/interactions/like/$postId';
   static const String save = '/api/v1/interactions/save';
   static String unsave(int postId) => '/api/v1/interactions/save/$postId';
+  static const String savedPosts = '/api/v1/interactions/saved';
   static const String comment = '/api/v1/interactions/comment';
   static String deleteComment(int commentId) =>
       '/api/v1/interactions/comment/$commentId';

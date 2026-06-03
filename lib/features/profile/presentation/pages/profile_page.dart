@@ -737,7 +737,7 @@ class _QuickLinks extends StatelessWidget {
       (
         Icons.bookmark_outline,
         'محفوظاتي',
-        () => Fluttertoast.showToast(msg: 'قريباً'),
+        () => context.push(AppRoutes.saved),
       ),
       (
         Icons.mail_outline,

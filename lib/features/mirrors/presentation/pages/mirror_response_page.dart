@@ -48,9 +48,17 @@ class _MirrorResponsePageState extends ConsumerState<MirrorResponsePage> {
       _error = null;
     });
     try {
-      await ref
-          .read(mirrorsRepositoryProvider)
-          .respondAuthed(widget.token, txt);
+      final repo = ref.read(mirrorsRepositoryProvider);
+      final authed = ref.read(authStateProvider).valueOrNull?.status ==
+          AuthStatus.authenticated;
+      // Anonymous strangers — the whole point of mirrors — go through the
+      // public endpoint. Authed users go through the authed endpoint so the
+      // backend can attribute the reply (still hidden from the owner).
+      if (authed) {
+        await repo.respondAuthed(widget.token, txt);
+      } else {
+        await repo.respondPublic(widget.token, txt);
+      }
       if (mounted) setState(() => _done = true);
     } on UnauthorizedException {
       setState(() => _error = 'سجّل دخولك للرد على المرآة');
@@ -152,40 +160,21 @@ class _MirrorResponsePageState extends ConsumerState<MirrorResponsePage> {
                           minLines: 3,
                           maxLines: 6,
                           maxLength: 300,
-                          autofocus: authed,
-                          enabled: authed,
+                          autofocus: true,
                           decoration: const InputDecoration(
                             hintText: 'اكتب ردك بصدق — هويتك لن تظهر',
                           ),
                         ),
                         if (!authed)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: colors.moment.withValues(alpha: 0.08),
-                              border: Border.all(
-                                  color: colors.moment
-                                      .withValues(alpha: 0.25)),
-                              borderRadius: BorderRadius.circular(12),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              'يمكنك الرد بدون تسجيل — هويتك لن تظهر مطلقاً',
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 11,
+                              ),
                             ),
-                            child: Row(children: [
-                              Icon(Icons.lock_outline,
-                                  size: 16, color: colors.moment),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'سجّل دخولك للرد على هذه المرآة',
-                                  style: TextStyle(
-                                    color: colors.textPrimary,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () => context.push(AppRoutes.login),
-                                child: const Text('دخول'),
-                              ),
-                            ]),
                           ),
                         if (_error != null) ...[
                           const SizedBox(height: 12),
@@ -217,7 +206,7 @@ class _MirrorResponsePageState extends ConsumerState<MirrorResponsePage> {
                           label: 'أرسل ردي',
                           icon: Icons.send_rounded,
                           loading: _sending,
-                          onPressed: authed ? _send : null,
+                          onPressed: _send,
                         ),
                       ],
                     ),

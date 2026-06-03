@@ -11,11 +11,40 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../providers/notifications_provider.dart';
 
-class NotificationsPage extends ConsumerWidget {
+class NotificationsPage extends ConsumerStatefulWidget {
   const NotificationsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsPage> createState() => _NotificationsPageState();
+}
+
+class _NotificationsPageState extends ConsumerState<NotificationsPage> {
+  late final ScrollController _scroll;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll = ScrollController()..addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final p = _scroll.position;
+    if (p.pixels >= p.maxScrollExtent - 400) {
+      ref.read(notificationsListProvider.notifier).loadMore();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
     final notifs = ref.watch(notificationsListProvider);
     return Scaffold(
@@ -55,8 +84,8 @@ class NotificationsPage extends ConsumerWidget {
             message: e.toString(),
             onRetry: () => ref.invalidate(notificationsListProvider),
           ),
-          data: (page) {
-            if (page.items.isEmpty) {
+          data: (state) {
+            if (state.items.isEmpty) {
               return const Center(
                 child: EmptyState(
                   icon: Icons.notifications_none_outlined,
@@ -66,10 +95,28 @@ class NotificationsPage extends ConsumerWidget {
               );
             }
             return ListView.builder(
+              controller: _scroll,
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: page.items.length,
-              itemBuilder: (_, i) =>
-                  _NotifTile(notification: page.items[i]),
+              itemCount: state.items.length + (state.reachedEnd ? 0 : 1),
+              itemBuilder: (_, i) {
+                if (i >= state.items.length) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: colors.moment,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return _NotifTile(notification: state.items[i]);
+              },
             );
           },
         ),

@@ -34,7 +34,7 @@ Map<String, dynamic>? _asMapOrDecode(Object? value) {
   return null;
 }
 
-int _asInt(Object? value, {int fallback = 0}) {
+int asInt(Object? value, {int fallback = 0}) {  // public so other DTO files can reuse
   if (value is int) return value;
   if (value is num) return value.toInt();
   if (value is String) return int.tryParse(value) ?? fallback;
@@ -52,7 +52,7 @@ class AuthorDto {
   });
 
   factory AuthorDto.fromJson(Map<String, dynamic> json) => AuthorDto(
-        id: _asInt(json['id']),
+        id: asInt(json['id']),
         username: '${json['username'] ?? ''}',
         displayName: json['display_name']?.toString(),
         avatarPath: json['avatar_path']?.toString(),
@@ -127,7 +127,7 @@ class PostDto {
   });
 
   factory PostDto.fromJson(Map<String, dynamic> json) => PostDto(
-        id: _asInt(json['id']),
+        id: asInt(json['id']),
         section: sectionFromString(json['section']?.toString()),
         body: '${json['body'] ?? ''}',
         isCrystallized: json['is_crystallized'] == true,
@@ -217,7 +217,7 @@ class InboxItemDto {
   });
 
   factory InboxItemDto.fromJson(Map<String, dynamic> json) => InboxItemDto(
-        id: _asInt(json['id']),
+        id: asInt(json['id']),
         message: '${json['message'] ?? ''}',
         status: '${json['status'] ?? 'unread'}',
         mediaType: '${json['media_type'] ?? 'text'}',

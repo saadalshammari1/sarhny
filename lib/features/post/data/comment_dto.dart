@@ -13,7 +13,7 @@ class CommentDto {
   });
 
   factory CommentDto.fromJson(Map<String, dynamic> json) => CommentDto(
-        id: (json['id'] as num).toInt(),
+        id: asInt(json['id']),
         body: '${json['body'] ?? ''}',
         isAnonymous: json['is_anonymous'] == true,
         author: json['author'] is Map

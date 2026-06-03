@@ -195,7 +195,9 @@ workflows:
         # Apple-controlled gradual rollout: 1% day 1 → 2% → 5% → 10% →
         # 20% → 50% → 100% over 7 days. Catches a broken release before
         # it hits everyone. Cancel from App Store Connect if needed.
-        phased_release: true
+        # Immediate 100% rollout the moment Apple Review approves —
+        # every user gets the update on their next App Store check.
+        phased_release: false
       email:
         recipients:
           - s.sarhny@gmail.com

@@ -111,7 +111,10 @@ class _ComposePageState extends ConsumerState<ComposePage> {
       );
       Fluttertoast.showToast(msg: 'نُشِر بصدق ✨');
       if (!mounted) return;
-      context.go('/post/${post.id}');
+      // pushReplacement so the feed stays underneath in the stack — back
+      // from the new post detail returns to the feed. (Previous context.go
+      // reset the stack, leaving the user stranded on /post/X.)
+      context.pushReplacement('/post/${post.id}');
     } on ValidationException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {

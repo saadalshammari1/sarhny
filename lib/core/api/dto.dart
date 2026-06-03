@@ -174,7 +174,7 @@ class FeedCursor {
   const FeedCursor({this.gravity, required this.id});
   factory FeedCursor.fromJson(Map<String, dynamic> json) => FeedCursor(
         gravity: (json['gravity'] as num?)?.toDouble(),
-        id: (json['id'] as num).toInt(),
+        id: asInt(json['id']),
       );
   final double? gravity;
   final int id;
@@ -344,7 +344,7 @@ class PublicProfileUserDto {
 
   factory PublicProfileUserDto.fromJson(Map<String, dynamic> json) =>
       PublicProfileUserDto(
-        id: (json['id'] as num).toInt(),
+        id: asInt(json['id']),
         username: '${json['username'] ?? ''}',
         displayName: '${json['display_name'] ?? json['username'] ?? ''}',
         bio: json['bio']?.toString(),
@@ -384,7 +384,7 @@ class AnonReplyDto {
   });
 
   factory AnonReplyDto.fromJson(Map<String, dynamic> json) => AnonReplyDto(
-        id: (json['id'] as num).toInt(),
+        id: asInt(json['id']),
         mediaType: '${json['media_type'] ?? 'text'}',
         message: json['message']?.toString(),
         mediaRef: json['media_ref']?.toString(),
@@ -420,7 +420,7 @@ class NotificationDto {
   });
 
   factory NotificationDto.fromJson(Map<String, dynamic> json) => NotificationDto(
-        id: (json['id'] as num).toInt(),
+        id: asInt(json['id']),
         type: '${json['type'] ?? ''}',
         payload: (json['payload'] as Map? ?? const {}).cast<String, dynamic>(),
         read: json['read'] == true,

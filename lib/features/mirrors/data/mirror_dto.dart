@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/api/dto.dart';
+
 @immutable
 class MirrorDto {
   const MirrorDto({
@@ -13,7 +15,7 @@ class MirrorDto {
   });
 
   factory MirrorDto.fromJson(Map<String, dynamic> json) => MirrorDto(
-        id: (json['id'] as num).toInt(),
+        id: asInt(json['id']),
         questionText: '${json['question_text'] ?? ''}',
         shareToken: '${json['share_token'] ?? ''}',
         responseCount: (json['response_count'] as num?)?.toInt() ?? 0,

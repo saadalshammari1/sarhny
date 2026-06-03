@@ -184,8 +184,18 @@ workflows:
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
-        # Set to true once your app is ready for App Store review:
-        submit_to_app_store: false
+        # Public production release. After App Store Review approves the
+        # build it ships to ALL users automatically (AFTER_APPROVAL is the
+        # default Apple behavior — no manual "Release" click needed).
+        # Prerequisite: store listing metadata (description, screenshots,
+        # what's new, age rating, privacy details) must already be filled
+        # in App Store Connect, otherwise review rejects the submission.
+        submit_to_app_store: true
+        release_type: AFTER_APPROVAL
+        # Apple-controlled gradual rollout: 1% day 1 → 2% → 5% → 10% →
+        # 20% → 50% → 100% over 7 days. Catches a broken release before
+        # it hits everyone. Cancel from App Store Connect if needed.
+        phased_release: true
       email:
         recipients:
           - s.sarhny@gmail.com

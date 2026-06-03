@@ -56,14 +56,6 @@ class _InboxPageState extends ConsumerState<InboxPage> {
       backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('الصندوق'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: _FilterTabs(
-            current: filter,
-            onChanged: (f) =>
-                ref.read(inboxFilterProvider.notifier).state = f,
-          ),
-        ),
       ),
       bottomNavigationBar: const AppBottomNav(active: 1),
       body: RefreshIndicator(
@@ -165,61 +157,6 @@ class _InboxPageState extends ConsumerState<InboxPage> {
   }
 }
 
-class _FilterTabs extends StatelessWidget {
-  const _FilterTabs({required this.current, required this.onChanged});
-  final InboxFilter current;
-  final ValueChanged<InboxFilter> onChanged;
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.sarhnyColors;
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border(bottom: BorderSide(color: colors.divider, width: 0.5)),
-      ),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        children: InboxFilter.values
-            .map((f) => Padding(
-                  padding: const EdgeInsetsDirectional.only(end: 8),
-                  child: GestureDetector(
-                    onTap: () => onChanged(f),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: f == current
-                            ? colors.moment.withValues(alpha: 0.12)
-                            : colors.elevated,
-                        border: Border.all(
-                          color: f == current ? colors.moment : colors.border,
-                          width: f == current ? 1.2 : 0.6,
-                        ),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                      child: Text(
-                        f.arabicLabel,
-                        style: TextStyle(
-                          color: f == current
-                              ? colors.moment
-                              : colors.textSecondary,
-                          fontWeight: f == current
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                ))
-            .toList(),
-      ),
-    );
-  }
-}
 
 class _InboxTile extends StatelessWidget {
   const _InboxTile({

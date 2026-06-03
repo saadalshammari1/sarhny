@@ -52,9 +52,7 @@ class AuthorDto {
   });
 
   factory AuthorDto.fromJson(Map<String, dynamic> json) => AuthorDto(
-        id: (json['id'] ?? 0) is int
-            ? json['id'] as int
-            : int.tryParse('${json['id']}') ?? 0,
+        id: _asInt(json['id']),
         username: '${json['username'] ?? ''}',
         displayName: json['display_name']?.toString(),
         avatarPath: json['avatar_path']?.toString(),
@@ -129,9 +127,7 @@ class PostDto {
   });
 
   factory PostDto.fromJson(Map<String, dynamic> json) => PostDto(
-        id: (json['id'] ?? 0) is int
-            ? json['id'] as int
-            : int.tryParse('${json['id']}') ?? 0,
+        id: _asInt(json['id']),
         section: sectionFromString(json['section']?.toString()),
         body: '${json['body'] ?? ''}',
         isCrystallized: json['is_crystallized'] == true,

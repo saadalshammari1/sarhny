@@ -108,8 +108,11 @@ final feedControllerProvider = AsyncNotifierProvider.family<
 
 /// UI-only state — kept on the page itself but provided here so other widgets
 /// (e.g. the bottom tab) can read the current scope without prop-drilling.
+// Default to the user's followers feed — the global "world" view can surface
+// content from strangers that the user hasn't opted into, so we land them on
+// the safer/followed-only stream first.
 final feedScopeProvider =
-    StateProvider<FeedScope>((_) => FeedScope.global);
+    StateProvider<FeedScope>((_) => FeedScope.following);
 // Unified feed: merges V2 native posts + legacy answer archive (1.17M rows)
 // by recency, with the origin question rendered above each answer-style post.
 final feedSectionProvider =

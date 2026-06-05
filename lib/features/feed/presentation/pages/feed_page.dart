@@ -125,7 +125,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                   EmptyState(
                     icon: Icons.inbox_outlined,
                     title: scope == FeedScope.following
-                        ? 'لا يوجد شيء بعد في "أتابع"'
+                        ? 'لا يوجد شيء بعد من متابعيك'
                         : 'لا يوجد شيء في هذا القسم',
                     subtitle: scope == FeedScope.following
                         ? 'تابع حسابات جديدة لترى منشوراتهم هنا'
@@ -193,15 +193,15 @@ class _ScopeSwitcher extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _Pill(
-            label: 'الكل',
-            selected: scope == FeedScope.global,
-            onTap: () => onChanged(FeedScope.global),
+            label: 'شاهد متابعيك',
+            selected: scope == FeedScope.following,
+            onTap: () => onChanged(FeedScope.following),
             colors: colors,
           ),
           _Pill(
-            label: 'أتابع',
-            selected: scope == FeedScope.following,
-            onTap: () => onChanged(FeedScope.following),
+            label: 'شاهد العالم',
+            selected: scope == FeedScope.global,
+            onTap: () => onChanged(FeedScope.global),
             colors: colors,
           ),
         ],

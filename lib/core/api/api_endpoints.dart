@@ -47,6 +47,10 @@ class ApiEndpoints {
       '/api/v1/users/$username/active';
   static String profileLikes(String username) =>
       '/api/v1/users/$username/likes';
+  static String profileMoments(String username) =>
+      '/api/v1/users/$username/moments';
+  static String profileAnswers(String username) =>
+      '/api/v1/users/$username/answers';
   static const String profileEdit = '/api/v1/profile/edit';
   static const String profileAvatar = '/api/v1/profile/avatar';
   static const String profileCover = '/api/v1/profile/cover';

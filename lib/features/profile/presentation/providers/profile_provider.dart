@@ -13,7 +13,7 @@ final publicProfileProvider =
   return ref.watch(profileRepositoryProvider).get(username);
 });
 
-enum ProfileTab { active, crystals, likes }
+enum ProfileTab { active, moments, answers, crystals, likes }
 
 final selectedProfileTabProvider =
     StateProvider.family<ProfileTab, String>((_, __) => ProfileTab.active);
@@ -39,6 +39,10 @@ final profilePostsProvider =
   switch (key.tab) {
     case ProfileTab.active:
       return repo.listActive(key.username);
+    case ProfileTab.moments:
+      return repo.listMoments(key.username);
+    case ProfileTab.answers:
+      return repo.listAnswers(key.username);
     case ProfileTab.crystals:
       return repo.listCrystals(key.username);
     case ProfileTab.likes:

@@ -157,24 +157,41 @@ class _AuthedProfileBody extends ConsumerWidget {
             ),
             data: (page) {
               if (page.posts.isEmpty) {
+                final (icon, title, subtitle) = switch (tab) {
+                  ProfileTab.active => (
+                      Icons.flash_on_outlined,
+                      'لا يوجد منشور نشط',
+                      'أنشئ منشوراً ⚡',
+                    ),
+                  ProfileTab.moments => (
+                      Icons.bolt_outlined,
+                      'لا توجد لحظات بعد',
+                      'شارك لحظة من يومك ⚡',
+                    ),
+                  ProfileTab.answers => (
+                      Icons.question_answer_outlined,
+                      'لا توجد أجوبة بعد',
+                      'ردودك على الرسائل المجهولة ستظهر هنا 🕶️',
+                    ),
+                  ProfileTab.crystals => (
+                      Icons.diamond_outlined,
+                      'لا توجد بلورات بعد',
+                      null,
+                    ),
+                  ProfileTab.likes => (
+                      Icons.favorite_outline,
+                      'لم تعجبك أي بلورة بعد',
+                      null,
+                    ),
+                };
                 return SliverPadding(
                   padding: const EdgeInsets.symmetric(vertical: 60),
                   sliver: SliverToBoxAdapter(
                     child: Center(
                       child: EmptyState(
-                        icon: tab == ProfileTab.crystals
-                            ? Icons.diamond_outlined
-                            : tab == ProfileTab.likes
-                                ? Icons.favorite_outline
-                                : Icons.flash_on_outlined,
-                        title: tab == ProfileTab.crystals
-                            ? 'لا توجد بلورات بعد'
-                            : tab == ProfileTab.likes
-                                ? 'لم تعجبك أي بلورة بعد'
-                                : 'لا يوجد منشور نشط',
-                        subtitle: tab == ProfileTab.active
-                            ? 'أنشئ منشوراً ⚡'
-                            : null,
+                        icon: icon,
+                        title: title,
+                        subtitle: subtitle,
                       ),
                     ),
                   ),
@@ -663,48 +680,51 @@ class _TabsBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    // 5 tabs is too many for an Expanded row on small phones — switch to a
+    // horizontally scrollable pill row so labels never get clipped.
     final tabs = [
       (ProfileTab.active, 'نشط', Icons.flash_on_outlined),
+      (ProfileTab.moments, 'لحظات', Icons.bolt_outlined),
+      (ProfileTab.answers, 'أجوبة', Icons.question_answer_outlined),
       (ProfileTab.crystals, 'متبلور', Icons.diamond_outlined),
       (ProfileTab.likes, 'إعجابات', Icons.favorite_border),
     ];
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: colors.elevated,
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Row(
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
         children: tabs.map((t) {
           final selected = t.$1 == current;
-          return Expanded(
+          return Padding(
+            padding: const EdgeInsetsDirectional.only(end: 8),
             child: GestureDetector(
               onTap: () => onPick(t.$1),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: selected ? colors.surface : Colors.transparent,
+                  color: selected ? colors.moment.withValues(alpha: 0.12)
+                                  : colors.elevated,
+                  border: Border.all(
+                    color: selected ? colors.moment : colors.border,
+                    width: selected ? 1.2 : 0.6,
+                  ),
                   borderRadius: BorderRadius.circular(99),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       t.$3,
                       size: 14,
-                      color: selected
-                          ? colors.textPrimary
-                          : colors.textSecondary,
+                      color: selected ? colors.moment : colors.textSecondary,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 6),
                     Text(
                       t.$2,
                       style: TextStyle(
-                        color: selected
-                            ? colors.textPrimary
-                            : colors.textSecondary,
+                        color: selected ? colors.moment : colors.textSecondary,
                         fontSize: 12,
                         fontWeight:
                             selected ? FontWeight.w700 : FontWeight.w500,

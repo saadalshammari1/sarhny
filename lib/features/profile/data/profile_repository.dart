@@ -51,6 +51,24 @@ class ProfileRepository {
     );
   }
 
+  Future<ProfilePostsPage> listMoments(String username,
+      {int? cursor, int limit = 20}) {
+    return _listSection(
+      ApiEndpoints.profileMoments(username),
+      cursor: cursor,
+      limit: limit,
+    );
+  }
+
+  Future<ProfilePostsPage> listAnswers(String username,
+      {int? cursor, int limit = 20}) {
+    return _listSection(
+      ApiEndpoints.profileAnswers(username),
+      cursor: cursor,
+      limit: limit,
+    );
+  }
+
   Future<ProfilePostsPage> _listSection(String url,
       {int? cursor, int limit = 20}) {
     return _client.request<ProfilePostsPage>(

@@ -25,10 +25,11 @@ definitions:
       instance_type: mac_mini_m2
       max_build_duration: 60
     linux: &linux_instance
-      # linux_x2 needs a higher Codemagic billing tier — fall back to the
-      # standard `linux` instance so Android builds run on the free/PAYG
-      # plan. Android Gradle compile is fine on standard.
-      instance_type: linux
+      # The Codemagic billing plan on this account doesn't include any
+      # Linux instance (linux + linux_x2 both return "not available").
+      # Fall back to the M1 Mac, which the free tier *does* include and
+      # which Flutter/Gradle build Android AABs on just fine.
+      instance_type: mac_mini_m1
       max_build_duration: 60
 
   scripts:

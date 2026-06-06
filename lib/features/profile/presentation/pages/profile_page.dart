@@ -93,33 +93,69 @@ class ProfilePage extends ConsumerWidget {
   }
 }
 
-class _AuthedProfileBody extends ConsumerWidget {
+class _AuthedProfileBody extends ConsumerStatefulWidget {
   const _AuthedProfileBody(
       {required this.profile, required this.username});
   final PublicProfileDto profile;
   final String username;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_AuthedProfileBody> createState() => _AuthedProfileBodyState();
+}
+
+class _AuthedProfileBodyState extends ConsumerState<_AuthedProfileBody> {
+  late final ScrollController _scroll;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll = ScrollController()..addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final pos = _scroll.position;
+    if (pos.pixels >= pos.maxScrollExtent - 600) {
+      final tab = ref.read(selectedProfileTabProvider(widget.username));
+      ref
+          .read(
+            profilePostsProvider(ProfilePostsKey.make(widget.username, tab))
+                .notifier,
+          )
+          .loadMore();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
-    final tab = ref.watch(selectedProfileTabProvider(username));
-    final posts =
-        ref.watch(profilePostsProvider(ProfilePostsKey.make(username, tab)));
+    final tab = ref.watch(selectedProfileTabProvider(widget.username));
+    final posts = ref.watch(
+        profilePostsProvider(ProfilePostsKey.make(widget.username, tab)));
     return RefreshIndicator(
       onRefresh: () async {
-        ref.invalidate(publicProfileProvider(username));
+        ref.invalidate(publicProfileProvider(widget.username));
         ref.invalidate(
-            profilePostsProvider(ProfilePostsKey.make(username, tab)));
+            profilePostsProvider(ProfilePostsKey.make(widget.username, tab)));
       },
       color: colors.moment,
       child: CustomScrollView(
+        controller: _scroll,
         slivers: [
           SliverAppBar(
             pinned: true,
             backgroundColor: colors.surface,
             foregroundColor: colors.textPrimary,
             elevation: 0,
-            title: Text('@${profile.user.username}'),
+            title: Text('@${widget.profile.user.username}'),
             actions: [
               IconButton(
                 icon: const Icon(Icons.settings_outlined),
@@ -128,20 +164,21 @@ class _AuthedProfileBody extends ConsumerWidget {
             ],
           ),
           SliverToBoxAdapter(
-            child: _AuthedHeader(profile: profile, username: username),
+            child: _AuthedHeader(
+                profile: widget.profile, username: widget.username),
           ),
           SliverToBoxAdapter(
-            child: _BadgesRow(profile: profile),
+            child: _BadgesRow(profile: widget.profile),
           ),
           SliverToBoxAdapter(
-            child: _QuickLinks(username: profile.user.username),
+            child: _QuickLinks(username: widget.profile.user.username),
           ),
           SliverToBoxAdapter(
             child: _TabsBar(
-              username: username,
+              username: widget.username,
               current: tab,
               onPick: (t) => ref
-                  .read(selectedProfileTabProvider(username).notifier)
+                  .read(selectedProfileTabProvider(widget.username).notifier)
                   .state = t,
             ),
           ),
@@ -155,8 +192,8 @@ class _AuthedProfileBody extends ConsumerWidget {
             error: (e, _) => SliverToBoxAdapter(
               child: ErrorView(message: e.toString()),
             ),
-            data: (page) {
-              if (page.posts.isEmpty) {
+            data: (state) {
+              if (state.posts.isEmpty) {
                 final (icon, title, subtitle) = switch (tab) {
                   ProfileTab.active => (
                       Icons.flash_on_outlined,
@@ -198,8 +235,26 @@ class _AuthedProfileBody extends ConsumerWidget {
                 );
               }
               return SliverList.builder(
-                itemCount: page.posts.length,
-                itemBuilder: (_, i) => PostCard(post: page.posts[i]),
+                itemCount: state.posts.length + (state.reachedEnd ? 0 : 1),
+                itemBuilder: (_, i) {
+                  if (i >= state.posts.length) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colors.moment,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  final p = state.posts[i];
+                  return PostCard(key: ValueKey<int>(p.id), post: p);
+                },
               );
             },
           ),

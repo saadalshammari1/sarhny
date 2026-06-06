@@ -81,14 +81,51 @@ Future<void> _onMenu(
   }
 }
 
-class _Body extends ConsumerWidget {
+class _Body extends ConsumerStatefulWidget {
   const _Body({required this.profile, required this.username});
   final PublicProfileDto profile;
   final String username;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Body> createState() => _BodyState();
+}
+
+class _BodyState extends ConsumerState<_Body> {
+  late final ScrollController _scroll;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll = ScrollController()..addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final pos = _scroll.position;
+    if (pos.pixels >= pos.maxScrollExtent - 600) {
+      final tab = ref.read(selectedProfileTabProvider(widget.username));
+      ref
+          .read(
+            profilePostsProvider(ProfilePostsKey.make(widget.username, tab))
+                .notifier,
+          )
+          .loadMore();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final profile = widget.profile;
+    final username = widget.username;
     final tab = ref.watch(selectedProfileTabProvider(username));
     final posts = ref.watch(profilePostsProvider(
         ProfilePostsKey.make(username, tab)));
@@ -101,6 +138,7 @@ class _Body extends ConsumerWidget {
       },
       color: colors.moment,
       child: CustomScrollView(
+        controller: _scroll,
         slivers: [
           SliverAppBar(
             pinned: true,
@@ -163,8 +201,8 @@ class _Body extends ConsumerWidget {
             error: (e, _) => SliverToBoxAdapter(
               child: ErrorView(message: e.toString()),
             ),
-            data: (page) {
-              if (page.posts.isEmpty) {
+            data: (state) {
+              if (state.posts.isEmpty) {
                 return SliverPadding(
                   padding: const EdgeInsets.symmetric(vertical: 60),
                   sliver: SliverToBoxAdapter(
@@ -178,8 +216,26 @@ class _Body extends ConsumerWidget {
                 );
               }
               return SliverList.builder(
-                itemCount: page.posts.length,
-                itemBuilder: (_, i) => PostCard(post: page.posts[i]),
+                itemCount: state.posts.length + (state.reachedEnd ? 0 : 1),
+                itemBuilder: (_, i) {
+                  if (i >= state.posts.length) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colors.moment,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  final p = state.posts[i];
+                  return PostCard(key: ValueKey<int>(p.id), post: p);
+                },
               );
             },
           ),

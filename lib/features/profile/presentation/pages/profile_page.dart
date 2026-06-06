@@ -221,7 +221,6 @@ class _AuthedHeader extends ConsumerStatefulWidget {
 
 class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
   bool _avatarBusy = false;
-  bool _coverBusy = false;
 
   Future<void> _changeAvatar() async {
     final picked = await ImagePicker()
@@ -245,31 +244,6 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
       Fluttertoast.showToast(msg: 'تعذّر الرفع');
     } finally {
       if (mounted) setState(() => _avatarBusy = false);
-    }
-  }
-
-  Future<void> _changeCover() async {
-    final picked = await ImagePicker()
-        .pickImage(source: ImageSource.gallery, maxWidth: 2048);
-    if (picked == null) return;
-    final cropped = await ImageCropper().cropImage(
-      sourcePath: picked.path,
-      aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9),
-      compressFormat: ImageCompressFormat.jpg,
-      compressQuality: 85,
-    );
-    if (cropped == null) return;
-    setState(() => _coverBusy = true);
-    try {
-      await ref
-          .read(profileRepositoryProvider)
-          .uploadCover(File(cropped.path));
-      ref.invalidate(publicProfileProvider(widget.username));
-      Fluttertoast.showToast(msg: 'تم تحديث الغلاف');
-    } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الرفع');
-    } finally {
-      if (mounted) setState(() => _coverBusy = false);
     }
   }
 
@@ -373,152 +347,155 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
     final p = widget.profile;
-    return Column(
-      children: [
-        Stack(
-          children: [
-            GestureDetector(
-              onTap: _coverBusy ? null : _changeCover,
-              child: Container(
-                height: 140,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: p.user.coverColor != null
-                      ? _parseHex(p.user.coverColor!) ?? colors.moment
-                      : colors.moment.withValues(alpha: 0.18),
-                  image: p.user.coverPath != null
-                      ? DecorationImage(
-                          fit: BoxFit.cover,
-                          image: NetworkImage(mediaUrl(p.user.coverPath) ?? ''),
-                        )
-                      : null,
-                ),
+    // New layout: a compact, centered identity card — no large cover image
+    // (saves bandwidth + storage and stays clean across themes). A soft
+    // section-accent gradient backs the avatar to keep some visual warmth.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 28, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  colors.moment.withValues(alpha: 0.18),
+                  colors.moment.withValues(alpha: 0.04),
+                ],
               ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: colors.border, width: 0.6),
             ),
-            Positioned(
-              right: 16,
-              top: 12,
-              child: _CameraButton(
-                busy: _coverBusy,
-                onTap: _changeCover,
-              ),
-            ),
-          ],
-        ),
-        Transform.translate(
-          offset: const Offset(0, -34),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                Stack(
+                  alignment: Alignment.bottomRight,
                   children: [
-                    Stack(
-                      children: [
-                        AppAvatar(
-                          url: mediaUrl(p.user.avatarPath),
-                          initials: p.user.displayName,
-                          size: 76,
-                          ringColor: colors.background,
-                          ringWidth: 3,
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: _CameraButton(
-                            busy: _avatarBusy,
-                            onTap: _changeAvatar,
-                            small: true,
-                          ),
-                        ),
-                      ],
+                    AppAvatar(
+                      url: mediaUrl(p.user.avatarPath),
+                      initials: p.user.displayName,
+                      size: 96,
+                      ringColor: colors.background,
+                      ringWidth: 3,
                     ),
-                    const Spacer(),
-                    AppButton(
-                      label: 'تعديل',
-                      icon: Icons.edit_outlined,
-                      variant: AppButtonVariant.secondary,
-                      expand: false,
-                      onPressed: _showEditSheet,
+                    _CameraButton(
+                      busy: _avatarBusy,
+                      onTap: _changeAvatar,
+                      small: true,
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Flexible(
-                    child: Text(
-                      p.user.displayName,
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        p.user.displayName,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 21,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  if (p.verified) ...[
-                    const SizedBox(width: 6),
-                    Icon(Icons.verified, size: 18, color: colors.face),
+                    if (p.verified) ...[
+                      const SizedBox(width: 6),
+                      Icon(Icons.verified, size: 18, color: colors.face),
+                    ],
                   ],
-                ]),
+                ),
+                const SizedBox(height: 2),
                 Text(
                   '@${p.user.username}',
-                  style:
-                      TextStyle(color: colors.textSecondary, fontSize: 13),
+                  style: TextStyle(color: colors.textSecondary, fontSize: 13),
                 ),
                 if ((p.user.bio ?? '').isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Text(
                     p.user.bio!,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: colors.textPrimary,
                       fontSize: 13,
-                      height: 1.5,
+                      height: 1.55,
                     ),
                   ),
                 ],
                 if ((p.user.location ?? '').isNotEmpty ||
                     (p.user.website ?? '').isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Row(
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 12,
+                    runSpacing: 4,
                     children: [
-                      if ((p.user.location ?? '').isNotEmpty) ...[
-                        Icon(Icons.place_outlined,
-                            size: 14, color: colors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          p.user.location!,
-                          style: TextStyle(
-                            color: colors.textSecondary,
-                            fontSize: 12,
-                          ),
+                      if ((p.user.location ?? '').isNotEmpty)
+                        _MetaChip(
+                          icon: Icons.place_outlined,
+                          label: p.user.location!,
+                          colors: colors,
                         ),
-                        const SizedBox(width: 12),
-                      ],
-                      if ((p.user.website ?? '').isNotEmpty) ...[
-                        Icon(Icons.link,
-                            size: 14, color: colors.textSecondary),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            p.user.website!,
-                            style: TextStyle(
-                              color: colors.face,
-                              fontSize: 12,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      if ((p.user.website ?? '').isNotEmpty)
+                        _MetaChip(
+                          icon: Icons.link,
+                          label: p.user.website!,
+                          colors: colors,
+                          highlight: true,
                         ),
-                      ],
                     ],
                   ),
                 ],
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _Stats(stats: p.stats),
+                const SizedBox(height: 14),
+                AppButton(
+                  label: 'تعديل البروفايل',
+                  icon: Icons.edit_outlined,
+                  variant: AppButtonVariant.secondary,
+                  onPressed: _showEditSheet,
+                ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({
+    required this.icon,
+    required this.label,
+    required this.colors,
+    this.highlight = false,
+  });
+  final IconData icon;
+  final String label;
+  final SarhnyColors colors;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = highlight ? colors.face : colors.textSecondary;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: fg),
+        const SizedBox(width: 4),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 180),
+          child: Text(
+            label,
+            style: TextStyle(color: fg, fontSize: 12),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -830,15 +807,3 @@ class _QuickLinks extends StatelessWidget {
   }
 }
 
-Color? _parseHex(String s) {
-  final v = s.replaceFirst('#', '');
-  if (v.length == 6) {
-    final n = int.tryParse('FF$v', radix: 16);
-    return n == null ? null : Color(n);
-  }
-  if (v.length == 8) {
-    final n = int.tryParse(v, radix: 16);
-    return n == null ? null : Color(n);
-  }
-  return null;
-}

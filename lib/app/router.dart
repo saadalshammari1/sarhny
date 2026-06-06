@@ -20,6 +20,7 @@ import '../features/post/presentation/pages/post_detail_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/pages/public_profile_page.dart';
 import '../features/profile/presentation/pages/saved_posts_page.dart';
+import '../features/settings/presentation/pages/blocked_accounts_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
 
 class AppRoutes {
@@ -35,6 +36,7 @@ class AppRoutes {
   static const compose = '/compose';
   static const notifications = '/notifications';
   static const saved = '/saved';
+  static const blockedAccounts = '/settings/blocked';
   static const forgotPassword = '/forgot';
   static String resetPassword(String token) => '/reset?token=$token';
   static const help = '/help';
@@ -113,6 +115,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.saved,
         builder: (_, __) => const SavedPostsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.blockedAccounts,
+        builder: (_, __) => const BlockedAccountsPage(),
       ),
       GoRoute(
         path: '/post/:id',

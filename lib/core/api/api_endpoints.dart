@@ -95,6 +95,7 @@ class ApiEndpoints {
   // ────────── Social (follow / block / leaderboard) ──────────
   static String follow(int userId) => '/api/v1/follow/$userId';
   static String block(int userId) => '/api/v1/block/$userId';
+  static const String blocks = '/api/v1/blocks';
   static const String leaderboard = '/api/v1/users/leaderboard';
   static String userFollowers(String username) =>
       '/api/v1/users/$username/followers';

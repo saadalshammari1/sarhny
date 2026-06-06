@@ -102,6 +102,11 @@ class SettingsPage extends ConsumerWidget {
                   onChanged: (v) => _toggle(
                       ref, 'accept_anon_from_registered_only', v),
                 ),
+                _Tile(
+                  icon: Icons.block_outlined,
+                  title: 'الحسابات المحظورة',
+                  onTap: () => context.push(AppRoutes.blockedAccounts),
+                ),
                 _SectionTitle('الإشعارات'),
                 _SwitchTile(
                   icon: Icons.favorite_outline,

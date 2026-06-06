@@ -13,9 +13,13 @@ import '../../../../core/widgets/app_avatar.dart';
 import '../../../post/presentation/providers/interaction_provider.dart';
 import '../../../post/presentation/providers/post_provider.dart';
 
-class PostCard extends StatelessWidget {
-  const PostCard({super.key, required this.post});
+class PostCard extends ConsumerWidget {
+  const PostCard({super.key, required this.post, this.tappable = true});
   final PostDto post;
+  /// When false, the card renders as a static block — no whole-card InkWell
+  /// that pushes /post/X. Use `false` on the post detail page itself so
+  /// tapping the header doesn't push the same post onto the stack again.
+  final bool tappable;
 
   PostSection get _section => switch (post.section) {
         PostSectionKind.moment => PostSection.moment,
@@ -24,11 +28,21 @@ class PostCard extends StatelessWidget {
       };
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.sarhnyColors;
     final brightness = Theme.of(context).brightness;
     final sectionColor = _section.resolve(brightness);
     final sectionInk = _section.ink(brightness);
+
+    // Push the server's truth about this viewer's like/save state into the
+    // in-memory controller exactly once per render. seed() is a no-op if the
+    // user has already toggled locally.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      ref
+          .read(postInteractionProvider(post.id).notifier)
+          .seed(liked: post.isLiked, saved: post.isSaved);
+    });
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -37,7 +51,7 @@ class PostCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: () => context.push('/post/${post.id}'),
+          onTap: tappable ? () => context.push('/post/${post.id}') : null,
           child: Container(
             decoration: BoxDecoration(
               color: colors.surface,

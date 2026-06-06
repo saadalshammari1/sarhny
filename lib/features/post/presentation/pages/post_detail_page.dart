@@ -36,7 +36,9 @@ class PostDetailPage extends ConsumerWidget {
           color: colors.moment,
           child: ListView(
             children: [
-              PostCard(post: p),
+              // tappable: false — we ARE on /post/X already, tapping the card
+              // would push the same id onto the stack again (forever).
+              PostCard(post: p, tappable: false),
               AnonRepliesSection(postId: postId),
               CommentsSection(postId: postId),
               const SizedBox(height: 30),

@@ -124,6 +124,8 @@ class PostDto {
     this.commentsCount = 0,
     this.savesCount = 0,
     this.anonRepliesCount = 0,
+    this.isLiked = false,
+    this.isSaved = false,
   });
 
   factory PostDto.fromJson(Map<String, dynamic> json) => PostDto(
@@ -149,6 +151,8 @@ class PostDto {
         commentsCount: (json['comments_count'] as num?)?.toInt() ?? 0,
         savesCount: (json['saves_count'] as num?)?.toInt() ?? 0,
         anonRepliesCount: (json['anon_replies_count'] as num?)?.toInt() ?? 0,
+        isLiked: json['is_liked'] == true,
+        isSaved: json['is_saved'] == true,
       );
 
   final int id;
@@ -167,6 +171,8 @@ class PostDto {
   final int commentsCount;
   final int savesCount;
   final int anonRepliesCount;
+  final bool isLiked;
+  final bool isSaved;
 }
 
 @immutable

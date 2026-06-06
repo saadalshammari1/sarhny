@@ -46,6 +46,18 @@ class PostInteractionController
   @override
   PostInteractionState build(int arg) => const PostInteractionState();
 
+  /// Seed initial liked/saved state from a server-provided post DTO. Called
+  /// once per render by PostCard so the heart + bookmark show the right
+  /// state on first paint (previously both started `false`, which made
+  /// already-liked posts look unliked and re-tapping them flickered).
+  /// No-op if the user has already toggled in-session (we trust the local
+  /// optimistic state over the now-stale server snapshot).
+  void seed({required bool liked, required bool saved}) {
+    if (state.likeDelta != 0 || state.likeBusy || state.saveBusy) return;
+    if (state.liked == liked && state.saved == saved) return;
+    state = state.copyWith(liked: liked, saved: saved);
+  }
+
   Future<void> toggleLike(PostRepository repo) async {
     if (state.likeBusy) return;
     final wasLiked = state.liked;

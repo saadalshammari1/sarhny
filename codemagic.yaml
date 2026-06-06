@@ -100,6 +100,22 @@ workflows:
           BASE=$(grep -E '^version: ' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
           sed -i.bak "s/^version: .*/version: ${BASE}+${BUILD_NUMBER}/" pubspec.yaml
           echo "Building version ${BASE}+${BUILD_NUMBER}"
+      - name: Set up release signing
+        script: |
+          # The `android_signing: sarhny_keystore` declaration fetches the
+          # keystore to $CM_KEYSTORE_PATH and exposes its credentials as env
+          # vars, but Flutter's build.gradle reads them from android/key.
+          # properties — without this file written, the release build silently
+          # falls back to the debug keystore and Google Play rejects the AAB
+          # ("APK has been signed in debug mode").
+          cat > "$CM_BUILD_DIR/android/key.properties" <<EOF
+          storeFile=$CM_KEYSTORE_PATH
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          keyPassword=$CM_KEY_PASSWORD
+          EOF
+          # Sanity check the file is wired up (without leaking the password).
+          echo "key.properties written; alias=$CM_KEY_ALIAS storeFile=$CM_KEYSTORE_PATH"
       - name: Build Android App Bundle
         script: |
           flutter build appbundle --release \

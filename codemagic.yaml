@@ -64,7 +64,7 @@ definitions:
 workflows:
   # ─────────────────────────── Android ───────────────────────────
   android-workflow:
-    name: Android · Release (Production · 10% rollout)
+    name: Android · Release (Internal)
     <<: *linux_instance
     environment:
       flutter: stable
@@ -130,15 +130,10 @@ workflows:
       google_play:
         # Encrypted JSON service-account key (set via Codemagic UI).
         credentials: $GOOGLE_PLAY_SERVICE_ACCOUNT_KEY
-        # New listing (com.sarhny.app) — still in "draft app" state until
-        # the first release passes Google review. While in draft, the only
-        # release status Google accepts is "draft" itself; inProgress (=
-        # rolling out) errors out with "Only releases with status draft
-        # may be created on draft app." Once the first release graduates
-        # and the app is live, flip this to false (and consider adding
-        # rollout_fraction: 0.10 back for staged rollouts).
-        track: production
-        submit_as_draft: true
+        # Internal testing is available before the new listing graduates
+        # from draft app state, and keeps the build away from public users.
+        track: internal
+        submit_as_draft: false
       email:
         recipients:
           - s.sarhny@gmail.com

@@ -61,7 +61,7 @@ definitions:
 workflows:
   # ─────────────────────────── Android ───────────────────────────
   android-workflow:
-    name: Android · Release (Internal Track)
+    name: Android · Release (Production · 10% rollout)
     <<: *linux_instance
     environment:
       flutter: stable
@@ -71,7 +71,7 @@ workflows:
       android_signing:
         - sarhny_keystore
       vars:
-        PACKAGE_NAME: "com.sarhny.sarhny"
+        PACKAGE_NAME: "com.sarhny"
     triggering:
       events:
         - push
@@ -109,7 +109,13 @@ workflows:
       google_play:
         # Encrypted JSON service-account key (set via Codemagic UI).
         credentials: $GOOGLE_PLAY_SERVICE_ACCOUNT_KEY
-        track: internal
+        # Replaces the live v3.0.0 (versionCode 8) under the existing
+        # com.sarhny listing — same package, same Play App Signing key.
+        track: production
+        # Staged rollout: ship to 10% of users first. Halt-able from
+        # Console without a re-build if a regression surfaces. Bump to
+        # 1.0 once we've watched 24h of crash-free sessions.
+        rollout_fraction: 0.10
         submit_as_draft: false
       email:
         recipients:

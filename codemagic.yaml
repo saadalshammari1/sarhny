@@ -25,7 +25,10 @@ definitions:
       instance_type: mac_mini_m2
       max_build_duration: 60
     linux: &linux_instance
-      instance_type: linux_x2
+      # linux_x2 needs a higher Codemagic billing tier — fall back to the
+      # standard `linux` instance so Android builds run on the free/PAYG
+      # plan. Android Gradle compile is fine on standard.
+      instance_type: linux
       max_build_duration: 60
 
   scripts:

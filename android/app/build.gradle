@@ -30,7 +30,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.sarhny.sarhny"
+        // Fresh listing under com.sarhny.app (the legacy com.sarhny listing
+        // for v3.0.0/versionCode 8 stays orphaned — keystore was lost, so
+        // we ship as a new app instead of fighting Google Play's "Signature
+        // mismatch" rejection on every upload).
+        applicationId = "com.sarhny.app"
         // minSdk 23 required by record_android (microphone APIs) +
         // flutter_local_notifications.
         minSdkVersion = flutter.minSdkVersion

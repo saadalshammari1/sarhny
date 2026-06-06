@@ -25,11 +25,10 @@ definitions:
       instance_type: mac_mini_m2
       max_build_duration: 60
     linux: &linux_instance
-      # The Codemagic billing plan on this account doesn't include any
-      # Linux instance (linux + linux_x2 both return "not available").
-      # Fall back to the M1 Mac, which the free tier *does* include and
-      # which Flutter/Gradle build Android AABs on just fine.
-      instance_type: mac_mini_m1
+      # Plan has no Linux instances available — Android builds run on the
+      # M2 Mac instead. Codemagic auto-substitutes M1→M2 anyway (M1 was
+      # retired); naming M2 explicitly silences the deprecation warning.
+      instance_type: mac_mini_m2
       max_build_duration: 60
 
   scripts:

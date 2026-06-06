@@ -130,12 +130,15 @@ workflows:
       google_play:
         # Encrypted JSON service-account key (set via Codemagic UI).
         credentials: $GOOGLE_PLAY_SERVICE_ACCOUNT_KEY
-        # New listing (com.sarhny.app). Play forbids staged rollout on
-        # the very first release of a draft app — it has to ship at 100%
-        # to "graduate" out of draft. Subsequent versions can do staged
-        # rollout (set rollout_fraction back to 0.10 next time).
+        # New listing (com.sarhny.app) — still in "draft app" state until
+        # the first release passes Google review. While in draft, the only
+        # release status Google accepts is "draft" itself; inProgress (=
+        # rolling out) errors out with "Only releases with status draft
+        # may be created on draft app." Once the first release graduates
+        # and the app is live, flip this to false (and consider adding
+        # rollout_fraction: 0.10 back for staged rollouts).
         track: production
-        submit_as_draft: false
+        submit_as_draft: true
       email:
         recipients:
           - s.sarhny@gmail.com

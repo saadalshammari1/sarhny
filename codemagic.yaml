@@ -74,9 +74,9 @@ workflows:
       android_signing:
         - sarhny_keystore
       vars:
-        # New listing — see android/app/build.gradle for context. Old
-        # com.sarhny stays orphaned at v3.0.0 because the keystore was lost.
-        PACKAGE_NAME: "com.sarhny.app"
+        # Legacy Play Store listing. Android builds from this branch update
+        # existing users on com.sarhny instead of publishing a separate app.
+        PACKAGE_NAME: "com.sarhny"
     triggering:
       events:
         - push

@@ -156,14 +156,10 @@ workflows:
     triggering:
       events:
         - push
-        - tag
       branch_patterns:
         - pattern: main
           include: true
           source: true
-      tag_patterns:
-        - pattern: 'v*'
-          include: true
     scripts:
       - *flutter_pub_get
       - *set_env_file

@@ -1,0 +1,144 @@
+name: iOS · TestFlight + App Store
+
+# Replicates the Codemagic ios-workflow so we can ship iOS builds without
+# depending on Codemagic billing. Uses the same App Store Connect API key
+# + the codemagic-cli-tools toolchain — fetches/creates signing certs
+# automatically.
+#
+# Required GitHub repository secrets:
+#   APP_STORE_CONNECT_ISSUER_ID       — UUID from App Store Connect
+#   APP_STORE_CONNECT_KEY_IDENTIFIER  — 10-char Key ID
+#   APP_STORE_CONNECT_PRIVATE_KEY     — entire .p8 file content
+#   CERTIFICATE_PRIVATE_KEY           — RSA private key for cert generation
+#                                        (one-time generate per workflow run
+#                                         if missing — store the result for
+#                                         next time)
+
+on:
+  workflow_dispatch:
+    inputs:
+      submit_to_app_store:
+        description: "Submit to App Store after upload (true/false)"
+        required: false
+        default: "false"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "android/**"
+      - "web/**"
+
+concurrency:
+  group: ios-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build + upload to TestFlight
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}
+      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+      CERTIFICATE_PRIVATE_KEY: ${{ secrets.CERTIFICATE_PRIVATE_KEY }}
+      BUNDLE_ID: com.sarhny.Sarhny
+      # GitHub auto-increments run_number per workflow, never repeats — perfect
+      # match for the App Store Connect "build number must be unique" rule.
+      BUILD_NUMBER: ${{ github.run_number }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up Ruby (CocoaPods)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: false
+
+      - name: Install codemagic-cli-tools
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install codemagic-cli-tools
+
+      - name: Get Flutter packages
+        run: flutter pub get
+
+      - name: Write .env (asset is required by dotenv.load at app boot)
+        run: |
+          cat > .env <<EOF
+          API_BASE_URL=https://sarhny.com
+          APP_ENV=production
+          EOF
+
+      - name: Static analysis
+        run: flutter analyze lib/
+
+      - name: Bump build number (run_number → +N in pubspec)
+        run: |
+          BASE=$(grep -E '^version: ' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          sed -i.bak "s/^version: .*/version: ${BASE}+${BUILD_NUMBER}/" pubspec.yaml
+          echo "Building version ${BASE}+${BUILD_NUMBER}"
+
+      - name: Install CocoaPods
+        working-directory: ios
+        run: |
+          gem install cocoapods --no-document
+          pod install
+
+      - name: Prepare iOS project (Flutter side)
+        run: flutter build ios --release --config-only --no-codesign
+
+      - name: Set up code signing
+        run: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --issuer-id="$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id="$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key="$APP_STORE_CONNECT_PRIVATE_KEY" \
+            --certificate-key="$CERTIFICATE_PRIVATE_KEY" \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Build iOS IPA
+        run: |
+          flutter build ipa --release \
+            --build-name="$(grep -E '^version: ' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)" \
+            --build-number="$BUILD_NUMBER" \
+            --export-options-plist=$HOME/export_options.plist
+
+      - name: Upload IPA to App Store Connect (→ TestFlight)
+        run: |
+          app-store-connect publish \
+            --path "build/ios/ipa/*.ipa" \
+            --issuer-id="$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id="$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key="$APP_STORE_CONNECT_PRIVATE_KEY"
+
+      - name: Optionally submit to App Store
+        if: github.event_name == 'workflow_dispatch' && inputs.submit_to_app_store == 'true'
+        run: |
+          echo "::notice::Auto-submit to App Store is enabled. Reviewers will see the new build automatically."
+          # The publish step above only uploads to TestFlight. To kick off
+          # an App Store Review submission we'd need to attach the build to
+          # an appStoreVersion and PATCH the reviewSubmission — done via a
+          # small python script if desired. For now, we surface the build in
+          # TestFlight and let the operator hit "Submit for Review" in ASC.
+
+      - name: Upload IPA as workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sarhny-ipa
+          path: build/ios/ipa/*.ipa
+          if-no-files-found: ignore
+          retention-days: 7

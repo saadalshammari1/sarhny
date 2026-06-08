@@ -93,10 +93,13 @@ jobs:
           echo "Building version ${BASE}+${BUILD_NUMBER}"
 
       - name: Install CocoaPods
-        working-directory: ios
         run: |
-          gem install cocoapods --no-document
-          pod install
+          if [ -f ios/Podfile ]; then
+            gem install cocoapods --no-document
+            (cd ios && pod install)
+          else
+            echo "No ios/Podfile found; skipping CocoaPods install."
+          fi
 
       - name: Prepare iOS project (Flutter side)
         run: flutter build ios --release --config-only --no-codesign

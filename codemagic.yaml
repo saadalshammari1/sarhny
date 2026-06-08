@@ -77,17 +77,17 @@ workflows:
         # New listing — see android/app/build.gradle for context. Old
         # com.sarhny stays orphaned at v3.0.0 because the keystore was lost.
         PACKAGE_NAME: "com.sarhny.app"
-    triggering:
-      events:
-        - push
-        - tag
-      branch_patterns:
-        - pattern: main
-          include: true
-          source: true
-      tag_patterns:
-        - pattern: 'v*'
-          include: true
+    # Manual-only — DO NOT auto-trigger on push/tag.
+    # Reasons:
+    #  - Legacy com.sarhny upload key is in 7-day reset window; AABs signed
+    #    with the new key are rejected until June 9, 2026 ~17:38 Riyadh.
+    #  - Codemagic billing currently disabled. Even a successful build that
+    #    Play would accept would be blocked at the publish step.
+    #  - iOS shipping moved to GitHub Actions (.github/workflows/ios-release
+    #    .yml) — Codemagic is no longer in the iOS critical path.
+    # Re-enable by restoring the `events: [push, tag]` block when billing
+    # is on AND the keystore situation is settled.
+    triggering: {}
     scripts:
       - *flutter_pub_get
       - *set_env_file
@@ -153,17 +153,8 @@ workflows:
         - sarhny_release
       vars:
         APP_STORE_APP_ID: "1296542666"
-    triggering:
-      events:
-        - push
-        - tag
-      branch_patterns:
-        - pattern: main
-          include: true
-          source: true
-      tag_patterns:
-        - pattern: 'v*'
-          include: true
+    # Manual-only while iOS releases are handled by GitHub Actions.
+    triggering: {}
     scripts:
       - *flutter_pub_get
       - *set_env_file

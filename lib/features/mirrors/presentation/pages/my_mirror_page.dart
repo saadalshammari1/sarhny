@@ -79,7 +79,10 @@ class _MirrorCard extends StatelessWidget {
   const _MirrorCard({required this.mirror});
   final MirrorDto mirror;
 
-  String get _shareUrl => 'https://sarhny.com/mirror/${mirror.shareToken}';
+  // Web public route is /[locale]/m/[token]. The old /mirror/X path 404'd
+  // — current mobile builds point straight to the canonical /m/X URL, and
+  // next.config redirects /mirror/X for legacy links already shared.
+  String get _shareUrl => 'https://sarhny.com/m/${mirror.shareToken}';
 
   @override
   Widget build(BuildContext context) {

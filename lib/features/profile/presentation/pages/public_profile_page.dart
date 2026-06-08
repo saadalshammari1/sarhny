@@ -14,6 +14,7 @@ import '../../../feed/presentation/widgets/post_card.dart';
 import '../../../feed/presentation/widgets/post_card_skeleton.dart';
 import '../providers/profile_provider.dart';
 import '../widgets/anon_ask_form.dart';
+import '../widgets/profile_share.dart';
 
 class PublicProfilePage extends ConsumerWidget {
   const PublicProfilePage({super.key, required this.username});
@@ -147,6 +148,15 @@ class _BodyState extends ConsumerState<_Body> {
             elevation: 0,
             title: Text('@${profile.user.username}'),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.ios_share_rounded),
+                tooltip: 'مشاركة هذا البروفايل',
+                onPressed: () => shareProfile(
+                  context,
+                  username: profile.user.username,
+                  displayName: profile.user.displayName,
+                ),
+              ),
               if (!profile.isSelf)
                 PopupMenuButton<String>(
                   icon: Icon(Icons.more_horiz, color: colors.textPrimary),

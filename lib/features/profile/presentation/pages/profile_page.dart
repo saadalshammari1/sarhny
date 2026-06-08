@@ -21,6 +21,7 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../feed/presentation/widgets/post_card.dart';
 import '../../../feed/presentation/widgets/post_card_skeleton.dart';
+import '../widgets/profile_share.dart';
 import '../providers/profile_provider.dart';
 
 /// Authenticated user's own profile.
@@ -157,6 +158,15 @@ class _AuthedProfileBodyState extends ConsumerState<_AuthedProfileBody> {
             elevation: 0,
             title: Text('@${widget.profile.user.username}'),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.ios_share_rounded),
+                tooltip: 'مشاركة بروفايلي',
+                onPressed: () => shareProfile(
+                  context,
+                  username: widget.profile.user.username,
+                  displayName: widget.profile.user.displayName,
+                ),
+              ),
               IconButton(
                 icon: const Icon(Icons.settings_outlined),
                 onPressed: () => context.push(AppRoutes.settings),
@@ -508,7 +518,7 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
                   ),
                 ],
                 const SizedBox(height: 16),
-                _Stats(stats: p.stats),
+                _Stats(stats: p.stats, username: p.user.username),
                 const SizedBox(height: 14),
                 AppButton(
                   label: 'تعديل البروفايل',
@@ -593,44 +603,96 @@ class _CameraButton extends StatelessWidget {
   }
 }
 
-class _Stats extends StatelessWidget {
-  const _Stats({required this.stats});
+/// Centered 3-up identity counters for the new profile card.
+///
+/// We surface the three numbers a user actually cares about:
+///   - متابعون  (followers)
+///   - أتابع    (following)
+///   - أجوبة    (answers — previously hidden behind tabs)
+///
+/// Large bilingual-friendly digits with a `K` / `M` collapse so seven-digit
+/// follower counts don't blow up the layout. The "أجوبة" cell taps over to
+/// the answers tab on the parent profile page.
+class _Stats extends ConsumerWidget {
+  const _Stats({required this.stats, required this.username});
   final ProfileStatsDto stats;
+  final String username;
+
+  static String _format(int n) {
+    // Custom compact format — intl's NumberFormat.compactCurrency turned
+    // 12.3K into "١٢٫٣ ألف" in Arabic locale, which is too long for the
+    // pill. Keep digits western, suffix Arabic.
+    if (n < 1000) return '$n';
+    if (n < 1000000) {
+      final v = n / 1000;
+      return v >= 100 ? '${v.toStringAsFixed(0)}K' : '${v.toStringAsFixed(1)}K';
+    }
+    final v = n / 1000000;
+    return v >= 100 ? '${v.toStringAsFixed(0)}M' : '${v.toStringAsFixed(1)}M';
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.sarhnyColors;
-    Widget cell(String label, int value, [Color? color]) {
-      return Padding(
-        padding: const EdgeInsetsDirectional.only(end: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$value',
-              style: TextStyle(
-                color: color ?? colors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
+
+    Widget cell(String label, int value, {VoidCallback? onTap, Color? accent}) {
+      return Expanded(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _format(value),
+                  style: TextStyle(
+                    color: accent ?? colors.textPrimary,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 2),
-            Text(label,
-                style:
-                    TextStyle(color: colors.textSecondary, fontSize: 11)),
-          ],
+          ),
         ),
       );
     }
 
-    return Row(
-      children: [
-        cell('متابعون', stats.followers),
-        cell('متابَعون', stats.following),
-        cell('متبلور', stats.crystals, colors.crystal),
-        cell('نشط', stats.active, colors.moment),
-        cell('مرايا', stats.mirrors, colors.mind),
-      ],
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            cell('متابعون', stats.followers),
+            VerticalDivider(color: colors.divider, thickness: 0.6, width: 1),
+            cell('أتابع', stats.following),
+            VerticalDivider(color: colors.divider, thickness: 0.6, width: 1),
+            cell(
+              'أجوبة',
+              stats.answers,
+              accent: colors.moment,
+              onTap: () => ref
+                  .read(selectedProfileTabProvider(username).notifier)
+                  .state = ProfileTab.answers,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

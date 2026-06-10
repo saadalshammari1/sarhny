@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import socket
 import tempfile
 from pathlib import Path
 
@@ -22,6 +23,7 @@ def parse_args():
 
 
 def main():
+    socket.setdefaulttimeout(300)
     args = parse_args()
     aab_path = Path(args.aab)
     if not aab_path.exists():
@@ -39,7 +41,7 @@ def main():
         )
         service = build("androidpublisher", "v3", credentials=creds, cache_discovery=False)
 
-        edit = service.edits().insert(packageName=args.package, body={}).execute()
+        edit = service.edits().insert(packageName=args.package, body={}).execute(num_retries=5)
         edit_id = edit["id"]
         print(f"Created edit {edit_id}")
 
@@ -48,7 +50,7 @@ def main():
             packageName=args.package,
             editId=edit_id,
             media_body=media,
-        ).execute()
+        ).execute(num_retries=5)
         version_code = int(bundle["versionCode"])
         print(f"Uploaded AAB versionCode={version_code}")
 
@@ -62,14 +64,14 @@ def main():
             editId=edit_id,
             track=args.track,
             body={"releases": [release]},
-        ).execute()
+        ).execute(num_retries=5)
         print(f"Assigned versionCode={version_code} to track={args.track}")
 
         service.edits().commit(
             packageName=args.package,
             editId=edit_id,
             changesInReviewBehavior="ERROR_IF_IN_REVIEW",
-        ).execute()
+        ).execute(num_retries=5)
         print("Committed Google Play edit")
     except HttpError as exc:
         print(exc.content.decode(errors="replace"))

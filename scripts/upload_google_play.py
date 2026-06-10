@@ -55,7 +55,7 @@ def main():
         release = {
             "name": args.release_name,
             "versionCodes": [str(version_code)],
-            "status": "draft",
+            "status": "completed",
         }
         service.edits().tracks().update(
             packageName=args.package,

@@ -1,0 +1,110 @@
+name: Android · Google Play Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Google Play track"
+        required: false
+        default: "production"
+      version_code:
+        description: "Optional explicit versionCode"
+        required: false
+        default: ""
+  push:
+    branches:
+      - codex/android-update-com-sarhny
+    paths-ignore:
+      - "**.md"
+      - "ios/**"
+      - "web/**"
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-upload:
+    name: Build AAB + upload to Google Play
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PACKAGE_NAME: com.sarhny
+      PLAY_TRACK: ${{ github.event.inputs.track || 'production' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Get Flutter packages
+        run: flutter pub get
+
+      - name: Write .env
+        run: |
+          cat > .env <<EOF
+          API_BASE_URL=https://sarhny.com
+          APP_ENV=production
+          EOF
+
+      - name: Configure Android signing
+        run: |
+          mkdir -p "$HOME/keystores"
+          echo "${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}" | base64 -d > "$HOME/keystores/sarhny-upload.jks"
+          cat > android/key.properties <<EOF
+          storeFile=$HOME/keystores/sarhny-upload.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          EOF
+
+      - name: Set version code
+        run: |
+          BASE=$(grep -E '^version: ' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          if [ -n "${{ github.event.inputs.version_code }}" ]; then
+            VERSION_CODE="${{ github.event.inputs.version_code }}"
+          else
+            VERSION_CODE=$((GITHUB_RUN_NUMBER + 8))
+          fi
+          sed -i.bak "s/^version: .*/version: ${BASE}+${VERSION_CODE}/" pubspec.yaml
+          echo "VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_ENV"
+          echo "Building Android ${BASE}+${VERSION_CODE}"
+
+      - name: Static analysis
+        run: flutter analyze lib/
+
+      - name: Build release AAB
+        run: flutter build appbundle --release --no-tree-shake-icons
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sarhny-android-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload to Google Play
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install google-api-python-client google-auth
+          python3 scripts/upload_google_play.py \
+            --package "$PACKAGE_NAME" \
+            --track "$PLAY_TRACK" \
+            --aab build/app/outputs/bundle/release/app-release.aab \
+            --service-account-json "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" \
+            --release-name "Sarhny ${VERSION_CODE}"
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}

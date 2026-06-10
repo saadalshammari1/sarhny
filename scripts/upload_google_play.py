@@ -65,7 +65,11 @@ def main():
         ).execute()
         print(f"Assigned versionCode={version_code} to track={args.track}")
 
-        service.edits().commit(packageName=args.package, editId=edit_id).execute()
+        service.edits().commit(
+            packageName=args.package,
+            editId=edit_id,
+            changesInReviewBehavior="ERROR_IF_IN_REVIEW",
+        ).execute()
         print("Committed Google Play edit")
     except HttpError as exc:
         print(exc.content.decode(errors="replace"))

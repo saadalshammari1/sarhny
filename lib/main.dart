@@ -1,3 +1,6 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -11,6 +14,20 @@ import 'core/providers/storage_providers.dart';
 import 'core/storage/cache_storage.dart';
 import 'core/storage/prefs_storage.dart';
 import 'core/storage/secure_storage.dart';
+import 'firebase_options.dart';
+
+/// Background message handler. MUST be a top-level (or static) function,
+/// annotated with @pragma so tree-shaking doesn't eat it.
+@pragma('vm:entry-point')
+Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
+  // We don't need to do much here — iOS displays the system banner from the
+  // notification payload and Android does the same via the default channel
+  // we register at runtime. The handler exists mainly to keep the isolate
+  // alive long enough for FCM to deliver the payload.
+  if (kDebugMode) {
+    debugPrint('FCM background: ${message.notification?.title}');
+  }
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +35,18 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations(const [
     DeviceOrientation.portraitUp,
   ]);
+
+  // Initialize Firebase from baked-in options. We skip the platform plugin
+  // auto-discovery (which would otherwise look for GoogleService-Info.plist
+  // in the bundle) so the iOS Xcode project doesn't need a resource entry.
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+  } catch (e) {
+    if (kDebugMode) debugPrint('Firebase init skipped: $e');
+  }
 
   try {
     await dotenv.load(fileName: '.env');

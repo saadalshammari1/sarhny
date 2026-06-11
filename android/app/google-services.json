@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "843994148290",
+    "project_id": "sarhny-a0ce9",
+    "storage_bucket": "sarhny-a0ce9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:843994148290:android:54ecb229460dba926f3a5b",
+        "android_client_info": {
+          "package_name": "com.sarhny"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBq9WZvHZRT2t7CKxVYkG6IVqmaVVOKljM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

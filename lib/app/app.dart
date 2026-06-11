@@ -4,6 +4,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../core/providers/app_settings_providers.dart';
+import '../core/providers/auth_providers.dart';
+import '../features/notifications/data/fcm_provider.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
 import 'localization/generated/app_localizations.dart';
@@ -16,6 +18,16 @@ class SarhnyApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
     final router = ref.watch(routerProvider);
+
+    // FCM register-on-auth. Fires once the AsyncNotifier resolves the user's
+    // session (initial load or fresh login) — the service is idempotent so
+    // double-calls during hot-restart are harmless.
+    ref.listen<AsyncValue<AuthState>>(authStateProvider, (prev, next) {
+      final authed = next.value?.status == AuthStatus.authenticated;
+      if (authed) {
+        ref.read(fcmServiceProvider).register();
+      }
+    });
 
     return ScreenUtilInit(
       designSize: const Size(390, 844), // مرجع iPhone 14 (نفس نسبة Pixel 7 تقريباً)

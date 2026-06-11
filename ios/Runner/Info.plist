@@ -76,5 +76,13 @@
 	     the per-build Export Compliance prompt in App Store Connect. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+
+	<!-- Background modes: lets FCM wake the app for silent / data-only pushes
+	     (the "Background fetch" capability + remote-notification capability). -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

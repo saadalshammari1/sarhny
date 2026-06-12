@@ -62,4 +62,19 @@ class NotificationsRepository {
       parser: (_) {},
     );
   }
+
+  /// Fire-and-forget diagnostic ping so the server can see what stage the
+  /// FCM flow reached on a release / TestFlight build. Failure is silent.
+  Future<void> diagnostic({
+    required String phase,
+    required String status,
+    String detail = '',
+  }) async {
+    try {
+      await _client.raw.post(
+        '${ApiEndpoints.devices}/diagnostic',
+        data: {'phase': phase, 'status': status, 'detail': detail},
+      );
+    } catch (_) {/* never throws to caller */}
+  }
 }

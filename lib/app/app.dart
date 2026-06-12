@@ -19,13 +19,20 @@ class SarhnyApp extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
     final router = ref.watch(routerProvider);
 
-    // FCM register-on-auth. Fires once the AsyncNotifier resolves the user's
-    // session (initial load or fresh login) — the service is idempotent so
-    // double-calls during hot-restart are harmless.
+    // FCM register/dispose on auth transitions. Handles BOTH directions:
+    //   unauthed → authed: register a fresh device token for the new session
+    //   authed → unauthed: dispose subscriptions + invalidate the provider so
+    //                       the next sign-in gets a clean FcmService instance
+    //                       (without the stale `_registered` / `_lastSentToken`
+    //                       cache from the previous user).
     ref.listen<AsyncValue<AuthState>>(authStateProvider, (prev, next) {
-      final authed = next.value?.status == AuthStatus.authenticated;
-      if (authed) {
+      final wasAuthed = prev?.value?.status == AuthStatus.authenticated;
+      final isAuthed = next.value?.status == AuthStatus.authenticated;
+      if (!wasAuthed && isAuthed) {
         ref.read(fcmServiceProvider).register();
+      } else if (wasAuthed && !isAuthed) {
+        ref.read(fcmServiceProvider).dispose();
+        ref.invalidate(fcmServiceProvider);
       }
     });
 

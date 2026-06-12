@@ -82,6 +82,10 @@ class AuthStateNotifier extends AsyncNotifier<AuthState> {
     try {
       await ref.read(authRepositoryProvider).logout();
     } catch (_) {}
+    // CRITICAL: wipe the access JWT + refresh cookie locally so any in-flight
+    // request (FCM polling, background fetch) can't reuse a revoked token and
+    // trigger the dio onUnauthorized cascade.
+    await ref.read(secureStorageProvider).clear();
     state = const AsyncData(AuthState(status: AuthStatus.unauthenticated));
   }
 

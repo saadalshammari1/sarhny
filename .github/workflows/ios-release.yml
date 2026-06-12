@@ -73,6 +73,9 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install codemagic-cli-tools
 
+      - name: Disable Swift Package Manager (we still ship CocoaPods)
+        run: flutter config --no-enable-swift-package-manager
+
       - name: Get Flutter packages
         run: flutter pub get
 

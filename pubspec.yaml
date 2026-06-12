@@ -109,6 +109,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  # Newer Flutter SDKs enable Swift Package Manager by default; our iOS
+  # project is set up for CocoaPods only (firebase_messaging + other plugins
+  # still ship pods). Opt out until we explicitly migrate the Xcode project.
+  disable-swift-package-manager: true
 
   assets:
     - assets/images/

@@ -391,23 +391,17 @@ class _SectionPicker extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Row(
-          children: PostSection.values
-              .map(
-                (s) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsetsDirectional.only(end: 8),
-                    child: _SectionCard(
-                      section: s,
-                      selected: current == s,
-                      onTap: () => onPick(s),
-                      colors: colors,
-                    ),
-                  ),
-                ),
-              )
-              .toList(),
-        ),
+        // Stacked vertically so each section's explanation has room to breathe.
+        // Side-by-side was cramped and the descriptions were ellipsized.
+        for (final s in PostSection.values) ...[
+          _SectionCard(
+            section: s,
+            selected: current == s,
+            onTap: () => onPick(s),
+            colors: colors,
+          ),
+          const SizedBox(height: 8),
+        ],
       ],
     );
   }
@@ -429,17 +423,26 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final c = section.resolve(brightness);
-    final desc = switch (section) {
-      PostSection.moment => 'لحظة خاطفة، يومك يتنفّس',
-      PostSection.face => 'صورة تحكي بصمتك',
-      PostSection.mind => 'فكرة تأمّلية',
+    final (label, desc) = switch (section) {
+      PostSection.moment => (
+        'لحظة',
+        'سطر خاطف من يومك — شعور سريع، خاطرة، حدث الآن. الأقصر، الأصدق.',
+      ),
+      PostSection.face => (
+        'صورة',
+        'صورة تحكي بصمتك مع تعليق قصير. للحظات البصرية التي تستحق الحفظ.',
+      ),
+      PostSection.mind => (
+        'فكرة',
+        'تأمّل أعمق تكتبه بهدوء. مكان للأفكار التي تحتاج وقتاً للقراءة.',
+      ),
     };
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: selected ? c.withValues(alpha: 0.12) : colors.elevated,
           borderRadius: BorderRadius.circular(16),
@@ -448,27 +451,46 @@ class _SectionCard extends StatelessWidget {
             width: selected ? 1.4 : 0.6,
           ),
         ),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(section.glyph, style: const TextStyle(fontSize: 22)),
-            const SizedBox(height: 6),
-            Text(
-              section.arabicLabel,
-              style: TextStyle(
-                color: selected ? colors.textPrimary : colors.textSecondary,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
+            Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: c.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(section.glyph, style: const TextStyle(fontSize: 22)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: selected ? colors.textPrimary : colors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    desc,
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              desc,
-              style: TextStyle(
-                color: colors.textSecondary,
-                fontSize: 11,
-              ),
-            ),
+            if (selected)
+              Icon(Icons.check_circle, color: c, size: 18),
           ],
         ),
       ),

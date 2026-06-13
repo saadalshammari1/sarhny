@@ -17,6 +17,7 @@ import '../features/mirrors/presentation/pages/mirror_response_page.dart';
 import '../features/mirrors/presentation/pages/my_mirror_page.dart';
 import '../features/notifications/presentation/pages/notifications_page.dart';
 import '../features/post/presentation/pages/post_detail_page.dart';
+import '../features/profile/presentation/pages/badge_explainer_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/pages/public_profile_page.dart';
 import '../features/profile/presentation/pages/saved_posts_page.dart';
@@ -45,6 +46,7 @@ class AppRoutes {
   static const contentPolicy = '/legal/content-policy';
   static String postDetail(int id) => '/post/$id';
   static String userProfile(String username) => '/u/$username';
+  static String badgeExplainer(String kind) => '/learn/$kind';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -139,6 +141,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) {
           final t = state.pathParameters['token'] ?? '';
           return MirrorResponsePage(token: t);
+        },
+      ),
+      GoRoute(
+        path: '/learn/:kind',
+        builder: (_, state) {
+          final kind = state.pathParameters['kind'] ?? 'crystals';
+          return BadgeExplainerPage.fromName(kind);
         },
       ),
       GoRoute(path: AppRoutes.help, builder: (_, __) => const HelpPage()),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -110,6 +111,14 @@ class PostCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 10),
                     _Footer(post: post, colors: colors),
+                    if (!post.isCrystallized && post.decayDeadline != null) ...[
+                      const SizedBox(height: 8),
+                      _LifeBar(
+                        deadline: post.decayDeadline!,
+                        gravityScore: post.gravityScore,
+                        colors: colors,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -230,36 +239,41 @@ class _Header extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-          )
-        else if (post.decayDeadline != null)
-          _CountdownBadge(deadline: post.decayDeadline!, colors: colors),
+          ),
       ],
     );
   }
 }
 
-/// Shows the time-left-until-decay for not-yet-crystallized posts. Each post
-/// lives for ~24h; if it earns enough engagement before the deadline it
-/// crystallizes (becomes permanent). The badge ticks once per minute, then
-/// flips to "انتهى" when the deadline passes.
-class _CountdownBadge extends StatefulWidget {
-  const _CountdownBadge({required this.deadline, required this.colors});
+/// Thin "life bar" rendered along the bottom of every non-crystallized post.
+/// Width decays toward zero as the post approaches its decay_deadline, but
+/// engagement (gravity_score) lifts the bar back up — so an actively
+/// engaging post stays bright while a stale one fades away to a sliver.
+/// Replaces the previous hourglass-icon badge: the user wanted an
+/// always-visible underline that decays visibly.
+class _LifeBar extends StatefulWidget {
+  const _LifeBar({
+    required this.deadline,
+    required this.gravityScore,
+    required this.colors,
+  });
   final String deadline;
+  final double gravityScore;
   final SarhnyColors colors;
 
   @override
-  State<_CountdownBadge> createState() => _CountdownBadgeState();
+  State<_LifeBar> createState() => _LifeBarState();
 }
 
-class _CountdownBadgeState extends State<_CountdownBadge> {
+class _LifeBarState extends State<_LifeBar> {
   Timer? _ticker;
   DateTime? _deadline;
 
   @override
   void initState() {
     super.initState();
-    _deadline = DateTime.tryParse(widget.deadline.replaceAll(' ', 'T'))?.toLocal();
-    // Tick once per minute is enough — the displayed unit is hours / minutes.
+    _deadline =
+        DateTime.tryParse(widget.deadline.replaceAll(' ', 'T'))?.toLocal();
     _ticker = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
     });
@@ -277,47 +291,52 @@ class _CountdownBadgeState extends State<_CountdownBadge> {
     if (dl == null) return const SizedBox.shrink();
     final now = DateTime.now();
     final remaining = dl.difference(now);
+    final timeFraction =
+        remaining.isNegative ? 0.0 : (remaining.inMinutes / (24 * 60)).clamp(0.0, 1.0);
+    // Engagement lift: gravity 0 → no lift, gravity >= 75 (≈ crystallization
+    // threshold for the face section) → full bar regardless of time.
+    final engagementFraction = (widget.gravityScore / 75).clamp(0.0, 1.0);
+    final progress = math.max(timeFraction, engagementFraction);
+    final expired = progress <= 0;
     final c = widget.colors;
-    final expired = remaining.isNegative;
-    String label;
-    double progress; // 1.0 = full glow at start, 0.0 = expired
-    if (expired) {
-      label = 'انتهى';
-      progress = 0;
-    } else if (remaining.inHours >= 1) {
-      label = '${remaining.inHours} س';
-      progress = (remaining.inMinutes / (24 * 60)).clamp(0.0, 1.0);
-    } else {
-      label = '${remaining.inMinutes} د';
-      progress = (remaining.inMinutes / (24 * 60)).clamp(0.0, 1.0);
-    }
-    final glowColor = c.crystal.withValues(alpha: 0.18 + 0.32 * progress);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: glowColor,
-        border: Border.all(
-          color: c.crystal.withValues(alpha: 0.3 + 0.4 * progress),
-          width: 0.6,
-        ),
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.hourglass_bottom_rounded,
-              size: 11, color: c.crystal),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: TextStyle(
-              color: c.crystal,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth * progress;
+        return Stack(
+          children: [
+            // Faint base rail so the position of the bar is readable even
+            // when it's almost empty.
+            Container(
+              height: 3,
+              decoration: BoxDecoration(
+                color: c.divider,
+                borderRadius: BorderRadius.circular(99),
+              ),
             ),
-          ),
-        ],
-      ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              height: 3,
+              width: width,
+              decoration: BoxDecoration(
+                color: expired
+                    ? c.textSecondary.withValues(alpha: 0.4)
+                    : c.crystal,
+                borderRadius: BorderRadius.circular(99),
+                boxShadow: expired
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: c.crystal
+                              .withValues(alpha: 0.45 * progress),
+                          blurRadius: 6,
+                          spreadRadius: 0.5,
+                        ),
+                      ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

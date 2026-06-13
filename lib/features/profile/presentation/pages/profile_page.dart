@@ -714,13 +714,34 @@ class _BadgesRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
-    final badges = <(IconData icon, String label, int count, Color color)>[
-      (Icons.diamond_outlined, 'بلورات', profile.stats.crystals,
-          colors.crystal),
-      (Icons.local_fire_department_outlined, 'وهج', profile.streak.count,
-          colors.moment),
-      (Icons.auto_awesome_outlined, 'مرايا', profile.mirrors.count,
-          colors.mind),
+    final badges = <({
+      IconData icon,
+      String label,
+      int count,
+      Color color,
+      String kind,
+    })>[
+      (
+        icon: Icons.diamond_outlined,
+        label: 'بلورات',
+        count: profile.stats.crystals,
+        color: colors.crystal,
+        kind: 'crystals',
+      ),
+      (
+        icon: Icons.local_fire_department_outlined,
+        label: 'وهج',
+        count: profile.streak.count,
+        color: colors.moment,
+        kind: 'streak',
+      ),
+      (
+        icon: Icons.auto_awesome_outlined,
+        label: 'مرايا',
+        count: profile.mirrors.count,
+        color: colors.mind,
+        kind: 'mirrors',
+      ),
     ];
     return SizedBox(
       height: 70,
@@ -728,41 +749,52 @@ class _BadgesRow extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: badges
-            .map((b) => Container(
-                  margin: const EdgeInsetsDirectional.only(end: 8),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: b.$4.withValues(alpha: 0.08),
-                    border:
-                        Border.all(color: b.$4.withValues(alpha: 0.3)),
+            .map((b) => Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 8),
+                  child: InkWell(
                     borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(b.$1, color: b.$4, size: 18),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    onTap: () =>
+                        context.push(AppRoutes.badgeExplainer(b.kind)),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: b.color.withValues(alpha: 0.08),
+                        border: Border.all(
+                            color: b.color.withValues(alpha: 0.3)),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            '${b.$3}',
-                            style: TextStyle(
-                              color: colors.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          Icon(b.icon, color: b.color, size: 18),
+                          const SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${b.count}',
+                                style: TextStyle(
+                                  color: colors.textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                b.label,
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            b.$2,
-                            style: TextStyle(
-                              color: colors.textSecondary,
-                              fontSize: 11,
-                            ),
-                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.info_outline,
+                              size: 12,
+                              color: b.color.withValues(alpha: 0.6)),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ))
             .toList(),
@@ -794,25 +826,26 @@ class _TabsBar extends StatelessWidget {
       (ProfileTab.likes, 'إعجابات', Icons.favorite_border),
     ];
     return SizedBox(
-      height: 44,
+      height: 36,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
         children: tabs.map((t) {
           final selected = t.$1 == current;
           return Padding(
-            padding: const EdgeInsetsDirectional.only(end: 8),
+            padding: const EdgeInsetsDirectional.only(end: 6),
             child: GestureDetector(
               onTap: () => onPick(t.$1),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: selected ? colors.moment.withValues(alpha: 0.12)
                                   : colors.elevated,
                   border: Border.all(
                     color: selected ? colors.moment : colors.border,
-                    width: selected ? 1.2 : 0.6,
+                    width: selected ? 1.0 : 0.5,
                   ),
                   borderRadius: BorderRadius.circular(99),
                 ),
@@ -821,15 +854,15 @@ class _TabsBar extends StatelessWidget {
                   children: [
                     Icon(
                       t.$3,
-                      size: 14,
+                      size: 12,
                       color: selected ? colors.moment : colors.textSecondary,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 4),
                     Text(
                       t.$2,
                       style: TextStyle(
                         color: selected ? colors.moment : colors.textSecondary,
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight:
                             selected ? FontWeight.w700 : FontWeight.w500,
                       ),
@@ -881,49 +914,48 @@ class _QuickLinks extends StatelessWidget {
     ];
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: colors.border, width: 0.4),
       ),
-      child: GridView.count(
-        crossAxisCount: 5,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 4,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: items
             .map(
-              (item) => InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: item.$3,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: colors.moment.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(11),
+              (item) => Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: item.$3,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: colors.moment.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(item.$1,
+                              color: colors.moment, size: 16),
                         ),
-                        child: Icon(item.$1,
-                            color: colors.moment, size: 18),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.$2,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: colors.textSecondary,
-                          fontWeight: FontWeight.w500,
+                        const SizedBox(height: 3),
+                        Text(
+                          item.$2,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color: colors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

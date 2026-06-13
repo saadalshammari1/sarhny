@@ -62,6 +62,7 @@ class FcmService {
 
     try {
       final messaging = FirebaseMessaging.instance;
+      await messaging.setAutoInitEnabled(true);
 
       final settings = await messaging.requestPermission(
         alert: true, badge: true, sound: true,
@@ -75,14 +76,18 @@ class FcmService {
         return;
       }
 
+      var canReadFcmToken = true;
       if (Platform.isIOS) {
         await messaging.setForegroundNotificationPresentationOptions(
           alert: true, badge: true, sound: true,
         );
 
-        // Explicitly probe APNs token — this is the most likely failure
-        // mode (entitlement missing / capability not enabled on App ID).
-        unawaited(_probeApnsToken(messaging));
+        // Wait for APNs before asking Firebase for an FCM token on iOS.
+        final apnsReady = await _waitForApnsToken(messaging);
+        if (!apnsReady) {
+          await _diag('fcm_token', 'deferred', 'waiting for APNs token');
+          canReadFcmToken = false;
+        }
       }
 
       _tokenSub?.cancel();
@@ -100,6 +105,11 @@ class FcmService {
         _log('tap msg: ${msg.data}');
       });
 
+      if (!canReadFcmToken) {
+        unawaited(_pollForToken(messaging));
+        return;
+      }
+
       final cached = await messaging.getToken().catchError((Object e) {
         _diag('fcm_token', 'fast_error', '$e');
         return null;
@@ -116,23 +126,16 @@ class FcmService {
     }
   }
 
-  Future<void> _probeApnsToken(FirebaseMessaging messaging) async {
-    // Apple is sometimes very slow on first install. Try for ~60s then
-    // report whatever we got. This is purely diagnostic — FCM token
-    // retrieval has its own polling loop.
-    const delays = [1, 2, 3, 5, 8, 13, 21];
-    String? apns;
+  Future<bool> _waitForApnsToken(FirebaseMessaging messaging) async {
+    // Apple can be slow on first install. FCM token retrieval on iOS depends
+    // on APNs, so wait before calling getToken.
+    const delays = [1, 2, 3, 5, 8, 13, 21, 34];
     for (final s in delays) {
       await Future<void>.delayed(Duration(seconds: s));
-      try {
-        apns = await messaging.getAPNSToken();
-      } catch (e) {
-        await _diag('apns_token', 'error', '$e');
-        continue;
-      }
+      final apns = await _readApnsToken(messaging);
       if (apns != null && apns.isNotEmpty) {
         await _diag('apns_token', 'received', 'len=${apns.length}');
-        return;
+        return true;
       }
     }
     await _diag(
@@ -140,6 +143,16 @@ class FcmService {
       'never_arrived',
       'Suspect: Push Notifications capability missing on App ID or aps-environment entitlement stripped during signing.',
     );
+    return false;
+  }
+
+  Future<String?> _readApnsToken(FirebaseMessaging messaging) async {
+    try {
+      return await messaging.getAPNSToken();
+    } catch (e) {
+      await _diag('apns_token', 'error', '$e');
+      return null;
+    }
   }
 
   Future<void> _pollForToken(FirebaseMessaging messaging) async {
@@ -147,6 +160,13 @@ class FcmService {
     for (final ms in fastDelaysMs) {
       await Future<void>.delayed(Duration(milliseconds: ms));
       try {
+        if (Platform.isIOS) {
+          final apns = await _readApnsToken(messaging);
+          if (apns == null || apns.isEmpty) {
+            await _diag('fcm_token', 'waiting_for_apns');
+            continue;
+          }
+        }
         final t = await messaging.getToken();
         if (t != null && t.isNotEmpty) {
           await _diag('fcm_token', 'poll_ok', 'len=${t.length}');
@@ -162,6 +182,13 @@ class FcmService {
     _cancelTicker();
     _periodicTicker = Timer.periodic(const Duration(seconds: 60), (_) async {
       try {
+        if (Platform.isIOS) {
+          final apns = await _readApnsToken(messaging);
+          if (apns == null || apns.isEmpty) {
+            await _diag('fcm_token', 'ticker_waiting_for_apns');
+            return;
+          }
+        }
         final t = await messaging.getToken();
         if (t != null && t.isNotEmpty) {
           await _diag('fcm_token', 'ticker_ok', 'len=${t.length}');

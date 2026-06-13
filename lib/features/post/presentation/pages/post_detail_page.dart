@@ -6,7 +6,6 @@ import '../../../../core/widgets/error_view.dart';
 import '../../../feed/presentation/widgets/post_card.dart';
 import '../providers/post_provider.dart';
 import '../widgets/anon_replies_section.dart';
-import '../widgets/comments_section.dart';
 
 class PostDetailPage extends ConsumerWidget {
   const PostDetailPage({super.key, required this.postId});
@@ -30,7 +29,6 @@ class PostDetailPage extends ConsumerWidget {
         data: (p) => RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(postProvider(postId));
-            ref.invalidate(commentsControllerProvider(postId));
             ref.invalidate(anonRepliesControllerProvider(postId));
           },
           color: colors.moment,
@@ -40,7 +38,6 @@ class PostDetailPage extends ConsumerWidget {
               // would push the same id onto the stack again (forever).
               PostCard(post: p, tappable: false),
               AnonRepliesSection(postId: postId),
-              CommentsSection(postId: postId),
               const SizedBox(height: 30),
             ],
           ),

@@ -22,7 +22,10 @@ class AnonRepliesSection extends ConsumerStatefulWidget {
 }
 
 class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
-  bool _hidden = true;
+  // Default to "باسمي" — anonymity is opt-in via the chip on the right of the
+  // composer. Previously defaulted to hidden, which conflated with the old
+  // separate Comments box.
+  bool _hidden = false;
 
   Future<bool> _handleSend(ComposedMedia m) async {
     try {
@@ -48,6 +51,11 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
     } on RateLimitException {
       Fluttertoast.showToast(msg: 'تمهّل قليلاً قبل الإرسال');
       return false;
+    } on ApiException catch (e) {
+      // Surface real reasons (e.g. 402 رصيد الانتباه غير كافٍ) instead of a
+      // generic toast, which is what was masking failed sends.
+      Fluttertoast.showToast(msg: e.message);
+      return false;
     } catch (_) {
       Fluttertoast.showToast(msg: 'تعذّر الإرسال');
       return false;
@@ -71,11 +79,11 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
         children: [
           Row(
             children: [
-              Icon(Icons.visibility_off_outlined,
+              Icon(Icons.forum_outlined,
                   color: colors.moment, size: 18),
               const SizedBox(width: 6),
               Text(
-                'ردود مجهولة',
+                'الردود',
                 style: TextStyle(
                   color: colors.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -101,7 +109,7 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
           ),
           const SizedBox(height: 12),
           MediaComposer(
-            placeholder: 'اكتب ردّك المجهول…',
+            placeholder: 'اكتب ردّك…',
             onSend: _handleSend,
             hiddenSwitch: _HiddenChip(
               hidden: _hidden,

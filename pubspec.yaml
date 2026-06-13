@@ -1,7 +1,7 @@
 name: sarhny
 description: "صارحني — تطبيق التعبير الأصيل"
 publish_to: 'none'
-version: 3.3.5+1
+version: 3.3.6+1
 
 environment:
   sdk: ^3.6.0

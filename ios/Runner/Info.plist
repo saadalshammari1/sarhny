@@ -84,5 +84,20 @@
 		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
+
+	<!-- AdMob: required application identifier for google_mobile_ads. -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-6938029578060572~6128384459</string>
+	<!-- iOS 14+ tracking transparency — we don't track for advertising, but
+	     the AdMob SDK reads this to know whether to ask. We do NOT request
+	     ATT (NSUserTrackingUsageDescription absent) so we get non-personalised
+	     ads only, which is fine — App Store reviewers won't flag this. -->
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
 </dict>
 </plist>

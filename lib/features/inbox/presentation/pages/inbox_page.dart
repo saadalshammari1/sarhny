@@ -10,6 +10,7 @@ import '../../../../core/api/dto.dart';
 import '../../../../core/utils/media.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
+import '../../../../core/widgets/banner_ad_slot.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../providers/inbox_provider.dart';
@@ -80,13 +81,18 @@ class _InboxPageState extends ConsumerState<InboxPage> {
                 ),
               );
             }
+            // Ad after the 2nd item only — inbox lists stay short per session.
+            final hasAd = s.items.length >= 2;
+            final loaderTail = s.reachedEnd ? 0 : 1;
             return ListView.builder(
               controller: _scroll,
               padding: const EdgeInsets.symmetric(vertical: 8),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: s.items.length + (s.reachedEnd ? 0 : 1),
+              itemCount: s.items.length + (hasAd ? 1 : 0) + loaderTail,
               itemBuilder: (_, i) {
-                if (i >= s.items.length) {
+                if (hasAd && i == 2) return const BannerAdSlot();
+                final itemIdx = hasAd && i > 2 ? i - 1 : i;
+                if (itemIdx >= s.items.length) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Center(
@@ -102,11 +108,11 @@ class _InboxPageState extends ConsumerState<InboxPage> {
                   );
                 }
                 return _InboxTile(
-                  item: s.items[i],
-                  onAnswer: () => _openAnswerSheet(s.items[i]),
-                  onIgnore: () => _ignore(s.items[i]),
-                  onReport: () => _report(s.items[i]),
-                  onDelete: () => _delete(s.items[i]),
+                  item: s.items[itemIdx],
+                  onAnswer: () => _openAnswerSheet(s.items[itemIdx]),
+                  onIgnore: () => _ignore(s.items[itemIdx]),
+                  onReport: () => _report(s.items[itemIdx]),
+                  onDelete: () => _delete(s.items[itemIdx]),
                 );
               },
             );

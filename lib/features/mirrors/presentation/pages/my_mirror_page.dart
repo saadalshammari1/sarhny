@@ -9,6 +9,7 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/banner_ad_slot.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../data/mirror_dto.dart';
@@ -46,18 +47,30 @@ class MyMirrorPage extends ConsumerWidget {
           ),
           data: (list) {
             if (list.isEmpty) {
-              return const Center(
-                child: EmptyState(
-                  icon: Icons.auto_awesome_outlined,
-                  title: 'لا توجد مرايا بعد',
-                  subtitle: 'أنشئ سؤالاً ودَع الناس يجيبون بإخلاص',
-                ),
+              return ListView(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                children: const [
+                  SizedBox(height: 60),
+                  EmptyState(
+                    icon: Icons.auto_awesome_outlined,
+                    title: 'لا توجد مرايا بعد',
+                    subtitle: 'ابدأ بنشر المرايا — اطرح سؤالاً ودَع الناس يجيبون بإخلاص',
+                  ),
+                  SizedBox(height: 32),
+                  BannerAdSlot(),
+                ],
               );
             }
+            // Ad after the 1st mirror only — mirror lists are short, so
+            // a single insertion is enough to surface the slot.
             return ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 12),
-              itemCount: list.length,
-              itemBuilder: (_, i) => _MirrorCard(mirror: list[i]),
+              itemCount: list.length + (list.isNotEmpty ? 1 : 0),
+              itemBuilder: (_, i) {
+                if (i == 1) return const BannerAdSlot();
+                final idx = i < 1 ? i : i - 1;
+                return _MirrorCard(mirror: list[idx]);
+              },
             );
           },
         ),

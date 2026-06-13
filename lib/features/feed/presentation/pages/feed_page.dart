@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
+import '../../../../core/widgets/banner_ad_slot.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../data/feed_repository.dart';
@@ -125,20 +126,22 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                   EmptyState(
                     icon: Icons.inbox_outlined,
                     title: scope == FeedScope.following
-                        ? 'لا يوجد شيء بعد من متابعيك'
+                        ? 'لا توجد منشورات بعد'
                         : 'لا يوجد شيء في هذا القسم',
                     subtitle: scope == FeedScope.following
-                        ? 'تابع حسابات جديدة لترى منشوراتهم هنا'
+                        ? 'تابع أشخاص لتشاهد منشوراتهم'
                         : 'كن أول من ينشر شيئاً ⚡',
                   ),
+                  const SizedBox(height: 24),
+                  const BannerAdSlot(),
                 ],
               );
             }
-            // Use ListView.separated for guaranteed visible gaps between
-            // posts, with a stable ValueKey per item so Riverpod rebuilds
-            // don't accidentally collapse the list. cacheExtent pre-renders
-            // ~3 cards above/below the viewport so scrolling never reveals
-            // an empty stretch.
+            // Ad slots: row 2 (after the 2nd post) + every 10 posts after that
+            // → rows 2, 13, 24, ... in a 1-ad-per-stride ListView.
+            final adsTotal = _adCount(state.posts.length);
+            final loaderTail = state.reachedEnd ? 0 : 1;
+            final itemCount = state.posts.length + adsTotal + loaderTail;
             return ListView.separated(
               key: const PageStorageKey<String>('feed-list'),
               controller: _scrollCtrl,
@@ -146,10 +149,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               // ignore: deprecated_member_use
               cacheExtent: 1200,
               padding: const EdgeInsets.only(top: 4, bottom: 90),
-              itemCount: state.posts.length + (state.reachedEnd ? 0 : 1),
+              itemCount: itemCount,
               separatorBuilder: (_, __) => const SizedBox(height: 4),
               itemBuilder: (_, i) {
-                if (i >= state.posts.length) {
+                if (_isAdRow(i)) return const BannerAdSlot();
+                final postIdx = _postIndex(i);
+                if (postIdx >= state.posts.length) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Center(
@@ -164,7 +169,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                     ),
                   );
                 }
-                final p = state.posts[i];
+                final p = state.posts[postIdx];
                 return PostCard(key: ValueKey<int>(p.id), post: p);
               },
             );
@@ -346,3 +351,14 @@ class _SectionChip extends StatelessWidget {
 
 // _BottomNav was lifted to lib/core/widgets/app_bottom_nav.dart so the inbox /
 // profile / mirrors pages can use the same nav for a consistent tab experience.
+
+// ── AdMob slot arithmetic ────────────────────────────────────────────────────
+// One banner after the 2nd post (row index 2), then one every 10 posts after.
+// That places banners at row indices 2, 13, 24, 35, … (stride = 11 = 10 + 1).
+int _adCount(int posts) => posts <= 2 ? 0 : 1 + ((posts - 2) ~/ 10);
+bool _isAdRow(int i) => i >= 2 && (i - 2) % 11 == 0;
+int _postIndex(int rowIndex) {
+  if (rowIndex < 2) return rowIndex;
+  final adsBefore = ((rowIndex - 2) ~/ 11) + 1;
+  return rowIndex - adsBefore;
+}

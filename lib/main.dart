@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -5,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'app/app.dart';
 import 'core/api/dio_client.dart';
@@ -47,6 +50,9 @@ Future<void> main() async {
   } catch (e) {
     if (kDebugMode) debugPrint('Firebase init skipped: $e');
   }
+
+  // AdMob — fire-and-forget; we don't block UI on the SDK init.
+  unawaited(MobileAds.instance.initialize());
 
   try {
     await dotenv.load(fileName: '.env');

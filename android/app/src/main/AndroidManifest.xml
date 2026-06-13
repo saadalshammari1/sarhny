@@ -66,6 +66,11 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2"/>
+
+        <!-- AdMob: required application identifier for google_mobile_ads. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-6938029578060572~6128384459"/>
     </application>
 
     <queries>

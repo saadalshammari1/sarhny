@@ -17,6 +17,7 @@ import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/widgets/banner_ad_slot.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../feed/presentation/widgets/post_card.dart';
@@ -244,10 +245,19 @@ class _AuthedProfileBodyState extends ConsumerState<_AuthedProfileBody> {
                   ),
                 );
               }
+              // Ad slots: row 1 (after 1st post) + every 10 posts after that
+              // → rows 1, 12, 23, … (stride = 11).
+              final adsTotal =
+                  state.posts.isEmpty ? 0 : 1 + ((state.posts.length - 1) ~/ 10);
+              final loaderTail = state.reachedEnd ? 0 : 1;
               return SliverList.builder(
-                itemCount: state.posts.length + (state.reachedEnd ? 0 : 1),
+                itemCount: state.posts.length + adsTotal + loaderTail,
                 itemBuilder: (_, i) {
-                  if (i >= state.posts.length) {
+                  final isAd = i >= 1 && (i - 1) % 11 == 0;
+                  if (isAd) return const BannerAdSlot();
+                  final postIdx =
+                      i < 1 ? i : i - (((i - 1) ~/ 11) + 1);
+                  if (postIdx >= state.posts.length) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 20),
                       child: Center(
@@ -262,7 +272,7 @@ class _AuthedProfileBodyState extends ConsumerState<_AuthedProfileBody> {
                       ),
                     );
                   }
-                  final p = state.posts[i];
+                  final p = state.posts[postIdx];
                   return PostCard(key: ValueKey<int>(p.id), post: p);
                 },
               );

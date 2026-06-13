@@ -107,6 +107,46 @@ jobs:
       - name: Prepare iOS project (Flutter side)
         run: flutter build ios --release --config-only --no-codesign
 
+      - name: Delete stale provisioning profiles (force fresh capabilities)
+        run: |
+          # codemagic-cli reuses an existing matching profile if one exists.
+          # That cached profile was created BEFORE Push Notifications was
+          # enabled on the App ID — so it lacks aps-environment. Apple then
+          # strips the entitlement at signing and APNs never delivers a
+          # device token. Wipe all matching profiles so the next
+          # fetch-signing-files --create makes a brand-new one with the
+          # current App ID capabilities (incl. Push Notifications).
+          PROFILES_JSON=$(app-store-connect provisioning-profiles list \
+            --issuer-id="$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id="$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key="$APP_STORE_CONNECT_PRIVATE_KEY" \
+            --json 2>/dev/null || echo '[]')
+          echo "$PROFILES_JSON" | python3 -c "
+          import json, sys, subprocess, os
+          data = json.load(sys.stdin)
+          # The wrapper sometimes nests under 'data'; tolerate both.
+          profiles = data if isinstance(data, list) else data.get('data', [])
+          target = '${BUNDLE_ID}'
+          deleted = 0
+          for p in profiles:
+              attrs = p.get('attributes', {})
+              name = attrs.get('name') or ''
+              if target in name:
+                  pid = p.get('id')
+                  if not pid:
+                      continue
+                  print(f'Deleting stale profile {pid} ({name})')
+                  r = subprocess.run([
+                      'app-store-connect', 'provisioning-profiles', 'delete', pid,
+                      '--issuer-id', os.environ['APP_STORE_CONNECT_ISSUER_ID'],
+                      '--key-id', os.environ['APP_STORE_CONNECT_KEY_IDENTIFIER'],
+                      '--private-key', os.environ['APP_STORE_CONNECT_PRIVATE_KEY'],
+                  ])
+                  if r.returncode == 0:
+                      deleted += 1
+          print(f'Deleted {deleted} stale profile(s)')
+          "
+
       - name: Set up code signing
         run: |
           keychain initialize
@@ -119,6 +159,15 @@ jobs:
             --create
           keychain add-certificates
           xcode-project use-profiles
+
+          # Diagnostic: dump the embedded entitlements so we can verify
+          # aps-environment is present in the freshly signed profile.
+          PROFILE_PATH=$(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision 2>/dev/null | head -1)
+          if [ -n "$PROFILE_PATH" ]; then
+            echo "::group::Provisioning profile entitlements"
+            security cms -D -i "$PROFILE_PATH" | grep -A 1 "aps-environment\|com.apple.developer.push\|Name" || true
+            echo "::endgroup::"
+          fi
 
       - name: Build iOS IPA
         run: |

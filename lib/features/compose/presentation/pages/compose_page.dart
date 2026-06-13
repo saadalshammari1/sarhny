@@ -177,10 +177,52 @@ class _ComposePageState extends ConsumerState<ComposePage> {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              'كل ما تنشره يدخل دورة جاذبية ٢٤ ساعة — التفاعل الصادق يبلوره ✦',
-              style: TextStyle(color: colors.textSecondary, fontSize: 12),
+            const SizedBox(height: 12),
+            // Explicit crystallization explainer — users were not understanding
+            // that posts decay after 24h unless they earn engagement. This
+            // banner sets that expectation BEFORE they hit Publish.
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.crystal.withValues(alpha: 0.08),
+                border: Border.all(
+                  color: colors.crystal.withValues(alpha: 0.25),
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.hourglass_top_rounded,
+                      color: colors.crystal, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'منشورك يعيش ٢٤ ساعة فقط',
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'لو نال تفاعلات صادقة قبل انتهائها → يتبلور ✦ ويبقى للأبد. '
+                          'بدونها يختفي بهدوء. اطرح ما يستحق النقاش.',
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 12,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
             _SectionPicker(

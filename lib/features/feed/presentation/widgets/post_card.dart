@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -228,8 +230,94 @@ class _Header extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-          ),
+          )
+        else if (post.decayDeadline != null)
+          _CountdownBadge(deadline: post.decayDeadline!, colors: colors),
       ],
+    );
+  }
+}
+
+/// Shows the time-left-until-decay for not-yet-crystallized posts. Each post
+/// lives for ~24h; if it earns enough engagement before the deadline it
+/// crystallizes (becomes permanent). The badge ticks once per minute, then
+/// flips to "انتهى" when the deadline passes.
+class _CountdownBadge extends StatefulWidget {
+  const _CountdownBadge({required this.deadline, required this.colors});
+  final String deadline;
+  final SarhnyColors colors;
+
+  @override
+  State<_CountdownBadge> createState() => _CountdownBadgeState();
+}
+
+class _CountdownBadgeState extends State<_CountdownBadge> {
+  Timer? _ticker;
+  DateTime? _deadline;
+
+  @override
+  void initState() {
+    super.initState();
+    _deadline = DateTime.tryParse(widget.deadline.replaceAll(' ', 'T'))?.toLocal();
+    // Tick once per minute is enough — the displayed unit is hours / minutes.
+    _ticker = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dl = _deadline;
+    if (dl == null) return const SizedBox.shrink();
+    final now = DateTime.now();
+    final remaining = dl.difference(now);
+    final c = widget.colors;
+    final expired = remaining.isNegative;
+    String label;
+    double progress; // 1.0 = full glow at start, 0.0 = expired
+    if (expired) {
+      label = 'انتهى';
+      progress = 0;
+    } else if (remaining.inHours >= 1) {
+      label = '${remaining.inHours} س';
+      progress = (remaining.inMinutes / (24 * 60)).clamp(0.0, 1.0);
+    } else {
+      label = '${remaining.inMinutes} د';
+      progress = (remaining.inMinutes / (24 * 60)).clamp(0.0, 1.0);
+    }
+    final glowColor = c.crystal.withValues(alpha: 0.18 + 0.32 * progress);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: glowColor,
+        border: Border.all(
+          color: c.crystal.withValues(alpha: 0.3 + 0.4 * progress),
+          width: 0.6,
+        ),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.hourglass_bottom_rounded,
+              size: 11, color: c.crystal),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              color: c.crystal,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -313,21 +401,15 @@ class _Footer extends ConsumerWidget {
           pulse: inter.liked,
         ),
         const SizedBox(width: 16),
+        // Unified replies count (post 3.3.6 merge of anonymous + comments).
+        // Always show, even when zero, so users see an explicit invitation
+        // to engage instead of a missing icon.
         _InteractiveStat(
-          icon: Icons.chat_bubble_outline,
-          label: '${post.commentsCount}',
+          icon: Icons.forum_outlined,
+          label: '${post.anonRepliesCount}',
           color: colors.textSecondary,
           onTap: () => context.push('/post/${post.id}'),
         ),
-        if (post.anonRepliesCount > 0) ...[
-          const SizedBox(width: 16),
-          _InteractiveStat(
-            icon: Icons.visibility_off_outlined,
-            label: '${post.anonRepliesCount}',
-            color: colors.moment,
-            onTap: () => context.push('/post/${post.id}'),
-          ),
-        ],
         const Spacer(),
         _IconButton(
           icon: inter.saved

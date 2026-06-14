@@ -53,7 +53,22 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
     final colors = context.sarhnyColors;
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(title: const Text('تحدّى 🎮')),
+      // Explicit leading — go_router-pushed routes sometimes don't expose
+      // canPop to Material's auto back-arrow, so make it bulletproof here.
+      appBar: AppBar(
+        title: const Text('تحدّى 🎮'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'رجوع',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/profile');
+            }
+          },
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),

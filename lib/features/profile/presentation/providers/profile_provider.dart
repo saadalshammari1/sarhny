@@ -13,7 +13,7 @@ final publicProfileProvider =
   return ref.watch(profileRepositoryProvider).get(username);
 });
 
-enum ProfileTab { active, moments, answers, crystals, likes, article }
+enum ProfileTab { active, moments, answers, crystals, likes }
 
 final selectedProfileTabProvider =
     StateProvider.family<ProfileTab, String>((_, __) => ProfileTab.active);
@@ -74,10 +74,6 @@ class ProfilePostsController
         return repo.listCrystals(key.username, cursor: cursor);
       case ProfileTab.likes:
         return repo.listLikes(key.username, cursor: cursor);
-      case ProfileTab.article:
-        // Article tab renders its own widget (the user's AI article), not
-        // a post feed — return an empty page so the post loader is a no-op.
-        return Future.value(const ProfilePostsPage(posts: [], nextCursor: null));
     }
   }
 

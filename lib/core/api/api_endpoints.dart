@@ -138,6 +138,9 @@ class ApiEndpoints {
   /// User search by username / display name.
   static String userSearch(String term) =>
       '/api/v1/users/search?term=${Uri.encodeQueryComponent(term)}';
+  /// Popular users sorted by follower count — used as the default browse
+  /// list when the search box is empty so users can pick without typing.
+  static const String popularUsers = '/api/v1/users/followers';
   /// Legacy form-encoded report endpoints. Caller posts FormData with
   /// `report_post_id` / `report_user_id` + `reason`.
   static const String reportPost = '/api/v1/post-reports';

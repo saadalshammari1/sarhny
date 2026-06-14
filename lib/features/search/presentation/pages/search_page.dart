@@ -10,8 +10,9 @@ import '../../../../core/providers/api_providers.dart';
 import '../../../../core/utils/media.dart';
 import '../../../../core/widgets/app_avatar.dart';
 
-/// Compact user-search page reached from the feed app bar. Debounces
-/// keystrokes by 300ms so we don't hammer the backend while the user types.
+/// Compact user-search page reached from the feed app bar. Browse-by-default
+/// — opens straight onto a list of popular users so a user can pick without
+/// typing. As they type (debounced 300ms) we switch to the search endpoint.
 class SearchPage extends ConsumerStatefulWidget {
   const SearchPage({super.key});
 
@@ -25,6 +26,16 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   List<_UserHit> _results = const [];
   bool _loading = false;
   String _lastQuery = '';
+  // True while the list is the "popular users" fallback (no query typed).
+  bool _isBrowse = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load the popular-users browse list immediately so the user sees
+    // something to pick from before typing anything.
+    _runQuery('');
+  }
 
   @override
   void dispose() {
@@ -39,19 +50,18 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   Future<void> _runQuery(String q) async {
-    if (q == _lastQuery) return;
+    if (q == _lastQuery && !_isBrowse) return;
     _lastQuery = q;
-    if (q.length < 2) {
-      setState(() {
-        _results = const [];
-        _loading = false;
-      });
-      return;
-    }
     setState(() => _loading = true);
     try {
       final dio = ref.read(dioClientProvider).raw;
-      final r = await dio.get<dynamic>(ApiEndpoints.userSearch(q));
+      // Empty query → browse popular users. Non-empty → search by term.
+      // Server-side full-text MATCH would return nothing for empty input
+      // anyway, so we always hit the followers endpoint for the empty case.
+      final endpoint = q.isEmpty
+          ? ApiEndpoints.popularUsers
+          : ApiEndpoints.userSearch(q);
+      final r = await dio.get<dynamic>(endpoint);
       final data = r.data;
       if (data is Map && data['success'] == true) {
         final usersPage = (data['data'] as Map?)?['users'];
@@ -64,6 +74,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         setState(() {
           _results = hits;
           _loading = false;
+          _isBrowse = q.isEmpty;
         });
       } else {
         setState(() => _loading = false);
@@ -84,7 +95,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           autofocus: true,
           textInputAction: TextInputAction.search,
           decoration: const InputDecoration(
-            hintText: 'ابحث عن مستخدم باسمه أو @username',
+            hintText: 'ابحث عن مستخدم أو تصفح المقترحين',
             border: InputBorder.none,
             isCollapsed: true,
           ),
@@ -106,6 +117,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         loading: _loading,
         results: _results,
         query: _ctrl.text.trim(),
+        isBrowse: _isBrowse,
         colors: colors,
       ),
     );
@@ -117,36 +129,28 @@ class _BodyView extends StatelessWidget {
     required this.loading,
     required this.results,
     required this.query,
+    required this.isBrowse,
     required this.colors,
   });
   final bool loading;
   final List<_UserHit> results;
   final String query;
+  final bool isBrowse;
   final SarhnyColors colors;
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
+    if (loading && results.isEmpty) {
       return const Center(child: CircularProgressIndicator());
-    }
-    if (query.length < 2) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            'اكتب اسم مستخدم أو @username للبحث',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: colors.textSecondary),
-          ),
-        ),
-      );
     }
     if (results.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
-            'لا توجد نتائج تطابق "$query"',
+            query.isEmpty
+                ? 'لا يوجد مستخدمون لعرضهم بعد'
+                : 'لا توجد نتائج تطابق "$query"',
             textAlign: TextAlign.center,
             style: TextStyle(color: colors.textSecondary),
           ),
@@ -155,9 +159,33 @@ class _BodyView extends StatelessWidget {
     }
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: results.length,
+      itemCount: results.length + (isBrowse ? 1 : 0),
       separatorBuilder: (_, __) => Divider(color: colors.divider, height: 1),
-      itemBuilder: (_, i) => _UserTile(hit: results[i], colors: colors),
+      itemBuilder: (_, i) {
+        // First row in browse mode: a small header so users know this is a
+        // discovery list rather than a search result for an implicit query.
+        if (isBrowse && i == 0) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Row(
+              children: [
+                Icon(Icons.trending_up, size: 16, color: colors.moment),
+                const SizedBox(width: 6),
+                Text(
+                  'مقترحون لك',
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        final hit = results[isBrowse ? i - 1 : i];
+        return _UserTile(hit: hit, colors: colors);
+      },
     );
   }
 }

@@ -24,6 +24,8 @@ import '../../../feed/presentation/widgets/post_card.dart';
 import '../../../feed/presentation/widgets/post_card_skeleton.dart';
 import '../widgets/profile_share.dart';
 import '../providers/profile_provider.dart';
+import '../../../article/data/article_repository.dart';
+import '../../../article/presentation/providers/article_providers.dart';
 
 /// Authenticated user's own profile.
 /// Mirrors PublicProfilePage but adds edit + avatar/cover upload + tab on
@@ -193,7 +195,10 @@ class _AuthedProfileBodyState extends ConsumerState<_AuthedProfileBody> {
                   .state = t,
             ),
           ),
-          posts.when(
+          if (tab == ProfileTab.article)
+            const SliverToBoxAdapter(child: _ProfileArticleTab())
+          else
+            posts.when(
             loading: () => const SliverToBoxAdapter(
               child: Column(children: [
                 PostCardSkeleton(),
@@ -229,6 +234,11 @@ class _AuthedProfileBodyState extends ConsumerState<_AuthedProfileBody> {
                   ProfileTab.likes => (
                       Icons.favorite_outline,
                       'لم تعجبك أي بلورة بعد',
+                      null,
+                    ),
+                  ProfileTab.article => (
+                      Icons.auto_awesome,
+                      '',
                       null,
                     ),
                 };
@@ -545,6 +555,287 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Renders inside the profile tabs (own profile). Shows the user's current
+/// article + history. Reuses eligibility/myArticle providers so it stays in
+/// sync with the dedicated /me/article page.
+class _ProfileArticleTab extends ConsumerWidget {
+  const _ProfileArticleTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.sarhnyColors;
+    final eligibility = ref.watch(articleEligibilityProvider);
+    final article = ref.watch(myArticleProvider);
+    final history = ref.watch(articleHistoryProvider);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: eligibility.when(
+        loading: () => const Padding(
+          padding: EdgeInsets.symmetric(vertical: 40),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        error: (e, _) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: ErrorView(
+            message: e.toString(),
+            onRetry: () => ref.invalidate(articleEligibilityProvider),
+          ),
+        ),
+        data: (e) {
+          final a = article.valueOrNull;
+          final h = history.valueOrNull ?? const <ArticleHistoryItem>[];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _ArticleTabHeader(eligibility: e, hasArticle: a != null),
+              const SizedBox(height: 12),
+              if (a != null) ...[
+                _ArticleTabCurrent(article: a),
+                const SizedBox(height: 10),
+              ],
+              if (h.isNotEmpty) ...[
+                Text(
+                  'الأرشيف · ${h.length} نسخة سابقة',
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                for (final item in h.take(3)) ...[
+                  _ArticleTabHistoryRow(item: item),
+                  const SizedBox(height: 6),
+                ],
+              ],
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/me/article'),
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: const Text('فتح صفحة شخصيتي للتفاصيل والتحكم'),
+              ),
+              const SizedBox(height: 24),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ArticleTabHeader extends StatelessWidget {
+  const _ArticleTabHeader({required this.eligibility, required this.hasArticle});
+  final ArticleEligibility eligibility;
+  final bool hasArticle;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.sarhnyColors;
+    final e = eligibility;
+
+    // Cooldown — has article + within 30 days.
+    if (e.daysRemaining > 0) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: c.crystal.withValues(alpha: 0.08),
+          border: Border.all(color: c.crystal.withValues(alpha: 0.35)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.hourglass_bottom_rounded, color: c.crystal, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'النسخة الجاية بعد ${e.daysRemaining} يوم',
+                style: TextStyle(
+                  color: c.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Not enough real answers.
+    if (e.realAnswersCount < e.minRequired) {
+      final percent = e.realAnswersCount / e.minRequired;
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: c.surface,
+          border: Border.all(color: c.border, width: 0.6),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(Icons.auto_awesome, size: 14, color: c.crystal),
+              const SizedBox(width: 6),
+              Text(
+                'افتح مقالتك بعد ${e.minRequired - e.realAnswersCount} إجابة',
+                style: TextStyle(
+                  color: c.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${e.realAnswersCount}/${e.minRequired}',
+                style: TextStyle(color: c.textSecondary, fontSize: 11),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: percent.clamp(0.0, 1.0),
+                minHeight: 6,
+                backgroundColor: c.elevated,
+                valueColor: AlwaysStoppedAnimation<Color>(c.crystal),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Eligible — show CTA encouraging the generation.
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: c.crystal.withValues(alpha: 0.10),
+        border: Border.all(color: c.crystal),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.auto_awesome, color: c.crystal, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              hasArticle
+                  ? 'تقدر تنشئ نسخة جديدة الآن'
+                  : 'أنت جاهز — افتح صفحة شخصيتي لتوليد مقالتك',
+              style: TextStyle(
+                color: c.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ArticleTabCurrent extends StatelessWidget {
+  const _ArticleTabCurrent({required this.article});
+  final UserArticle article;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.sarhnyColors;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: c.border, width: 0.6),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: article.isPublished
+                    ? c.crystal.withValues(alpha: 0.15)
+                    : c.elevated,
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(
+                  article.isPublished ? Icons.public : Icons.lock_outline,
+                  size: 11,
+                  color: article.isPublished ? c.crystal : c.textSecondary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  article.isPublished ? 'منشورة' : 'خاصة',
+                  style: TextStyle(
+                    color: article.isPublished ? c.crystal : c.textSecondary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ]),
+            ),
+            if (article.generatedAt != null) ...[
+              const SizedBox(width: 8),
+              Text(
+                article.generatedAt!.substring(0, 10),
+                style: TextStyle(color: c.textSecondary, fontSize: 11),
+              ),
+            ],
+          ]),
+          const SizedBox(height: 10),
+          Text(
+            article.content,
+            style: TextStyle(color: c.textPrimary, height: 1.8, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ArticleTabHistoryRow extends StatelessWidget {
+  const _ArticleTabHistoryRow({required this.item});
+  final ArticleHistoryItem item;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.sarhnyColors;
+    final preview = item.content.length > 80
+        ? '${item.content.substring(0, 80)}…'
+        : item.content;
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: c.elevated,
+        border: Border.all(color: c.border, width: 0.4),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (item.generatedAt != null)
+            Text(
+              item.generatedAt!.substring(0, 10),
+              style: TextStyle(
+                color: c.textSecondary,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          const SizedBox(height: 3),
+          Text(
+            preview,
+            style: TextStyle(color: c.textPrimary, fontSize: 12, height: 1.6),
           ),
         ],
       ),
@@ -928,6 +1219,7 @@ class _TabsBar extends StatelessWidget {
       (ProfileTab.answers, 'أجوبة', Icons.question_answer_outlined),
       (ProfileTab.crystals, 'متبلور', Icons.diamond_outlined),
       (ProfileTab.likes, 'إعجابات', Icons.favorite_border),
+      (ProfileTab.article, 'شخصيتي', Icons.auto_awesome),
     ];
     return SizedBox(
       height: 36,

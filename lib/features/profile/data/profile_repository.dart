@@ -7,7 +7,7 @@ import '../../../core/api/dio_client.dart';
 import '../../../core/api/dto.dart';
 
 class ProfilePostsPage {
-  ProfilePostsPage({required this.posts, this.nextCursor});
+  const ProfilePostsPage({required this.posts, this.nextCursor});
   final List<PostDto> posts;
   final int? nextCursor;
 }

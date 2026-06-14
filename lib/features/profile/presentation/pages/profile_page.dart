@@ -530,60 +530,120 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
                 const SizedBox(height: 16),
                 _Stats(stats: p.stats, username: p.user.username),
                 const SizedBox(height: 14),
-                // Edit + Share — side-by-side. Share is what drives growth
-                // (the whole platform is link-driven), so it sits at equal
-                // visual weight to Edit, not buried in a menu.
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppButton(
-                        label: 'تعديل البروفايل',
-                        icon: Icons.edit_outlined,
-                        variant: AppButtonVariant.secondary,
-                        onPressed: _showEditSheet,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: AppButton(
-                        label: 'انشر حسابك',
-                        icon: Icons.ios_share_rounded,
-                        variant: AppButtonVariant.primary,
-                        onPressed: () => shareProfile(
-                          context,
-                          username: p.user.username,
-                          displayName: p.user.displayName,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppButton(
-                        label: 'شخصيتي ✨',
-                        icon: Icons.auto_awesome,
-                        variant: AppButtonVariant.secondary,
-                        onPressed: () => context.push('/me/article'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: AppButton(
-                        label: 'تحدّى 🎮',
-                        icon: Icons.sports_esports_outlined,
-                        variant: AppButtonVariant.secondary,
-                        onPressed: () => context.push('/game'),
-                      ),
-                    ),
-                  ],
+                // Compact pill row — these used to be 4 big AppButtons that
+                // dominated the card. Now they match the visual weight of
+                // the بلورات/وهج badge row right below.
+                _ProfileActionsRow(
+                  onEdit: _showEditSheet,
+                  onShare: () => shareProfile(
+                    context,
+                    username: p.user.username,
+                    displayName: p.user.displayName,
+                  ),
+                  onArticle: () => context.push('/me/article'),
+                  onGame: () => context.push('/game'),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProfileActionsRow extends StatelessWidget {
+  const _ProfileActionsRow({
+    required this.onEdit,
+    required this.onShare,
+    required this.onArticle,
+    required this.onGame,
+  });
+  final VoidCallback onEdit;
+  final VoidCallback onShare;
+  final VoidCallback onArticle;
+  final VoidCallback onGame;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.sarhnyColors;
+    final items = <({
+      IconData icon,
+      String label,
+      Color color,
+      VoidCallback onTap,
+      bool filled,
+    })>[
+      (
+        icon: Icons.edit_outlined,
+        label: 'تعديل',
+        color: colors.textPrimary,
+        onTap: onEdit,
+        filled: false,
+      ),
+      (
+        icon: Icons.ios_share_rounded,
+        label: 'انشر حسابك',
+        color: colors.moment,
+        onTap: onShare,
+        filled: true,
+      ),
+      (
+        icon: Icons.auto_awesome,
+        label: 'شخصيتي',
+        color: colors.crystal,
+        onTap: onArticle,
+        filled: false,
+      ),
+      (
+        icon: Icons.sports_esports_outlined,
+        label: 'تحدّى',
+        color: colors.face,
+        onTap: onGame,
+        filled: false,
+      ),
+    ];
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (_, i) {
+          final b = items[i];
+          final bg = b.filled
+              ? b.color.withValues(alpha: 0.18)
+              : b.color.withValues(alpha: 0.08);
+          final border = b.color.withValues(alpha: b.filled ? 0.5 : 0.3);
+          return InkWell(
+            borderRadius: BorderRadius.circular(99),
+            onTap: b.onTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: bg,
+                border: Border.all(color: border),
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(b.icon, color: b.color, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    b.label,
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

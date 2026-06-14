@@ -1,69 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
 import '../../data/article_repository.dart';
 import '../providers/article_providers.dart';
 
-/// Landing page for the "شخصيتي" feature. Branches on state:
-///  - No article yet & questionnaire incomplete → show progress + CTA to answer
-///  - No article yet & ready → show big "Generate" button
-///  - Article generated → show it + edit/publish/delete actions
+/// "شخصيتي" landing page — single source of truth for the article feature.
+///
+/// Flow at a glance:
+///   - User has < 15 real answers → show progress + nudge to answer more
+///   - User has ≥ 15 answers and no article yet → show big Generate CTA
+///   - User has article + in cooldown → show countdown to next regeneration
+///   - User has article + cooldown passed → enable Generate again
+///   - History list lives under the live article (collapsible)
 class MyArticlePage extends ConsumerWidget {
   const MyArticlePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.sarhnyColors;
+    final eligibility = ref.watch(articleEligibilityProvider);
     final article = ref.watch(myArticleProvider);
-    final progress = ref.watch(questionnaireProgressProvider);
+    final history = ref.watch(articleHistoryProvider);
 
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(
-        title: const Text('شخصيتي ✨'),
-      ),
+      appBar: AppBar(title: const Text('شخصيتي ✨')),
       body: RefreshIndicator(
         color: colors.moment,
         onRefresh: () async {
+          ref.invalidate(articleEligibilityProvider);
           ref.invalidate(myArticleProvider);
-          ref.invalidate(questionnaireProgressProvider);
-          ref.invalidate(questionnaireMyAnswersProvider);
+          ref.invalidate(articleHistoryProvider);
         },
-        child: article.when(
+        child: eligibility.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => _ErrorBox(
-              message: e.toString(),
-              onRetry: () => ref.invalidate(myArticleProvider)),
-          data: (existing) {
-            if (existing != null) {
-              return _ArticleView(article: existing);
-            }
-            return progress.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => _ErrorBox(
-                  message: e.toString(),
-                  onRetry: () => ref.invalidate(questionnaireProgressProvider)),
-              data: (p) => _IntroAndProgress(progress: p),
-            );
-          },
+            message: e.toString(),
+            onRetry: () => ref.invalidate(articleEligibilityProvider),
+          ),
+          data: (e) => article.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, _) => _ErrorBox(
+              message: err.toString(),
+              onRetry: () => ref.invalidate(myArticleProvider),
+            ),
+            data: (a) => _Body(
+              eligibility: e,
+              article: a,
+              history: history.value ?? const [],
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-class _IntroAndProgress extends ConsumerStatefulWidget {
-  const _IntroAndProgress({required this.progress});
-  final QuestionnaireProgress progress;
+class _Body extends ConsumerStatefulWidget {
+  const _Body({required this.eligibility, this.article, required this.history});
+  final ArticleEligibility eligibility;
+  final UserArticle? article;
+  final List<ArticleHistoryItem> history;
   @override
-  ConsumerState<_IntroAndProgress> createState() => _IntroAndProgressState();
+  ConsumerState<_Body> createState() => _BodyState();
 }
 
-class _IntroAndProgressState extends ConsumerState<_IntroAndProgress> {
+class _BodyState extends ConsumerState<_Body> {
   bool _generating = false;
 
   Future<void> _generate() async {
@@ -71,11 +76,13 @@ class _IntroAndProgressState extends ConsumerState<_IntroAndProgress> {
     try {
       await ref.read(articleRepositoryProvider).generate();
       ref.invalidate(myArticleProvider);
+      ref.invalidate(articleEligibilityProvider);
+      ref.invalidate(articleHistoryProvider);
       Fluttertoast.showToast(msg: 'تم إنشاء مقالتك ✨');
     } on ApiException catch (e) {
       Fluttertoast.showToast(msg: e.message);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الإنشاء، حاول لاحقاً');
+      Fluttertoast.showToast(msg: 'تعذّر الإنشاء');
     } finally {
       if (mounted) setState(() => _generating = false);
     }
@@ -84,181 +91,250 @@ class _IntroAndProgressState extends ConsumerState<_IntroAndProgress> {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
-    final p = widget.progress;
-    final percent = p.total == 0 ? 0.0 : p.answered / p.total;
-    final isComplete = p.canGenerate;
-    final inCooldown = p.daysRemaining > 0;
+    final e = widget.eligibility;
+    final a = widget.article;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
       children: [
-        // Hero
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                colors.crystal.withValues(alpha: 0.10),
-                colors.mind.withValues(alpha: 0.10),
-              ],
-            ),
-            border: Border.all(color: colors.crystal.withValues(alpha: 0.35)),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                const Text('✨', style: TextStyle(fontSize: 24)),
-                const SizedBox(width: 8),
-                Text(
-                  'مقالتك الشخصية',
-                  style: TextStyle(
-                    color: colors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                  ),
-                ),
-              ]),
-              const SizedBox(height: 8),
-              Text(
-                'أجب على ${p.minRequired} سؤالاً عميقاً عن نفسك، وسيكتب الذكاء الاصطناعي مقالة عربية تصفك بصدق — مبنية فقط على إجاباتك. تستطيع تعديلها، أو نشرها للعموم، أو إبقاءها خاصة.',
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 13,
-                  height: 1.6,
-                ),
-              ),
-            ],
-          ),
+        _HeaderCard(eligibility: e),
+        const SizedBox(height: 14),
+        _CtaCard(
+          eligibility: e,
+          hasArticle: a != null,
+          busy: _generating,
+          onGenerate: _generate,
         ),
-        const SizedBox(height: 18),
-
-        // Progress
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            border: Border.all(color: colors.border, width: 0.6),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    'تقدّمك',
-                    style: TextStyle(
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${p.answered}/${p.total}',
-                    style: TextStyle(
-                      color: colors.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(99),
-                child: LinearProgressIndicator(
-                  value: percent,
-                  minHeight: 8,
-                  backgroundColor: colors.elevated,
-                  valueColor: AlwaysStoppedAnimation<Color>(colors.crystal),
-                ),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => context.push('/me/questionnaire'),
-                  icon: const Icon(Icons.edit_note),
-                  label: Text(
-                    p.answered == 0 ? 'ابدأ الإجابة' : 'متابعة الإجابات',
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 18),
-
-        // Generate state
-        if (inCooldown)
-          _Card(
-            colors: colors,
-            child: Row(children: [
-              Icon(Icons.hourglass_bottom, color: colors.textSecondary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'يمكنك إعادة إنشاء مقالتك بعد ${p.daysRemaining} يوم.',
-                  style: TextStyle(color: colors.textPrimary, fontSize: 13),
-                ),
-              ),
-            ]),
-          )
-        else if (isComplete)
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: colors.crystal,
-              ),
-              onPressed: _generating ? null : _generate,
-              icon: _generating
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.auto_awesome),
-              label: Text(_generating ? 'يجري الإنشاء…' : 'اكتب مقالتي الآن ✨'),
-            ),
-          )
-        else
-          _Card(
-            colors: colors,
-            child: Text(
-              'أكمل الإجابة على ${p.minRequired - p.answered} سؤالاً أخرى لفتح زرّ الإنشاء.',
-              style: TextStyle(color: colors.textSecondary, fontSize: 13),
+        if (a != null) ...[
+          const SizedBox(height: 22),
+          Text(
+            'مقالتي الحالية',
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
             ),
           ),
-        const SizedBox(height: 12),
-        Text(
-          'تستطيع تعديل إجاباتك في أي وقت. كل إعادة إنشاء (مرة كل ${p.cooldownDays} يوم) تبني على آخر إجاباتك.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: colors.textSecondary,
-            fontSize: 11,
-            height: 1.6,
+          const SizedBox(height: 8),
+          _ArticleCard(article: a),
+        ],
+        if (widget.history.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          Text(
+            'الأرشيف · مقالات سابقة (${widget.history.length})',
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
           ),
-        ),
+          const SizedBox(height: 8),
+          for (final h in widget.history) ...[
+            _HistoryCard(item: h),
+            const SizedBox(height: 8),
+          ],
+        ],
       ],
     );
   }
 }
 
-class _ArticleView extends ConsumerStatefulWidget {
-  const _ArticleView({required this.article});
-  final UserArticle article;
+// ── Header ─────────────────────────────────────────────────────────────────
+
+class _HeaderCard extends StatelessWidget {
+  const _HeaderCard({required this.eligibility});
+  final ArticleEligibility eligibility;
   @override
-  ConsumerState<_ArticleView> createState() => _ArticleViewState();
+  Widget build(BuildContext context) {
+    final c = context.sarhnyColors;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [
+          c.crystal.withValues(alpha: 0.10),
+          c.mind.withValues(alpha: 0.10),
+        ]),
+        border: Border.all(color: c.crystal.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Text('✨', style: TextStyle(fontSize: 22)),
+            const SizedBox(width: 8),
+            Text(
+              'مقالتك الشخصية',
+              style: TextStyle(
+                color: c.textPrimary,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+          ]),
+          const SizedBox(height: 8),
+          Text(
+            'تُكتب مقالتك من إجاباتك العامّة على الرسائل المجهولة. كلما أجبت أكثر بصدق، كلما عرفك الذكاء أكثر — وكتب عنك أصدق.',
+            style: TextStyle(color: c.textSecondary, fontSize: 13, height: 1.6),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _ArticleViewState extends ConsumerState<_ArticleView> {
+// ── CTA / countdown / progress ─────────────────────────────────────────────
+
+class _CtaCard extends StatelessWidget {
+  const _CtaCard({
+    required this.eligibility,
+    required this.hasArticle,
+    required this.busy,
+    required this.onGenerate,
+  });
+  final ArticleEligibility eligibility;
+  final bool hasArticle;
+  final bool busy;
+  final VoidCallback onGenerate;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.sarhnyColors;
+    final e = eligibility;
+
+    // 1) Cooldown — already has article + within 30 days.
+    if (e.daysRemaining > 0) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.surface,
+          border: Border.all(color: c.border, width: 0.6),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(children: [
+              Icon(Icons.hourglass_bottom_rounded, color: c.textSecondary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'المقالة التالية',
+                style: TextStyle(color: c.textPrimary, fontWeight: FontWeight.w800),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            Text(
+              'باقي ${e.daysRemaining} يوم على إنشاء مقالتك التالية.',
+              style: TextStyle(color: c.textSecondary, fontSize: 13, height: 1.6),
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: (e.cooldownDays - e.daysRemaining) / e.cooldownDays,
+                minHeight: 6,
+                backgroundColor: c.elevated,
+                valueColor: AlwaysStoppedAnimation<Color>(c.crystal),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'كل ${e.cooldownDays} يوم تستطيع إنشاء نسخة جديدة. النسخة الجديدة ستُبنى من إجاباتك الأحدث.',
+              style: TextStyle(color: c.textSecondary, fontSize: 11),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 2) Not enough real answers yet.
+    if (e.realAnswersCount < e.minRequired) {
+      final percent = e.realAnswersCount / e.minRequired;
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.surface,
+          border: Border.all(color: c.border, width: 0.6),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Text(
+                'تقدّمك',
+                style: TextStyle(
+                  color: c.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${e.realAnswersCount}/${e.minRequired}',
+                style: TextStyle(color: c.textSecondary, fontSize: 12),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: percent.clamp(0.0, 1.0),
+                minHeight: 8,
+                backgroundColor: c.elevated,
+                valueColor: AlwaysStoppedAnimation<Color>(c.crystal),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'تحتاج ${e.minRequired - e.realAnswersCount} إجابة عامّة إضافية على رسائل مجهولة لتفتح مقالتك. هذه الإجابات هي ما يجعل المقالة تشبهك حقاً.',
+              style: TextStyle(color: c.textSecondary, fontSize: 13, height: 1.6),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 3) Eligible — show the big Generate button.
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        style: FilledButton.styleFrom(
+          backgroundColor: c.crystal,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+        onPressed: busy ? null : onGenerate,
+        icon: busy
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.auto_awesome),
+        label: Text(busy
+            ? 'يجري الإنشاء…'
+            : hasArticle
+                ? 'أنشئ نسخة جديدة من مقالتي'
+                : 'اكتب مقالتي الآن ✨'),
+      ),
+    );
+  }
+}
+
+// ── Live article card (with edit/publish/delete) ───────────────────────────
+
+class _ArticleCard extends ConsumerStatefulWidget {
+  const _ArticleCard({required this.article});
+  final UserArticle article;
+  @override
+  ConsumerState<_ArticleCard> createState() => _ArticleCardState();
+}
+
+class _ArticleCardState extends ConsumerState<_ArticleCard> {
   late final TextEditingController _ctrl =
       TextEditingController(text: widget.article.content);
   bool _editing = false;
   bool _busy = false;
+  bool _expanded = true;
 
   @override
   void dispose() {
@@ -266,13 +342,13 @@ class _ArticleViewState extends ConsumerState<_ArticleView> {
     super.dispose();
   }
 
-  Future<void> _saveEdit() async {
+  Future<void> _save() async {
     setState(() => _busy = true);
     try {
       await ref.read(articleRepositoryProvider).edit(_ctrl.text.trim());
-      Fluttertoast.showToast(msg: 'تم الحفظ');
       ref.invalidate(myArticleProvider);
       setState(() => _editing = false);
+      Fluttertoast.showToast(msg: 'تم الحفظ');
     } catch (_) {
       Fluttertoast.showToast(msg: 'تعذّر الحفظ');
     } finally {
@@ -286,17 +362,11 @@ class _ArticleViewState extends ConsumerState<_ArticleView> {
       builder: (ctx) => AlertDialog(
         title: const Text('نشر المقالة للعموم'),
         content: const Text(
-          'بعد ٢٤ ساعة من النشر، ستصبح مقالتك متاحة على رابط عام: /p/username. أي شخص يستطيع رؤيتها ومشاركتها وفهرستها في محركات البحث. تستطيع حذفها متى شئت.',
+          'بعد 24 ساعة من النشر تصبح المقالة متاحة لأي شخص على رابط عام في المدوّنة. تستطيع حذفها متى شئت.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('انشر'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('إلغاء')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('انشر')),
         ],
       ),
     );
@@ -304,8 +374,8 @@ class _ArticleViewState extends ConsumerState<_ArticleView> {
     setState(() => _busy = true);
     try {
       await ref.read(articleRepositoryProvider).publish();
-      Fluttertoast.showToast(msg: 'تم — ستظهر بعد ٢٤ ساعة');
       ref.invalidate(myArticleProvider);
+      Fluttertoast.showToast(msg: 'سَتظهر بعد 24 ساعة 🌙');
     } catch (_) {
       Fluttertoast.showToast(msg: 'تعذّر النشر');
     } finally {
@@ -318,12 +388,9 @@ class _ArticleViewState extends ConsumerState<_ArticleView> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('حذف المقالة'),
-        content: const Text('ستُحذف مقالتك نهائياً. تستطيع إنشاء مقالة جديدة بعد ذلك (مع احترام مهلة ٣٠ يوم بين الإنشاءات).'),
+        content: const Text('سيتم حذف المقالة الحالية. ستظل النسخ السابقة محفوظة في الأرشيف.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('إلغاء'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('إلغاء')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -336,8 +403,8 @@ class _ArticleViewState extends ConsumerState<_ArticleView> {
     setState(() => _busy = true);
     try {
       await ref.read(articleRepositoryProvider).deleteArticle();
-      Fluttertoast.showToast(msg: 'تم الحذف');
       ref.invalidate(myArticleProvider);
+      Fluttertoast.showToast(msg: 'تم الحذف');
     } catch (_) {
       Fluttertoast.showToast(msg: 'تعذّر الحذف');
     } finally {
@@ -347,128 +414,244 @@ class _ArticleViewState extends ConsumerState<_ArticleView> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.sarhnyColors;
+    final c = context.sarhnyColors;
     final a = widget.article;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: a.isPublished
-                ? colors.crystal.withValues(alpha: 0.10)
-                : colors.elevated,
-            borderRadius: BorderRadius.circular(99),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                a.isPublished ? Icons.public : Icons.lock_outline,
-                size: 14,
-                color: a.isPublished ? colors.crystal : colors.textSecondary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                a.isPublished ? 'منشورة للعموم' : 'خاصة بك فقط',
-                style: TextStyle(
-                  color: a.isPublished ? colors.crystal : colors.textSecondary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+    return Container(
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: c.border, width: 0.6),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: a.isPublished
+                        ? c.crystal.withValues(alpha: 0.15)
+                        : c.elevated,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(
+                      a.isPublished ? Icons.public : Icons.lock_outline,
+                      size: 12,
+                      color: a.isPublished ? c.crystal : c.textSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      a.isPublished ? 'منشورة' : 'خاصة',
+                      style: TextStyle(
+                        color: a.isPublished ? c.crystal : c.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ]),
                 ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (_editing)
-          TextField(
-            controller: _ctrl,
-            maxLines: null,
-            minLines: 12,
-            style: TextStyle(color: colors.textPrimary, height: 1.7, fontSize: 15),
-            decoration: InputDecoration(
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          )
-        else
-          SelectableText(
-            a.content,
-            style: TextStyle(color: colors.textPrimary, height: 1.8, fontSize: 16),
-          ),
-        const SizedBox(height: 20),
-        if (_editing)
-          Row(children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _busy ? null : () => setState(() => _editing = false),
-                child: const Text('إلغاء'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: _busy ? null : _saveEdit,
-                icon: const Icon(Icons.save_outlined, size: 18),
-                label: const Text('حفظ التعديل'),
-              ),
-            ),
-          ])
-        else ...[
-          if (!a.isPublished)
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(backgroundColor: colors.crystal),
-                onPressed: _busy ? null : _publish,
-                icon: const Icon(Icons.public),
-                label: const Text('نشرها للعموم'),
-              ),
-            ),
-          const SizedBox(height: 8),
-          Row(children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _busy ? null : () => setState(() => _editing = true),
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('تعديل'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _busy ? null : _delete,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
+                if (a.generatedAt != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    a.generatedAt!.substring(0, 10),
+                    style: TextStyle(color: c.textSecondary, fontSize: 11),
+                  ),
+                ],
+                const Spacer(),
+                IconButton(
+                  icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
+                  onPressed: () => setState(() => _expanded = !_expanded),
                 ),
-                icon: const Icon(Icons.delete_outline, size: 18),
-                label: const Text('حذف'),
+              ],
+            ),
+          ),
+          if (_expanded) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+              child: _editing
+                  ? TextField(
+                      controller: _ctrl,
+                      maxLines: null,
+                      minLines: 8,
+                      style: TextStyle(color: c.textPrimary, height: 1.7, fontSize: 14),
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    )
+                  : SelectableText(
+                      a.content,
+                      style: TextStyle(color: c.textPrimary, height: 1.8, fontSize: 15),
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _editing
+                    ? [
+                        OutlinedButton(
+                          onPressed: _busy ? null : () => setState(() => _editing = false),
+                          child: const Text('إلغاء'),
+                        ),
+                        FilledButton.icon(
+                          onPressed: _busy ? null : _save,
+                          icon: const Icon(Icons.save_outlined, size: 16),
+                          label: const Text('حفظ'),
+                        ),
+                      ]
+                    : [
+                        if (!a.isPublished)
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(backgroundColor: c.crystal),
+                            onPressed: _busy ? null : _publish,
+                            icon: const Icon(Icons.public, size: 16),
+                            label: const Text('نشرها'),
+                          ),
+                        OutlinedButton.icon(
+                          onPressed: _busy ? null : () => setState(() => _editing = true),
+                          icon: const Icon(Icons.edit_outlined, size: 16),
+                          label: const Text('تعديل'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _busy ? null : _delete,
+                          style: OutlinedButton.styleFrom(
+                              foregroundColor: Theme.of(context).colorScheme.error),
+                          icon: const Icon(Icons.delete_outline, size: 16),
+                          label: const Text('حذف'),
+                        ),
+                      ],
               ),
             ),
-          ]),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
 
-class _Card extends StatelessWidget {
-  const _Card({required this.colors, required this.child});
-  final SarhnyColors colors;
-  final Widget child;
+// ── History card ───────────────────────────────────────────────────────────
+
+class _HistoryCard extends ConsumerStatefulWidget {
+  const _HistoryCard({required this.item});
+  final ArticleHistoryItem item;
+  @override
+  ConsumerState<_HistoryCard> createState() => _HistoryCardState();
+}
+
+class _HistoryCardState extends ConsumerState<_HistoryCard> {
+  bool _expanded = false;
+
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف من الأرشيف'),
+        content: const Text('سيُحذف هذا الإصدار نهائياً من أرشيفك.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('إلغاء')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(articleRepositoryProvider).deleteHistory(widget.item.id);
+      ref.invalidate(articleHistoryProvider);
+      Fluttertoast.showToast(msg: 'تم الحذف');
+    } catch (_) {
+      Fluttertoast.showToast(msg: 'تعذّر الحذف');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final c = context.sarhnyColors;
+    final h = widget.item;
+    final preview = h.content.length > 120 ? '${h.content.substring(0, 120)}…' : h.content;
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border.all(color: colors.border, width: 0.6),
-        borderRadius: BorderRadius.circular(14),
+        color: c.elevated,
+        border: Border.all(color: c.border, width: 0.5),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: child,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Icon(_expanded ? Icons.expand_less : Icons.expand_more, color: c.textSecondary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (h.generatedAt != null)
+                          Text(
+                            h.generatedAt!.substring(0, 10),
+                            style: TextStyle(
+                              color: c.textSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        if (!_expanded) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            preview,
+                            style: TextStyle(color: c.textPrimary, fontSize: 13, height: 1.6),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (h.wasPublished)
+                    Icon(Icons.public, size: 14, color: c.crystal),
+                ],
+              ),
+            ),
+          ),
+          if (_expanded) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+              child: SelectableText(
+                h.content,
+                style: TextStyle(color: c.textPrimary, fontSize: 13.5, height: 1.7),
+              ),
+            ),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton.icon(
+                onPressed: _delete,
+                style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+                icon: const Icon(Icons.delete_outline, size: 16),
+                label: const Text('حذف من الأرشيف'),
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+        ],
+      ),
     );
   }
 }
+
+// ── Error fallback ─────────────────────────────────────────────────────────
 
 class _ErrorBox extends StatelessWidget {
   const _ErrorBox({required this.message, required this.onRetry});

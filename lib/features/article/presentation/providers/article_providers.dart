@@ -7,22 +7,19 @@ final articleRepositoryProvider = Provider<ArticleRepository>((ref) {
   return ArticleRepository(ref.watch(dioClientProvider));
 });
 
-final questionnaireQuestionsProvider =
-    FutureProvider<List<QuestionnaireQuestion>>((ref) async {
-  return ref.read(articleRepositoryProvider).listQuestions();
-});
-
-final questionnaireProgressProvider =
-    FutureProvider<QuestionnaireProgress>((ref) async {
-  return ref.read(articleRepositoryProvider).progress();
-});
-
-final questionnaireMyAnswersProvider =
-    FutureProvider<Map<int, String>>((ref) async {
-  final list = await ref.read(articleRepositoryProvider).myAnswers();
-  return {for (final a in list) a.questionId: a.text};
+/// Eligibility = single source of truth for the article landing card.
+/// Determines whether to show the "Generate" button, the cooldown
+/// countdown, or the "answer more first" empty state.
+final articleEligibilityProvider =
+    FutureProvider<ArticleEligibility>((ref) async {
+  return ref.read(articleRepositoryProvider).eligibility();
 });
 
 final myArticleProvider = FutureProvider<UserArticle?>((ref) async {
   return ref.read(articleRepositoryProvider).myArticle();
+});
+
+final articleHistoryProvider =
+    FutureProvider<List<ArticleHistoryItem>>((ref) async {
+  return ref.read(articleRepositoryProvider).history();
 });

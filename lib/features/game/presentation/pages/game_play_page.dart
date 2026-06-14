@@ -88,44 +88,46 @@ class _GamePlayPageState extends ConsumerState<GamePlayPage> {
     return ok ?? false;
   }
 
+  Future<void> _handleLeave() async {
+    final snap = _snap;
+    if (snap == null ||
+        snap.status == 'answered' ||
+        snap.status == 'abandoned') {
+      if (mounted) context.go('/game');
+      return;
+    }
+    if (await _confirmLeave()) {
+      await ref.read(gameRepositoryProvider).leave(widget.gameId);
+      if (mounted) context.go('/game');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
     final snap = _snap;
+    // Allow iOS swipe-back / Android back gesture, but intercept it
+    // to confirm leave (and call /leave so the server marks the loss).
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        if (snap == null ||
-            snap.status == 'answered' ||
-            snap.status == 'abandoned') {
-          if (mounted) context.go('/game');
-          return;
-        }
-        if (await _confirmLeave()) {
-          await ref.read(gameRepositoryProvider).leave(widget.gameId);
-          if (context.mounted) context.go('/game');
-        }
+        await _handleLeave();
       },
       child: Scaffold(
         backgroundColor: colors.background,
         appBar: AppBar(
           title: const Text('تحدّى 🎮'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'رجوع',
+            onPressed: _handleLeave,
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.close),
-              onPressed: () async {
-                if (snap == null ||
-                    snap.status == 'answered' ||
-                    snap.status == 'abandoned') {
-                  context.go('/game');
-                  return;
-                }
-                if (await _confirmLeave()) {
-                  await ref.read(gameRepositoryProvider).leave(widget.gameId);
-                  if (context.mounted) context.go('/game');
-                }
-              },
+              tooltip: 'الخروج',
+              onPressed: _handleLeave,
             ),
           ],
         ),

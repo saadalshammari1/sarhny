@@ -144,13 +144,15 @@ class ApiEndpoints {
   static const String reportUser = '/api/v1/users-reports';
 
   // ────────── AI Article ──────────
-  static const String questionnaire = '/api/v1/questionnaire';
-  static const String questionnaireAnswer = '/api/v1/questionnaire/answer';
-  static const String questionnaireMe = '/api/v1/questionnaire/me';
-  static const String questionnaireProgress = '/api/v1/questionnaire/progress';
+  // Eligibility = current source of truth for the article CTA.
+  // (Legacy questionnaire endpoints still exist on the backend for older
+  // clients but aren't used by 3.5.1+.)
+  static const String articleEligibility = '/api/v1/article/eligibility';
   static const String articleGenerate = '/api/v1/article/generate';
   static const String articleMe = '/api/v1/article/me';
   static const String articlePublish = '/api/v1/article/publish';
+  static const String articleHistory = '/api/v1/article/history';
+  static String articleHistoryDelete(int id) => '/api/v1/article/history/$id';
   static String publicArticle(String username) =>
       '/api/v1/public/article/$username';
 }

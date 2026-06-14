@@ -552,7 +552,7 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
                         onPressed: () => shareProfile(
                           context,
                           username: p.user.username,
-                          displayName: p.user.displayName ?? p.user.username,
+                          displayName: p.user.displayName,
                         ),
                       ),
                     ),

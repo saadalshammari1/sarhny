@@ -13,6 +13,7 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/dto.dart';
 import '../../../../core/utils/media.dart';
 import '../../../../core/widgets/app_avatar.dart';
+import '../../../../core/widgets/report_sheet.dart';
 import '../../../post/presentation/providers/interaction_provider.dart';
 import '../../../post/presentation/providers/post_provider.dart';
 
@@ -448,6 +449,17 @@ class _Footer extends ConsumerWidget {
           color: colors.textSecondary,
           tooltip: 'مشاركة',
           onTap: () => _share(context, post),
+        ),
+        const SizedBox(width: 2),
+        _IconButton(
+          icon: Icons.flag_outlined,
+          color: colors.textSecondary,
+          tooltip: 'إبلاغ',
+          onTap: () => ReportSheet.show(
+            context,
+            target: ReportTarget.post,
+            targetId: post.id,
+          ),
         ),
       ],
     );

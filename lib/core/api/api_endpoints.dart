@@ -133,4 +133,13 @@ class ApiEndpoints {
   static const String helpOnboarding = '/api/v1/help/onboarding';
   static const String helpFaq = '/api/v1/help/faq';
   static const String helpChangelog = '/api/v1/help/changelog';
+
+  // ────────── Search + Reports ──────────
+  /// User search by username / display name.
+  static String userSearch(String term) =>
+      '/api/v1/users/search?term=${Uri.encodeQueryComponent(term)}';
+  /// Legacy form-encoded report endpoints. Caller posts FormData with
+  /// `report_post_id` / `report_user_id` + `reason`.
+  static const String reportPost = '/api/v1/post-reports';
+  static const String reportUser = '/api/v1/users-reports';
 }

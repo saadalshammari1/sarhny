@@ -77,6 +77,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         ),
         actions: [
           IconButton(
+            icon: Icon(Icons.search_rounded,
+                color: colors.textSecondary),
+            tooltip: 'بحث',
+            onPressed: () => context.push('/search'),
+          ),
+          IconButton(
             icon: Icon(Icons.notifications_none_outlined,
                 color: colors.textSecondary),
             onPressed: () => context.push('/notifications'),

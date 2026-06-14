@@ -530,11 +530,33 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
                 const SizedBox(height: 16),
                 _Stats(stats: p.stats, username: p.user.username),
                 const SizedBox(height: 14),
-                AppButton(
-                  label: 'تعديل البروفايل',
-                  icon: Icons.edit_outlined,
-                  variant: AppButtonVariant.secondary,
-                  onPressed: _showEditSheet,
+                // Edit + Share — side-by-side. Share is what drives growth
+                // (the whole platform is link-driven), so it sits at equal
+                // visual weight to Edit, not buried in a menu.
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'تعديل البروفايل',
+                        icon: Icons.edit_outlined,
+                        variant: AppButtonVariant.secondary,
+                        onPressed: _showEditSheet,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: AppButton(
+                        label: 'انشر حسابك',
+                        icon: Icons.ios_share_rounded,
+                        variant: AppButtonVariant.primary,
+                        onPressed: () => shareProfile(
+                          context,
+                          username: p.user.username,
+                          displayName: p.user.displayName ?? p.user.username,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

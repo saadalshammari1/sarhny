@@ -20,6 +20,7 @@ import '../features/post/presentation/pages/post_detail_page.dart';
 import '../features/profile/presentation/pages/badge_explainer_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/pages/public_profile_page.dart';
+import '../features/search/presentation/pages/search_page.dart';
 import '../features/profile/presentation/pages/saved_posts_page.dart';
 import '../features/settings/presentation/pages/blocked_accounts_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
@@ -47,6 +48,7 @@ class AppRoutes {
   static String postDetail(int id) => '/post/$id';
   static String userProfile(String username) => '/u/$username';
   static String badgeExplainer(String kind) => '/learn/$kind';
+  static const String search = '/search';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -150,6 +152,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           return BadgeExplainerPage.fromName(kind);
         },
       ),
+      GoRoute(path: AppRoutes.search, builder: (_, __) => const SearchPage()),
       GoRoute(path: AppRoutes.help, builder: (_, __) => const HelpPage()),
       GoRoute(
         path: AppRoutes.terms,

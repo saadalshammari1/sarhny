@@ -27,6 +27,11 @@ import '../providers/profile_provider.dart';
 import '../../../article/data/article_repository.dart';
 import '../../../article/presentation/providers/article_providers.dart';
 
+String _safeDate(String? s) {
+  if (s == null || s.isEmpty) return '';
+  return s.length >= 10 ? s.substring(0, 10) : s;
+}
+
 /// Authenticated user's own profile.
 /// Mirrors PublicProfilePage but adds edit + avatar/cover upload + tab on
 /// "active/crystals/likes" with full CRUD over the user's data.
@@ -551,7 +556,6 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
                     displayName: p.user.displayName,
                   ),
                   onArticle: () => context.push('/me/article'),
-                  onGame: () => context.push('/game'),
                 ),
               ],
             ),
@@ -788,7 +792,7 @@ class _ArticleTabCurrent extends StatelessWidget {
             if (article.generatedAt != null) ...[
               const SizedBox(width: 8),
               Text(
-                article.generatedAt!.substring(0, 10),
+                _safeDate(article.generatedAt),
                 style: TextStyle(color: c.textSecondary, fontSize: 11),
               ),
             ],
@@ -825,7 +829,7 @@ class _ArticleTabHistoryRow extends StatelessWidget {
         children: [
           if (item.generatedAt != null)
             Text(
-              item.generatedAt!.substring(0, 10),
+              _safeDate(item.generatedAt),
               style: TextStyle(
                 color: c.textSecondary,
                 fontSize: 10,
@@ -848,12 +852,10 @@ class _ProfileActionsRow extends StatelessWidget {
     required this.onEdit,
     required this.onShare,
     required this.onArticle,
-    required this.onGame,
   });
   final VoidCallback onEdit;
   final VoidCallback onShare;
   final VoidCallback onArticle;
-  final VoidCallback onGame;
 
   @override
   Widget build(BuildContext context) {
@@ -884,13 +886,6 @@ class _ProfileActionsRow extends StatelessWidget {
         label: 'شخصيتي',
         color: colors.crystal,
         onTap: onArticle,
-        filled: false,
-      ),
-      (
-        icon: Icons.sports_esports_outlined,
-        label: 'تحدّى',
-        color: colors.face,
-        onTap: onGame,
         filled: false,
       ),
     ];
@@ -1054,17 +1049,17 @@ class _Stats extends ConsumerWidget {
                   _format(value),
                   style: TextStyle(
                     color: accent ?? colors.textPrimary,
-                    fontSize: 19,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
+                    letterSpacing: 0.2,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   label,
                   style: TextStyle(
                     color: colors.textSecondary,
-                    fontSize: 11,
+                    fontSize: 10,
                   ),
                 ),
               ],
@@ -1143,56 +1138,128 @@ class _BadgesRow extends StatelessWidget {
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        children: badges
-            .map((b) => Padding(
-                  padding: const EdgeInsetsDirectional.only(end: 8),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () =>
-                        context.push(AppRoutes.badgeExplainer(b.kind)),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: b.color.withValues(alpha: 0.08),
-                        border: Border.all(
-                            color: b.color.withValues(alpha: 0.3)),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(b.icon, color: b.color, size: 18),
-                          const SizedBox(width: 8),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${b.count}',
-                                style: TextStyle(
-                                  color: colors.textPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                ),
+        children: [
+          ...badges.map((b) => Padding(
+                padding: const EdgeInsetsDirectional.only(end: 8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () =>
+                      context.push(AppRoutes.badgeExplainer(b.kind)),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: b.color.withValues(alpha: 0.08),
+                      border: Border.all(
+                          color: b.color.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(b.icon, color: b.color, size: 18),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${b.count}',
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
                               ),
-                              Text(
-                                b.label,
-                                style: TextStyle(
-                                  color: colors.textSecondary,
-                                  fontSize: 11,
-                                ),
+                            ),
+                            Text(
+                              b.label,
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 11,
                               ),
-                            ],
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(Icons.info_outline,
-                              size: 12,
-                              color: b.color.withValues(alpha: 0.6)),
-                        ],
-                      ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.info_outline,
+                            size: 12,
+                            color: b.color.withValues(alpha: 0.6)),
+                      ],
                     ),
                   ),
-                ))
-            .toList(),
+                ),
+              )),
+          // Challenge — special "glowing" badge so users notice it next to
+          // the passive stat badges. Soft outer glow, slightly stronger
+          // border, gradient fill. Routes straight to the game lobby.
+          _ChallengeBadge(onTap: () => context.push('/game')),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChallengeBadge extends StatelessWidget {
+  const _ChallengeBadge({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.sarhnyColors;
+    final accent = colors.face;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(end: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                accent.withValues(alpha: 0.22),
+                accent.withValues(alpha: 0.10),
+              ],
+            ),
+            border: Border.all(color: accent.withValues(alpha: 0.55)),
+            borderRadius: BorderRadius.circular(14),
+            // Subtle outer glow — soft and warm, doesn't dominate.
+            boxShadow: [
+              BoxShadow(
+                color: accent.withValues(alpha: 0.35),
+                blurRadius: 10,
+                spreadRadius: 0.5,
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.sports_esports, color: accent, size: 18),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'العب',
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    'وتحدّى',
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1281,31 +1348,25 @@ class _QuickLinks extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    // 3-up row: محفوظاتي / شخصيتي / المساعدة. The other links (إشعاراتي،
+    // صندوقي، الإعدادات) live in the top app-bar / bottom nav so we don't
+    // need them here too. شخصيتي gets first-class placement to drive
+    // engagement with the AI personality feature.
     final items = <(IconData, String, VoidCallback)>[
-      (
-        Icons.notifications_outlined,
-        'إشعاراتي',
-        () => context.push(AppRoutes.notifications),
-      ),
       (
         Icons.bookmark_outline,
         'محفوظاتي',
         () => context.push(AppRoutes.saved),
       ),
       (
-        Icons.mail_outline,
-        'صندوقي',
-        () => context.push(AppRoutes.inbox),
+        Icons.auto_awesome,
+        'شخصيتي',
+        () => context.push(AppRoutes.myArticle),
       ),
       (
         Icons.help_outline,
         'المساعدة',
         () => context.push(AppRoutes.help),
-      ),
-      (
-        Icons.settings_outlined,
-        'الإعدادات',
-        () => context.push(AppRoutes.settings),
       ),
     ];
     return Container(

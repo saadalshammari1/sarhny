@@ -7,6 +7,14 @@ import '../../../../core/api/api_exceptions.dart';
 import '../../data/article_repository.dart';
 import '../providers/article_providers.dart';
 
+/// Backend returns dates as "YYYY-MM-DD HH:MM:SS"; defensively grab the
+/// date portion without assuming length to avoid RangeError on edge cases
+/// (empty/null/unexpectedly-short strings).
+String _safeDate(String? s) {
+  if (s == null || s.isEmpty) return '';
+  return s.length >= 10 ? s.substring(0, 10) : s;
+}
+
 /// "شخصيتي" landing page — single source of truth for the article feature.
 ///
 /// Flow at a glance:
@@ -25,6 +33,35 @@ class MyArticlePage extends ConsumerWidget {
     final article = ref.watch(myArticleProvider);
     final history = ref.watch(articleHistoryProvider);
 
+    // Wrap every state in a scrollable so RefreshIndicator always has a
+    // valid child + the Scaffold/AppBar always renders. White screens were
+    // happening when the body returned a non-scrollable Center on first
+    // load, which sometimes left the body slot blank under release builds.
+    Widget bodyChild;
+    if (eligibility.isLoading || (eligibility.hasValue && article.isLoading)) {
+      bodyChild = const _ScrollableCenter(child: CircularProgressIndicator());
+    } else if (eligibility.hasError) {
+      bodyChild = _ScrollableCenter(
+        child: _ErrorBox(
+          message: eligibility.error.toString(),
+          onRetry: () => ref.invalidate(articleEligibilityProvider),
+        ),
+      );
+    } else if (article.hasError) {
+      bodyChild = _ScrollableCenter(
+        child: _ErrorBox(
+          message: article.error.toString(),
+          onRetry: () => ref.invalidate(myArticleProvider),
+        ),
+      );
+    } else {
+      bodyChild = _Body(
+        eligibility: eligibility.requireValue,
+        article: article.valueOrNull,
+        history: history.value ?? const [],
+      );
+    }
+
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(title: const Text('شخصيتي ✨')),
@@ -35,24 +72,26 @@ class MyArticlePage extends ConsumerWidget {
           ref.invalidate(myArticleProvider);
           ref.invalidate(articleHistoryProvider);
         },
-        child: eligibility.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => _ErrorBox(
-            message: e.toString(),
-            onRetry: () => ref.invalidate(articleEligibilityProvider),
-          ),
-          data: (e) => article.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, _) => _ErrorBox(
-              message: err.toString(),
-              onRetry: () => ref.invalidate(myArticleProvider),
-            ),
-            data: (a) => _Body(
-              eligibility: e,
-              article: a,
-              history: history.value ?? const [],
-            ),
-          ),
+        child: bodyChild,
+      ),
+    );
+  }
+}
+
+/// Tiny helper — RefreshIndicator needs a Scrollable child to actually
+/// pull-to-refresh. Wrapping the spinner/error in a ListView keeps the
+/// gesture working and prevents the "blank body" failure mode.
+class _ScrollableCenter extends StatelessWidget {
+  const _ScrollableCenter({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (_, c) => SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: c.maxHeight),
+          child: Center(child: child),
         ),
       ),
     );
@@ -230,7 +269,12 @@ class _CtaCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(99),
               child: LinearProgressIndicator(
-                value: (e.cooldownDays - e.daysRemaining) / e.cooldownDays,
+                // Guard against backend returning cooldownDays=0 (would
+                // produce NaN and silently break the indicator).
+                value: e.cooldownDays > 0
+                    ? ((e.cooldownDays - e.daysRemaining) / e.cooldownDays)
+                        .clamp(0.0, 1.0)
+                    : 0.0,
                 minHeight: 6,
                 backgroundColor: c.elevated,
                 valueColor: AlwaysStoppedAnimation<Color>(c.crystal),
@@ -457,7 +501,7 @@ class _ArticleCardState extends ConsumerState<_ArticleCard> {
                 if (a.generatedAt != null) ...[
                   const SizedBox(width: 8),
                   Text(
-                    a.generatedAt!.substring(0, 10),
+                    _safeDate(a.generatedAt),
                     style: TextStyle(color: c.textSecondary, fontSize: 11),
                   ),
                 ],
@@ -601,7 +645,7 @@ class _HistoryCardState extends ConsumerState<_HistoryCard> {
                       children: [
                         if (h.generatedAt != null)
                           Text(
-                            h.generatedAt!.substring(0, 10),
+                            _safeDate(h.generatedAt),
                             style: TextStyle(
                               color: c.textSecondary,
                               fontSize: 11,

@@ -163,16 +163,26 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            for (final r in reasons)
-              RadioListTile<String>(
-                value: r,
-                groupValue: _picked,
-                onChanged: (v) => setState(() => _picked = v),
-                title: Text(r, style: const TextStyle(fontSize: 14)),
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                visualDensity: VisualDensity.compact,
+            // RadioGroup wraps once and provides the groupValue/onChanged to
+            // every RadioListTile child — the per-tile parameters were
+            // deprecated in Flutter 3.32 and break --fatal-infos analyze runs.
+            RadioGroup<String>(
+              groupValue: _picked,
+              onChanged: (v) => setState(() => _picked = v),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final r in reasons)
+                    RadioListTile<String>(
+                      value: r,
+                      title: Text(r, style: const TextStyle(fontSize: 14)),
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                ],
               ),
+            ),
             const SizedBox(height: 6),
             TextField(
               controller: _noteCtrl,

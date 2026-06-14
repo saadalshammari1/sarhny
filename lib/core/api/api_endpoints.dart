@@ -142,4 +142,15 @@ class ApiEndpoints {
   /// `report_post_id` / `report_user_id` + `reason`.
   static const String reportPost = '/api/v1/post-reports';
   static const String reportUser = '/api/v1/users-reports';
+
+  // ────────── AI Article ──────────
+  static const String questionnaire = '/api/v1/questionnaire';
+  static const String questionnaireAnswer = '/api/v1/questionnaire/answer';
+  static const String questionnaireMe = '/api/v1/questionnaire/me';
+  static const String questionnaireProgress = '/api/v1/questionnaire/progress';
+  static const String articleGenerate = '/api/v1/article/generate';
+  static const String articleMe = '/api/v1/article/me';
+  static const String articlePublish = '/api/v1/article/publish';
+  static String publicArticle(String username) =>
+      '/api/v1/public/article/$username';
 }

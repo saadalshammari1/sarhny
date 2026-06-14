@@ -21,6 +21,10 @@ import '../features/profile/presentation/pages/badge_explainer_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/pages/public_profile_page.dart';
 import '../features/search/presentation/pages/search_page.dart';
+import '../features/article/presentation/pages/my_article_page.dart';
+import '../features/article/presentation/pages/questionnaire_page.dart';
+import '../features/game/presentation/pages/game_lobby_page.dart';
+import '../features/game/presentation/pages/game_play_page.dart';
 import '../features/profile/presentation/pages/saved_posts_page.dart';
 import '../features/settings/presentation/pages/blocked_accounts_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
@@ -49,6 +53,10 @@ class AppRoutes {
   static String userProfile(String username) => '/u/$username';
   static String badgeExplainer(String kind) => '/learn/$kind';
   static const String search = '/search';
+  static const String myArticle = '/me/article';
+  static const String questionnaire = '/me/questionnaire';
+  static const String gameLobby = '/game';
+  static String gamePlay(String id) => '/game/play/$id';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -153,6 +161,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(path: AppRoutes.search, builder: (_, __) => const SearchPage()),
+      GoRoute(path: AppRoutes.myArticle, builder: (_, __) => const MyArticlePage()),
+      GoRoute(path: AppRoutes.questionnaire, builder: (_, __) => const QuestionnairePage()),
+      GoRoute(path: AppRoutes.gameLobby, builder: (_, __) => const GameLobbyPage()),
+      GoRoute(
+        path: '/game/play/:id',
+        builder: (_, state) => GamePlayPage(gameId: state.pathParameters['id'] ?? ''),
+      ),
       GoRoute(path: AppRoutes.help, builder: (_, __) => const HelpPage()),
       GoRoute(
         path: AppRoutes.terms,

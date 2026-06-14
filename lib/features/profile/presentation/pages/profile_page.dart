@@ -558,6 +558,28 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'شخصيتي ✨',
+                        icon: Icons.auto_awesome,
+                        variant: AppButtonVariant.secondary,
+                        onPressed: () => context.push('/me/article'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: AppButton(
+                        label: 'تحدّى 🎮',
+                        icon: Icons.sports_esports_outlined,
+                        variant: AppButtonVariant.secondary,
+                        onPressed: () => context.push('/game'),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

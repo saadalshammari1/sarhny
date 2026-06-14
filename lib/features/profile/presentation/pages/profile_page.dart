@@ -11,6 +11,7 @@ import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
 import '../../../../core/api/dto.dart';
+import '../../../../core/providers/app_settings_providers.dart';
 import '../../../../core/providers/auth_providers.dart';
 import '../../../../core/utils/media.dart';
 import '../../../../core/widgets/app_avatar.dart';
@@ -167,6 +168,29 @@ class _AuthedProfileBodyState extends ConsumerState<_AuthedProfileBody> {
                   username: widget.profile.user.username,
                   displayName: widget.profile.user.displayName,
                 ),
+              ),
+              // Theme toggle — quick way to flip light/dark without
+              // diving into settings. Icon reflects the *current* mode so
+              // it always shows you what you'll switch to (sun = "I'm in
+              // dark, tap to go light").
+              Consumer(
+                builder: (_, ref, __) {
+                  final mode = ref.watch(themeModeProvider);
+                  final isDark = mode == ThemeMode.dark ||
+                      (mode == ThemeMode.system &&
+                          MediaQuery.platformBrightnessOf(context) ==
+                              Brightness.dark);
+                  return IconButton(
+                    icon: Icon(
+                      isDark
+                          ? Icons.light_mode_outlined
+                          : Icons.dark_mode_outlined,
+                    ),
+                    tooltip: isDark ? 'الوضع النهاري' : 'الوضع الليلي',
+                    onPressed: () =>
+                        ref.read(themeModeProvider.notifier).toggle(),
+                  );
+                },
               ),
               IconButton(
                 icon: const Icon(Icons.settings_outlined),
@@ -982,30 +1006,34 @@ class _QuickLinks extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
-    // 4-up row: محفوظاتي / شخصيتي / العب وتحدى / المساعدة. Game is here
-    // now (was a separate glowing badge before) so it sits in a calmer
-    // place with the other utility links. شخصيتي gets prime middle slot
-    // to drive engagement with the AI personality feature.
-    final items = <(IconData, String, VoidCallback)>[
+    // 3-up row: محفوظاتي / العب وتحدى / المساعدة.
+    // العب وتحدى sits in the middle with a purple (mind) accent so it
+    // visually anchors the row and signals "the fun thing" between two
+    // utility links. Color uses colors.mind so it adapts cleanly between
+    // light/dark themes (mindLight 0xFF7A64C0 vs mindDark 0xFFA896DC).
+    final items = <({
+      IconData icon,
+      String label,
+      VoidCallback onTap,
+      bool highlight,
+    })>[
       (
-        Icons.bookmark_outline,
-        'محفوظاتي',
-        () => context.push(AppRoutes.saved),
+        icon: Icons.bookmark_outline,
+        label: 'محفوظاتي',
+        onTap: () => context.push(AppRoutes.saved),
+        highlight: false,
       ),
       (
-        Icons.auto_awesome,
-        'شخصيتي',
-        () => context.push(AppRoutes.myArticle),
+        icon: Icons.sports_esports_outlined,
+        label: 'العب وتحدى',
+        onTap: () => context.push('/game'),
+        highlight: true,
       ),
       (
-        Icons.sports_esports_outlined,
-        'العب وتحدى',
-        () => context.push('/game'),
-      ),
-      (
-        Icons.help_outline,
-        'المساعدة',
-        () => context.push(AppRoutes.help),
+        icon: Icons.help_outline,
+        label: 'المساعدة',
+        onTap: () => context.push(AppRoutes.help),
+        highlight: false,
       ),
     ];
     return Container(
@@ -1020,41 +1048,65 @@ class _QuickLinks extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: items
             .map(
-              (item) => Expanded(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: item.$3,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: colors.moment.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(10),
+              (item) {
+                final accent = item.highlight ? colors.mind : colors.moment;
+                // Highlight: filled purple tile with a tiny glow, vs the
+                // calm flat-tint used by the utility links.
+                final tileBg = item.highlight
+                    ? accent.withValues(alpha: 0.18)
+                    : accent.withValues(alpha: 0.08);
+                final tileBorder = item.highlight
+                    ? accent.withValues(alpha: 0.55)
+                    : Colors.transparent;
+                return Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: item.onTap,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: tileBg,
+                              borderRadius: BorderRadius.circular(11),
+                              border: Border.all(color: tileBorder, width: 1),
+                              boxShadow: item.highlight
+                                  ? [
+                                      BoxShadow(
+                                        color: accent.withValues(alpha: 0.30),
+                                        blurRadius: 8,
+                                        spreadRadius: 0.5,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Icon(item.icon, color: accent, size: 17),
                           ),
-                          child: Icon(item.$1,
-                              color: colors.moment, size: 16),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          item.$2,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            color: colors.textSecondary,
-                            fontWeight: FontWeight.w500,
+                          const SizedBox(height: 3),
+                          Text(
+                            item.label,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              color: item.highlight
+                                  ? accent
+                                  : colors.textSecondary,
+                              fontWeight: item.highlight
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             )
             .toList(),
       ),

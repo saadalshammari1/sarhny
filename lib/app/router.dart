@@ -24,6 +24,13 @@ import '../features/search/presentation/pages/search_page.dart';
 import '../features/article/presentation/pages/my_article_page.dart';
 import '../features/game/presentation/pages/game_lobby_page.dart';
 import '../features/game/presentation/pages/game_play_page.dart';
+import '../features/games/games_hub_page.dart';
+import '../features/games/carrom/application/carrom_match_state.dart';
+import '../features/games/carrom/presentation/pages/carrom_cosmetics_page.dart';
+import '../features/games/carrom/presentation/pages/carrom_game_over_page.dart';
+import '../features/games/carrom/presentation/pages/carrom_lobby_page.dart';
+import '../features/games/carrom/presentation/pages/carrom_match_page.dart';
+import '../features/games/carrom/presentation/pages/carrom_matchmaking_page.dart';
 import '../features/profile/presentation/pages/saved_posts_page.dart';
 import '../features/settings/presentation/pages/blocked_accounts_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
@@ -55,6 +62,15 @@ class AppRoutes {
   static const String myArticle = '/me/article';
   static const String gameLobby = '/game';
   static String gamePlay(String id) => '/game/play/$id';
+
+  // Games hub + Carrom
+  static const String gamesHub = '/games';
+  static const String carromLobby = '/games/carrom';
+  static const String carromCosmetics = '/games/carrom/cosmetics';
+  static const String carromMatchmaking = '/games/carrom/matchmaking';
+  static String carromMatch(String roomId) => '/games/carrom/match/$roomId';
+  static String carromGameOver(String roomId) =>
+      '/games/carrom/over/$roomId';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -164,6 +180,43 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/game/play/:id',
         builder: (_, state) => GamePlayPage(gameId: state.pathParameters['id'] ?? ''),
+      ),
+      // ────────── Games Hub + Carrom ──────────
+      GoRoute(path: AppRoutes.gamesHub, builder: (_, __) => const GamesHubPage()),
+      GoRoute(
+        path: AppRoutes.carromLobby,
+        builder: (_, __) => const CarromLobbyPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.carromCosmetics,
+        builder: (_, __) => const CarromCosmeticsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.carromMatchmaking,
+        builder: (_, __) => const CarromMatchmakingPage(),
+      ),
+      GoRoute(
+        path: '/games/carrom/match/:roomId',
+        builder: (_, state) => CarromMatchPage(
+          roomId: state.pathParameters['roomId'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/games/carrom/over/:roomId',
+        builder: (_, state) {
+          final outcome = state.extra;
+          // Fallback لو المستخدم refreshe الصفحة بدون extra — نرجعه للوبي.
+          if (outcome is! CarromOutcome) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              // ignore: use_build_context_synchronously
+            });
+            return const CarromLobbyPage();
+          }
+          return CarromGameOverPage(
+            roomId: state.pathParameters['roomId'] ?? '',
+            outcome: outcome,
+          );
+        },
       ),
       GoRoute(path: AppRoutes.help, builder: (_, __) => const HelpPage()),
       GoRoute(

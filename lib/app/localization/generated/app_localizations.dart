@@ -601,6 +601,204 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'لا يوجد محتوى'**
   String get commonEmpty;
+
+  /// No description provided for @gamesHubTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الألعاب'**
+  String get gamesHubTitle;
+
+  /// No description provided for @carromTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'كيرم 1v1'**
+  String get carromTitle;
+
+  /// No description provided for @carromSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تحدّى منافساً مجهولاً — اربح نقاطه'**
+  String get carromSubtitle;
+
+  /// No description provided for @carromLobbyPlayRandom.
+  ///
+  /// In ar, this message translates to:
+  /// **'ابدأ مباراة عشوائية'**
+  String get carromLobbyPlayRandom;
+
+  /// No description provided for @carromLobbyPlayRandomSub.
+  ///
+  /// In ar, this message translates to:
+  /// **'ابحث عن منافس متاح الآن'**
+  String get carromLobbyPlayRandomSub;
+
+  /// No description provided for @carromLobbyInvite.
+  ///
+  /// In ar, this message translates to:
+  /// **'العب مع صديق'**
+  String get carromLobbyInvite;
+
+  /// No description provided for @carromLobbyInviteSub.
+  ///
+  /// In ar, this message translates to:
+  /// **'أنشئ رمز دعوة وشاركه'**
+  String get carromLobbyInviteSub;
+
+  /// No description provided for @carromLobbyJoinByCode.
+  ///
+  /// In ar, this message translates to:
+  /// **'انضم بدعوة'**
+  String get carromLobbyJoinByCode;
+
+  /// No description provided for @carromLobbyJoinHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'الصق الرمز'**
+  String get carromLobbyJoinHint;
+
+  /// No description provided for @carromLobbyJoinAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'انضم'**
+  String get carromLobbyJoinAction;
+
+  /// No description provided for @carromLobbyEntryFee.
+  ///
+  /// In ar, this message translates to:
+  /// **'دخول {entry} — الفائز يأخذ {pot}'**
+  String carromLobbyEntryFee(Object entry, Object pot);
+
+  /// No description provided for @carromMmSearching.
+  ///
+  /// In ar, this message translates to:
+  /// **'البحث عن منافس...'**
+  String get carromMmSearching;
+
+  /// No description provided for @carromMmCancel.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء البحث'**
+  String get carromMmCancel;
+
+  /// No description provided for @carromMmQueue.
+  ///
+  /// In ar, this message translates to:
+  /// **'ترتيبك في الطابور: {pos}'**
+  String carromMmQueue(Object pos);
+
+  /// No description provided for @carromMatchYourTurn.
+  ///
+  /// In ar, this message translates to:
+  /// **'دورك'**
+  String get carromMatchYourTurn;
+
+  /// No description provided for @carromMatchOppTurn.
+  ///
+  /// In ar, this message translates to:
+  /// **'دور الخصم'**
+  String get carromMatchOppTurn;
+
+  /// No description provided for @carromMatchConcede.
+  ///
+  /// In ar, this message translates to:
+  /// **'استسلام'**
+  String get carromMatchConcede;
+
+  /// No description provided for @carromMatchConcedeConfirm.
+  ///
+  /// In ar, this message translates to:
+  /// **'إذا انسحبت الآن، يفوز خصمك بالنقاط كاملة.'**
+  String get carromMatchConcedeConfirm;
+
+  /// No description provided for @carromMatchReconnect.
+  ///
+  /// In ar, this message translates to:
+  /// **'إعادة الاتصال بالخادم...'**
+  String get carromMatchReconnect;
+
+  /// No description provided for @carromOpponentUnknown.
+  ///
+  /// In ar, this message translates to:
+  /// **'خصم مجهول'**
+  String get carromOpponentUnknown;
+
+  /// No description provided for @carromOpponentTurnNow.
+  ///
+  /// In ar, this message translates to:
+  /// **'دوره الآن'**
+  String get carromOpponentTurnNow;
+
+  /// No description provided for @carromOpponentWaiting.
+  ///
+  /// In ar, this message translates to:
+  /// **'بانتظار الدور'**
+  String get carromOpponentWaiting;
+
+  /// No description provided for @carromAimHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'اسحب من الستراكر للداخل لتصويب'**
+  String get carromAimHint;
+
+  /// No description provided for @carromGameOverWon.
+  ///
+  /// In ar, this message translates to:
+  /// **'فزت!'**
+  String get carromGameOverWon;
+
+  /// No description provided for @carromGameOverLost.
+  ///
+  /// In ar, this message translates to:
+  /// **'حظ أوفر'**
+  String get carromGameOverLost;
+
+  /// No description provided for @carromGameOverReveal.
+  ///
+  /// In ar, this message translates to:
+  /// **'اكشف هويتك للخصم'**
+  String get carromGameOverReveal;
+
+  /// No description provided for @carromGameOverHide.
+  ///
+  /// In ar, this message translates to:
+  /// **'أخفِ هويتي'**
+  String get carromGameOverHide;
+
+  /// No description provided for @carromGameOverSarhny.
+  ///
+  /// In ar, this message translates to:
+  /// **'أرسل رسالة صراحة'**
+  String get carromGameOverSarhny;
+
+  /// No description provided for @carromGameOverRematch.
+  ///
+  /// In ar, this message translates to:
+  /// **'مباراة جديدة'**
+  String get carromGameOverRematch;
+
+  /// No description provided for @carromGameOverLobby.
+  ///
+  /// In ar, this message translates to:
+  /// **'اللوبي'**
+  String get carromGameOverLobby;
+
+  /// No description provided for @carromWalletEarn1.
+  ///
+  /// In ar, this message translates to:
+  /// **'كل رسالة صراحة تستقبلها'**
+  String get carromWalletEarn1;
+
+  /// No description provided for @carromWalletEarn2.
+  ///
+  /// In ar, this message translates to:
+  /// **'مشاهدة إعلان قصير'**
+  String get carromWalletEarn2;
+
+  /// No description provided for @carromWalletEarn3.
+  ///
+  /// In ar, this message translates to:
+  /// **'الفوز في مباراة كيرم'**
+  String get carromWalletEarn3;
 }
 
 class _AppLocalizationsDelegate

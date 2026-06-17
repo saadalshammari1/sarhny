@@ -259,4 +259,108 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get commonEmpty => 'لا يوجد محتوى';
+
+  @override
+  String get gamesHubTitle => 'الألعاب';
+
+  @override
+  String get carromTitle => 'كيرم 1v1';
+
+  @override
+  String get carromSubtitle => 'تحدّى منافساً مجهولاً — اربح نقاطه';
+
+  @override
+  String get carromLobbyPlayRandom => 'ابدأ مباراة عشوائية';
+
+  @override
+  String get carromLobbyPlayRandomSub => 'ابحث عن منافس متاح الآن';
+
+  @override
+  String get carromLobbyInvite => 'العب مع صديق';
+
+  @override
+  String get carromLobbyInviteSub => 'أنشئ رمز دعوة وشاركه';
+
+  @override
+  String get carromLobbyJoinByCode => 'انضم بدعوة';
+
+  @override
+  String get carromLobbyJoinHint => 'الصق الرمز';
+
+  @override
+  String get carromLobbyJoinAction => 'انضم';
+
+  @override
+  String carromLobbyEntryFee(Object entry, Object pot) {
+    return 'دخول $entry — الفائز يأخذ $pot';
+  }
+
+  @override
+  String get carromMmSearching => 'البحث عن منافس...';
+
+  @override
+  String get carromMmCancel => 'إلغاء البحث';
+
+  @override
+  String carromMmQueue(Object pos) {
+    return 'ترتيبك في الطابور: $pos';
+  }
+
+  @override
+  String get carromMatchYourTurn => 'دورك';
+
+  @override
+  String get carromMatchOppTurn => 'دور الخصم';
+
+  @override
+  String get carromMatchConcede => 'استسلام';
+
+  @override
+  String get carromMatchConcedeConfirm =>
+      'إذا انسحبت الآن، يفوز خصمك بالنقاط كاملة.';
+
+  @override
+  String get carromMatchReconnect => 'إعادة الاتصال بالخادم...';
+
+  @override
+  String get carromOpponentUnknown => 'خصم مجهول';
+
+  @override
+  String get carromOpponentTurnNow => 'دوره الآن';
+
+  @override
+  String get carromOpponentWaiting => 'بانتظار الدور';
+
+  @override
+  String get carromAimHint => 'اسحب من الستراكر للداخل لتصويب';
+
+  @override
+  String get carromGameOverWon => 'فزت!';
+
+  @override
+  String get carromGameOverLost => 'حظ أوفر';
+
+  @override
+  String get carromGameOverReveal => 'اكشف هويتك للخصم';
+
+  @override
+  String get carromGameOverHide => 'أخفِ هويتي';
+
+  @override
+  String get carromGameOverSarhny => 'أرسل رسالة صراحة';
+
+  @override
+  String get carromGameOverRematch => 'مباراة جديدة';
+
+  @override
+  String get carromGameOverLobby => 'اللوبي';
+
+  @override
+  String get carromWalletEarn1 => 'كل رسالة صراحة تستقبلها';
+
+  @override
+  String get carromWalletEarn2 => 'مشاهدة إعلان قصير';
+
+  @override
+  String get carromWalletEarn3 => 'الفوز في مباراة كيرم';
 }

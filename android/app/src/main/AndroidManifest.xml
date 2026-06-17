@@ -67,10 +67,12 @@
             android:name="flutterEmbedding"
             android:value="2"/>
 
-        <!-- AdMob: required application identifier for google_mobile_ads. -->
+        <!-- AdMob Android app identifier. The iOS plist uses a different
+             one (~6128384459) — each platform has its own AdMob "app" in
+             the console with separate revenue tracking. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-6938029578060572~6128384459"/>
+            android:value="ca-app-pub-6938029578060572~4683423338"/>
     </application>
 
     <queries>

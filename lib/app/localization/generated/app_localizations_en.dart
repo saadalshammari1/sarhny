@@ -260,4 +260,109 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonEmpty => 'No content';
+
+  @override
+  String get gamesHubTitle => 'Games';
+
+  @override
+  String get carromTitle => 'Carrom 1v1';
+
+  @override
+  String get carromSubtitle =>
+      'Challenge an anonymous opponent — win their points';
+
+  @override
+  String get carromLobbyPlayRandom => 'Start random match';
+
+  @override
+  String get carromLobbyPlayRandomSub => 'Find an opponent available now';
+
+  @override
+  String get carromLobbyInvite => 'Play with a friend';
+
+  @override
+  String get carromLobbyInviteSub => 'Generate an invite code to share';
+
+  @override
+  String get carromLobbyJoinByCode => 'Join with code';
+
+  @override
+  String get carromLobbyJoinHint => 'Paste the code';
+
+  @override
+  String get carromLobbyJoinAction => 'Join';
+
+  @override
+  String carromLobbyEntryFee(Object entry, Object pot) {
+    return 'Entry $entry — winner takes $pot';
+  }
+
+  @override
+  String get carromMmSearching => 'Finding opponent...';
+
+  @override
+  String get carromMmCancel => 'Cancel search';
+
+  @override
+  String carromMmQueue(Object pos) {
+    return 'Your queue position: $pos';
+  }
+
+  @override
+  String get carromMatchYourTurn => 'Your turn';
+
+  @override
+  String get carromMatchOppTurn => 'Opponent\'s turn';
+
+  @override
+  String get carromMatchConcede => 'Concede';
+
+  @override
+  String get carromMatchConcedeConfirm =>
+      'If you concede now, your opponent wins the full pot.';
+
+  @override
+  String get carromMatchReconnect => 'Reconnecting to server...';
+
+  @override
+  String get carromOpponentUnknown => 'Anonymous opponent';
+
+  @override
+  String get carromOpponentTurnNow => 'Their turn';
+
+  @override
+  String get carromOpponentWaiting => 'Waiting for turn';
+
+  @override
+  String get carromAimHint => 'Drag from the striker inward to aim';
+
+  @override
+  String get carromGameOverWon => 'You won!';
+
+  @override
+  String get carromGameOverLost => 'Better luck next time';
+
+  @override
+  String get carromGameOverReveal => 'Reveal your identity';
+
+  @override
+  String get carromGameOverHide => 'Stay anonymous';
+
+  @override
+  String get carromGameOverSarhny => 'Send a Sarhny message';
+
+  @override
+  String get carromGameOverRematch => 'New match';
+
+  @override
+  String get carromGameOverLobby => 'Lobby';
+
+  @override
+  String get carromWalletEarn1 => 'Each Sarhny message you receive';
+
+  @override
+  String get carromWalletEarn2 => 'Watch a short ad';
+
+  @override
+  String get carromWalletEarn3 => 'Win a Carrom match';
 }

@@ -21,11 +21,14 @@ class GameSnapshot {
     required this.oppLocked,
     required this.waitingForOpponent,
     required this.isInvite,
+    this.phase,
     this.inviteCode,
     this.isWinner,
     this.winnerKnown = false,
     this.finalQuestionText,
     this.finalQuestionDeadline,
+    this.finalAnswerStartedAt,
+    this.finalAnswerDeadline,
     this.finalAnswer,
     this.finalSkipUsed = false,
     this.currentMyChoice,
@@ -39,7 +42,7 @@ class GameSnapshot {
 
   final String gameId;
   final String role; // 'a' or 'b'
-  final String status; // waiting | playing | final | answered | abandoned
+  final String status; // waiting | playing | final | answering | answered | abandoned
   final String mood; // light | bold | funny
   final int scoreMe;
   final int scoreOpp;
@@ -49,11 +52,20 @@ class GameSnapshot {
   final bool oppLocked;
   final bool waitingForOpponent;
   final bool isInvite;
+  /// Server-derived UI phase. Values:
+  /// * `writing_question`           — winner is composing
+  /// * `waiting_winner_question`    — loser is sitting on a waiting screen
+  /// * `answer`                     — loser sees the question, timer ticking
+  /// * `answered`                   — final reveal
+  /// Falls back to deriving from [status] when null (older servers).
+  final String? phase;
   final String? inviteCode;
   final bool? isWinner;
   final bool winnerKnown;
   final String? finalQuestionText;
   final double? finalQuestionDeadline;
+  final double? finalAnswerStartedAt;
+  final double? finalAnswerDeadline;
   final String? finalAnswer;
   final bool finalSkipUsed;
   final String? currentMyChoice;
@@ -80,11 +92,14 @@ class GameSnapshot {
       oppLocked: j['opp_locked'] == true,
       waitingForOpponent: j['waiting_for_opponent'] == true,
       isInvite: j['is_invite'] == true,
+      phase: j['phase']?.toString(),
       inviteCode: j['invite_code']?.toString(),
       isWinner: j['is_winner'] as bool?,
       winnerKnown: j['winner_known'] == true,
       finalQuestionText: j['final_question_text']?.toString(),
       finalQuestionDeadline: (j['final_question_deadline'] as num?)?.toDouble(),
+      finalAnswerStartedAt: (j['final_answer_started_at'] as num?)?.toDouble(),
+      finalAnswerDeadline: (j['final_answer_deadline'] as num?)?.toDouble(),
       finalAnswer: j['final_answer']?.toString(),
       finalSkipUsed: j['final_skip_used'] == true,
       currentMyChoice: cur['my_choice']?.toString(),
@@ -186,6 +201,30 @@ class GameRepository {
     );
   }
 
+  /// Post my rematch intent (accept|decline). Returns the canonical
+  /// status straight away — caller can short-circuit if matched/declined.
+  Future<RematchStatus> rematch(String gameId, String action) async {
+    final r = await _client.raw.post<dynamic>(
+      '/api/v1/game/$gameId/rematch',
+      data: {'action': action},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    _ensureSuccess(r);
+    final data = ((r.data as Map)['data'] as Map).cast<String, dynamic>();
+    return RematchStatus.fromJson(data);
+  }
+
+  /// Poll target for the rematch wait UI.
+  Future<RematchStatus> rematchStatus(String gameId) async {
+    final r = await _client.raw.get<dynamic>(
+      '/api/v1/game/$gameId/rematch-status',
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    _ensureSuccess(r);
+    final data = ((r.data as Map)['data'] as Map).cast<String, dynamic>();
+    return RematchStatus.fromJson(data);
+  }
+
   void _ensureSuccess(Response<dynamic> r) {
     final body = r.data;
     if (r.statusCode != null && r.statusCode! >= 200 && r.statusCode! < 300) {
@@ -207,6 +246,33 @@ class GameRepository {
     }
     throw GameApiException(msg, cancelled: cancelled, statusCode: r.statusCode);
   }
+}
+
+/// Outcome of /rematch and /rematch-status.
+class RematchStatus {
+  const RematchStatus({
+    required this.status,
+    this.newGameId,
+    this.yourChoice,
+    this.opponentChoice,
+    this.windowSeconds,
+  });
+
+  /// pending | matched | declined | timeout (timeout is client-derived
+  /// once the window elapses without server progress).
+  final String status;
+  final String? newGameId;
+  final String? yourChoice;
+  final String? opponentChoice;
+  final int? windowSeconds;
+
+  factory RematchStatus.fromJson(Map<String, dynamic> j) => RematchStatus(
+        status: '${j['status'] ?? 'pending'}',
+        newGameId: j['new_game_id']?.toString(),
+        yourChoice: j['your_choice']?.toString(),
+        opponentChoice: j['opponent_choice']?.toString(),
+        windowSeconds: (j['window_seconds'] as num?)?.toInt(),
+      );
 }
 
 class GameApiException implements Exception {

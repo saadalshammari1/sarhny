@@ -149,9 +149,13 @@ class _GamePlayPageState extends ConsumerState<GamePlayPage> {
     if (s.status == 'answered') {
       return _AnsweredView(snap: s, colors: colors);
     }
-    if (s.status == 'final') {
+    // ── Post-game phases — driven by the server-supplied `phase` field
+    // (with a `status` fallback for older builds).
+    final phase = s.phase ?? (s.status == 'answering' ? 'answer' : s.status);
+    if (s.status == 'final' || s.status == 'answering') {
       final iAmWinner = s.isWinner == true;
-      if (iAmWinner) {
+
+      if (iAmWinner && phase == 'writing_question') {
         return _WinnerFinalView(
           snap: s,
           busy: _busy,
@@ -161,19 +165,33 @@ class _GamePlayPageState extends ConsumerState<GamePlayPage> {
           ),
         );
       }
-      return _LoserFinalView(
-        snap: s,
-        busy: _busy,
-        colors: colors,
-        onAnswer: (text) => _wrap(
-          () => ref.read(gameRepositoryProvider).answer(s.gameId, text),
-        ),
-        onSkip: s.finalSkipUsed
-            ? null
-            : () => _wrap(
-                  () => ref.read(gameRepositoryProvider).skip(s.gameId),
-                ),
-      );
+      if (!iAmWinner && phase == 'waiting_winner_question') {
+        // CRITICAL — the loser must NOT see the question yet. We render a
+        // dedicated waiting screen with a synced countdown matching the
+        // winner's compose timer.
+        return _LoserWaitingForQuestionView(snap: s, colors: colors);
+      }
+      // phase == 'answer' (or older server with status=='final' and a
+      // visible question text — backwards compat).
+      if (!iAmWinner) {
+        return _LoserFinalView(
+          snap: s,
+          busy: _busy,
+          colors: colors,
+          onAnswer: (text) => _wrap(
+            () => ref.read(gameRepositoryProvider).answer(s.gameId, text),
+          ),
+          onSkip: s.finalSkipUsed
+              ? null
+              : () => _wrap(
+                    () => ref.read(gameRepositoryProvider).skip(s.gameId),
+                  ),
+        );
+      }
+      // Winner waiting on the loser's answer — show a calm waiting state
+      // instead of letting them stare at the question composer they already
+      // submitted.
+      return _WinnerWaitingForAnswerView(snap: s, colors: colors);
     }
     if (s.status == 'waiting') {
       return _WaitingView(snap: s, colors: colors);
@@ -735,9 +753,30 @@ class _LoserFinalView extends StatefulWidget {
 
 class _LoserFinalViewState extends State<_LoserFinalView> {
   final _ctrl = TextEditingController();
+  Timer? _tick;
+  int _secondsLeft = 60;
+
+  @override
+  void initState() {
+    super.initState();
+    _resync();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) => _resync());
+  }
+
+  void _resync() {
+    final dl = widget.snap.finalAnswerDeadline;
+    if (dl == null) {
+      return;
+    }
+    final now = DateTime.now().millisecondsSinceEpoch / 1000;
+    final remaining = (dl - now).round();
+    if (!mounted) return;
+    setState(() => _secondsLeft = remaining.clamp(0, 999));
+  }
 
   @override
   void dispose() {
+    _tick?.cancel();
     _ctrl.dispose();
     super.dispose();
   }
@@ -751,6 +790,24 @@ class _LoserFinalViewState extends State<_LoserFinalView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (s.finalAnswerDeadline != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(children: [
+                Icon(Icons.timer_outlined, color: c.textSecondary, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  '$_secondsLeft ثانية للإجابة',
+                  style: TextStyle(
+                    color: _secondsLeft <= 10
+                        ? Theme.of(context).colorScheme.error
+                        : c.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ]),
+            ),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -812,14 +869,267 @@ class _LoserFinalViewState extends State<_LoserFinalView> {
   }
 }
 
-// ── Answered (final reveal) ────────────────────────────────────────────────
+// ── Loser waiting for the winner's question ────────────────────────────────
+//
+// CRITICAL — this view renders DURING the "final" phase for the loser.
+// It MUST NOT receive or display `snap.finalQuestionText`; the server
+// already strips it for the loser, but we double-down here for defense
+// in depth. A synced countdown gives parity with the winner's compose
+// timer so the loser feels the rhythm rather than staring at a blank.
+class _LoserWaitingForQuestionView extends StatefulWidget {
+  const _LoserWaitingForQuestionView({required this.snap, required this.colors});
+  final GameSnapshot snap;
+  final SarhnyColors colors;
+  @override
+  State<_LoserWaitingForQuestionView> createState() =>
+      _LoserWaitingForQuestionViewState();
+}
 
-class _AnsweredView extends StatelessWidget {
-  const _AnsweredView({required this.snap, required this.colors});
+class _LoserWaitingForQuestionViewState
+    extends State<_LoserWaitingForQuestionView>
+    with SingleTickerProviderStateMixin {
+  Timer? _tick;
+  int _secondsLeft = 25;
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat(reverse: true);
+
+  @override
+  void initState() {
+    super.initState();
+    _resync();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) => _resync());
+  }
+
+  void _resync() {
+    final dl = widget.snap.finalQuestionDeadline;
+    if (dl == null) return;
+    final now = DateTime.now().millisecondsSinceEpoch / 1000;
+    final remaining = (dl - now).round();
+    if (!mounted) return;
+    setState(() => _secondsLeft = remaining.clamp(0, 999));
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.colors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ScaleTransition(
+              scale: Tween(begin: 0.9, end: 1.05).animate(
+                CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+              ),
+              child: Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  color: c.crystal.withValues(alpha: 0.16),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: c.crystal, width: 1.2),
+                ),
+                child: Icon(Icons.hourglass_top_rounded,
+                    size: 44, color: c.crystal),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'ينتظر الفائز يكتب سؤاله…',
+              style: TextStyle(
+                color: c.textPrimary,
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'السؤال سيظهر بعد لحظات. ابقَ صبوراً.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: c.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.timer_outlined, color: c.textSecondary, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  '$_secondsLeft ثانية',
+                  style: TextStyle(
+                    color: _secondsLeft <= 5
+                        ? Theme.of(context).colorScheme.error
+                        : c.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Winner waiting for the loser's answer ──────────────────────────────────
+class _WinnerWaitingForAnswerView extends StatelessWidget {
+  const _WinnerWaitingForAnswerView({required this.snap, required this.colors});
   final GameSnapshot snap;
   final SarhnyColors colors;
   @override
   Widget build(BuildContext context) {
+    final c = colors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 56, height: 56,
+              child: CircularProgressIndicator(strokeWidth: 3),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'بانتظار إجابة خصمك...',
+              style: TextStyle(
+                color: c.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'السؤال انطلق — لحظة وتصلك إجابته.',
+              style: TextStyle(color: c.textSecondary, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Answered (final reveal) ────────────────────────────────────────────────
+
+class _AnsweredView extends ConsumerStatefulWidget {
+  const _AnsweredView({required this.snap, required this.colors});
+  final GameSnapshot snap;
+  final SarhnyColors colors;
+  @override
+  ConsumerState<_AnsweredView> createState() => _AnsweredViewState();
+}
+
+class _AnsweredViewState extends ConsumerState<_AnsweredView> {
+  // Rematch flow state. Mirrors the Carrom Game Over UX:
+  //   none      → both buttons visible
+  //   waiting   → I've accepted, waiting for the opponent (polling)
+  //   matched   → server returned new_game_id, navigating away
+  //   declined  → opponent said no
+  //   timeout   → no answer within REMATCH_WINDOW_SECONDS
+  String _rematchPhase = 'none';
+  Timer? _pollTimer;
+  Timer? _windowTimer;
+  int _secondsLeft = 20;
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    _windowTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _acceptRematch() async {
+    setState(() => _rematchPhase = 'waiting');
+    try {
+      final res = await ref
+          .read(gameRepositoryProvider)
+          .rematch(widget.snap.gameId, 'accept');
+      if (!mounted) return;
+      if (res.status == 'matched' && res.newGameId != null) {
+        _goToNewGame(res.newGameId!);
+        return;
+      }
+      if (res.status == 'declined') {
+        setState(() => _rematchPhase = 'declined');
+        return;
+      }
+      // Pending — start countdown + polling.
+      _secondsLeft = res.windowSeconds ?? 20;
+      _windowTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+        if (!mounted) return;
+        setState(() => _secondsLeft -= 1);
+        if (_secondsLeft <= 0) {
+          t.cancel();
+          if (_rematchPhase == 'waiting') {
+            setState(() => _rematchPhase = 'timeout');
+            _pollTimer?.cancel();
+          }
+        }
+      });
+      _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
+        try {
+          final st = await ref
+              .read(gameRepositoryProvider)
+              .rematchStatus(widget.snap.gameId);
+          if (!mounted) return;
+          if (st.status == 'matched' && st.newGameId != null) {
+            _pollTimer?.cancel();
+            _windowTimer?.cancel();
+            _goToNewGame(st.newGameId!);
+          } else if (st.status == 'declined') {
+            _pollTimer?.cancel();
+            _windowTimer?.cancel();
+            setState(() => _rematchPhase = 'declined');
+          }
+        } catch (_) {
+          // tick will retry
+        }
+      });
+    } on GameApiException catch (e) {
+      Fluttertoast.showToast(msg: e.message);
+      if (!mounted) return;
+      setState(() => _rematchPhase = 'none');
+    } catch (_) {
+      Fluttertoast.showToast(msg: 'تعذّر الإرسال');
+      if (!mounted) return;
+      setState(() => _rematchPhase = 'none');
+    }
+  }
+
+  Future<void> _declineAndSearch() async {
+    // Best-effort decline to free the opponent's wait UI fast.
+    unawaited(
+      ref
+          .read(gameRepositoryProvider)
+          .rematch(widget.snap.gameId, 'decline')
+          .catchError((_) => const RematchStatus(status: 'declined')),
+    );
+    if (!mounted) return;
+    context.go('/game');
+  }
+
+  void _goToNewGame(String newId) {
+    if (!mounted) return;
+    context.go('/game/play/$newId');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = widget.colors;
+    final snap = widget.snap;
     final iAmWinner = snap.isWinner == true;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
@@ -866,25 +1176,117 @@ class _AnsweredView extends StatelessWidget {
               isQuestion: false,
             ),
           const SizedBox(height: 24),
-          Row(children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => context.go('/game'),
-                icon: const Icon(Icons.exit_to_app, size: 18),
-                label: const Text('الخروج'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: () => context.go('/game'),
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('جولة جديدة'),
-              ),
-            ),
-          ]),
+          // ── Rematch UI ────────────────────────────────────────────────
+          _RematchPanel(
+            phase: _rematchPhase,
+            secondsLeft: _secondsLeft,
+            colors: colors,
+            onAccept: _acceptRematch,
+            onSearchOther: _declineAndSearch,
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => context.go('/game'),
+            icon: const Icon(Icons.exit_to_app, size: 18),
+            label: const Text('الخروج للوبي'),
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _RematchPanel extends StatelessWidget {
+  const _RematchPanel({
+    required this.phase,
+    required this.secondsLeft,
+    required this.colors,
+    required this.onAccept,
+    required this.onSearchOther,
+  });
+  final String phase;
+  final int secondsLeft;
+  final SarhnyColors colors;
+  final VoidCallback onAccept;
+  final VoidCallback onSearchOther;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = colors;
+    if (phase == 'waiting') {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 14),
+        decoration: BoxDecoration(
+          color: c.elevated,
+          border: Border.all(color: c.crystal.withValues(alpha: 0.6)),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(
+              width: 28, height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+            const SizedBox(height: 10),
+            Text('بانتظار قبول الخصم… ($secondsLeft ث)',
+                style: TextStyle(
+                    color: c.textPrimary, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      );
+    }
+    if (phase == 'declined' || phase == 'timeout') {
+      return Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            decoration: BoxDecoration(
+              color: c.danger.withValues(alpha: 0.08),
+              border: Border.all(color: c.danger.withValues(alpha: 0.4)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              phase == 'declined'
+                  ? 'الخصم لم يقبل الإعادة'
+                  : 'انتهى الوقت — الخصم غير متاح',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: c.textPrimary, fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(height: 10),
+          FilledButton.icon(
+            onPressed: onSearchOther,
+            icon: const Icon(Icons.search_rounded),
+            label: const Text('البحث عن منافس آخر'),
+          ),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            backgroundColor: c.crystal,
+          ),
+          onPressed: onAccept,
+          icon: const Icon(Icons.replay_rounded),
+          label: const Text(
+            '🔄 إعادة مع نفس الخصم',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+          onPressed: onSearchOther,
+          icon: const Icon(Icons.search_rounded),
+          label: const Text('🔍 البحث عن منافس آخر'),
+        ),
+      ],
     );
   }
 }

@@ -94,6 +94,13 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
+  # Carrom game (1v1) — Flame for rendering server-authoritative replay,
+  # WebSocket channel for real-time match state. Forge2D is bundled for
+  # collision/projection visuals (server simulates authoritative physics;
+  # the client only renders frames).
+  flame: ^1.18.0
+  web_socket_channel: ^3.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

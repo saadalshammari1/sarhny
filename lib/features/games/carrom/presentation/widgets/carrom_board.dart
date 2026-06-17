@@ -267,32 +267,43 @@ class BoardBackground extends PositionComponent {
   // مكرر مع الـ Python catalog لكن narrow + render-focused. أي تغيير
   // هنا يجب أن يطابق `app/core/cosmetics.py:BOARD_SKINS`.
 
+  // Modeled after real tournament boards (rosewood frame + birch playfield
+  // + brass inlays) and modern arena-game UI references. Each theme owns
+  // its full palette here so the render switch can pick exact colours
+  // for frame edges, inlay rings, baseline strips, center rosette.
   static const Map<String, _BoardTheme> _themes = {
+    // Honey-toned tournament wood. Rosewood frame + polished birch face.
     'classic_wood': _BoardTheme(
-      base: Color(0xFFE8C49A),
-      accent: Color(0xFF8B5A2B),
+      base: Color(0xFFE0B179),           // polished honey birch (warmer)
+      accent: Color(0xFF5C3416),         // deep walnut frame
+      accentAlt: Color(0xFFD4AF37),      // brass inlay rings
       texture: _BoardTexture.wood,
       borderStyle: _BorderStyle.wood,
-      lineColor: Color(0xFF7A4A20),
+      lineColor: Color(0xFF6E3F18),
     ),
+    // Italian carrara marble + champagne gold. Suite-grade.
     'marble_white': _BoardTheme(
-      base: Color(0xFFF5F1EA),
-      accent: Color(0xFFD4A574),
+      base: Color(0xFFF8F4ED),
+      accent: Color(0xFF8B6A35),         // antique gold frame
+      accentAlt: Color(0xFFE8C16A),      // bright gold inlay
       texture: _BoardTexture.marble,
       borderStyle: _BorderStyle.thinGold,
-      lineColor: Color(0xFFB58E5A),
+      lineColor: Color(0xFFA3865B),
     ),
+    // Royal tournament — deep felt + heavy gold.
     'royal_navy': _BoardTheme(
-      base: Color(0xFF1E3A5F),
-      accent: Color(0xFFD4AF37),
+      base: Color(0xFF152744),           // deeper navy felt
+      accent: Color(0xFFE5C77A),         // brushed gold frame
+      accentAlt: Color(0xFFFFE3A0),      // bright gold trim
       texture: _BoardTexture.felt,
       borderStyle: _BorderStyle.goldCrown,
-      lineColor: Color(0xFFD4AF37),
+      lineColor: Color(0xFFE5C77A),
     ),
+    // Cyber arena — pitch black + dual neon.
     'neon_dark': _BoardTheme(
-      base: Color(0xFF0A0E27),
-      accent: Color(0xFF00F0FF),
-      accentAlt: Color(0xFFFF00AA),
+      base: Color(0xFF050817),           // deeper black
+      accent: Color(0xFF00F0FF),         // cyan
+      accentAlt: Color(0xFFFF2EA0),      // magenta
       texture: _BoardTexture.neon,
       borderStyle: _BorderStyle.neonGlow,
       lineColor: Color(0xFF00F0FF),
@@ -314,227 +325,42 @@ class BoardBackground extends PositionComponent {
 
     final theme = _theme;
 
-    // ── Frame ─────────────────────────────────────────────────────
-    final framePaint = Paint();
-    switch (theme.borderStyle) {
-      case _BorderStyle.wood:
-        framePaint.shader = LinearGradient(
-          colors: [
-            theme.accent,
-            Color.lerp(theme.accent, Colors.white, 0.2)!,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ).createShader(rect);
-        break;
-      case _BorderStyle.thinGold:
-        framePaint.color = theme.accent.withValues(alpha: 0.95);
-        break;
-      case _BorderStyle.goldCrown:
-        framePaint.shader = LinearGradient(
-          colors: [
-            Color.lerp(theme.accent, Colors.white, 0.1)!,
-            theme.accent,
-            Color.lerp(theme.accent, Colors.black, 0.25)!,
-          ],
-          stops: const [0.0, 0.5, 1.0],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ).createShader(rect);
-        break;
-      case _BorderStyle.neonGlow:
-        framePaint.shader = LinearGradient(
-          colors: [
-            theme.accent,
-            theme.accentAlt ?? theme.accent,
-            theme.accent,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ).createShader(rect);
-        break;
-    }
+    // ── Outer ambient shadow under the whole board ────────────────
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(18)),
-      framePaint,
+      RRect.fromRectAndRadius(
+        rect.translate(0, 6),
+        const Radius.circular(22),
+      ),
+      Paint()
+        ..color = const Color(0x55000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
     );
 
-    // ── Surface (texture-aware) ───────────────────────────────────
-    final playPaint = Paint();
-    switch (theme.texture) {
-      case _BoardTexture.wood:
-        playPaint.shader = LinearGradient(
-          colors: [
-            theme.base,
-            Color.lerp(theme.base, Colors.brown, 0.08)!,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ).createShader(inner);
-        break;
-      case _BoardTexture.marble:
-        playPaint.shader = LinearGradient(
-          colors: [
-            theme.base,
-            Color.lerp(theme.base, Colors.grey.shade300, 0.20)!,
-            theme.base,
-            Color.lerp(theme.base, Colors.grey.shade400, 0.10)!,
-          ],
-          stops: const [0.0, 0.3, 0.6, 1.0],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ).createShader(inner);
-        break;
-      case _BoardTexture.felt:
-        playPaint.shader = RadialGradient(
-          colors: [
-            Color.lerp(theme.base, Colors.white, 0.06)!,
-            theme.base,
-            Color.lerp(theme.base, Colors.black, 0.18)!,
-          ],
-          stops: const [0.0, 0.6, 1.0],
-        ).createShader(inner);
-        break;
-      case _BoardTexture.neon:
-        playPaint.shader = RadialGradient(
-          colors: [
-            Color.lerp(theme.base, Colors.white, 0.04)!,
-            theme.base,
-          ],
-        ).createShader(inner);
-        break;
-    }
+    // ── Frame: heavy, multi-band, theme-specific ──────────────────
+    _paintFrame(canvas, rect, inner, theme);
+
+    // ── Play surface ──────────────────────────────────────────────
+    _paintSurface(canvas, inner, theme);
+
+    // ── Inlay strip — bright thin ring around the play area ──────
+    // Real boards have a brass/black wood line just inside the frame.
     canvas.drawRRect(
-      RRect.fromRectAndRadius(inner, const Radius.circular(8)),
-      playPaint,
+      RRect.fromRectAndRadius(inner.deflate(2), const Radius.circular(6)),
+      Paint()
+        ..color = (theme.accentAlt ?? theme.accent).withValues(alpha: 0.85)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.9,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(inner.deflate(6), const Radius.circular(4)),
+      Paint()
+        ..color = theme.lineColor.withValues(alpha: 0.55)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
     );
 
-    // Marble veining — thin pale strokes.
-    if (theme.texture == _BoardTexture.marble) {
-      final vein = Paint()
-        ..color = const Color(0x33A8A8A8)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0;
-      final path = Path()
-        ..moveTo(inner.left + inner.width * 0.10, inner.top + 12)
-        ..quadraticBezierTo(
-          inner.center.dx - 30,
-          inner.top + 60,
-          inner.center.dx + 80,
-          inner.bottom - 90,
-        )
-        ..moveTo(inner.right - 40, inner.top + 50)
-        ..quadraticBezierTo(
-          inner.center.dx + 10,
-          inner.center.dy,
-          inner.left + 80,
-          inner.bottom - 30,
-        );
-      canvas.drawPath(path, vein);
-    }
-
-    // Neon outer glow rings.
-    if (theme.borderStyle == _BorderStyle.neonGlow) {
-      final glow = Paint()
-        ..color = theme.accent.withValues(alpha: 0.55)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.0
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(inner.deflate(3), const Radius.circular(6)),
-        glow,
-      );
-      if (theme.accentAlt != null) {
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(inner.deflate(8), const Radius.circular(4)),
-          Paint()
-            ..color = theme.accentAlt!.withValues(alpha: 0.35)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.6
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
-        );
-      }
-    }
-
-    // Inner line.
-    final linePaint = Paint()
-      ..color = theme.lineColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawRect(inner.deflate(6), linePaint);
-
-    // ── Wood-grain procedural lines (classic_wood only) ───────────
-    if (theme.texture == _BoardTexture.wood) {
-      final grain = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.6;
-      // 14 evenly spaced sine-curves give a directional wood-grain feel.
-      for (int i = 0; i < 14; i++) {
-        final y = inner.top + (inner.height / 14) * i + 4;
-        final path = Path()..moveTo(inner.left + 4, y);
-        for (double x = inner.left + 4; x <= inner.right - 4; x += 6) {
-          final yWave = y + math.sin((x + i * 23) * 0.04) * 2.5;
-          path.lineTo(x, yWave);
-        }
-        grain.color = (i % 3 == 0
-                ? const Color(0xFF6B3F1F)
-                : const Color(0xFF8B5A2B))
-            .withValues(alpha: 0.12);
-        canvas.drawPath(path, grain);
-      }
-      // A few "knots" scattered randomly but deterministically.
-      const knots = [
-        Offset(0.18, 0.32),
-        Offset(0.72, 0.22),
-        Offset(0.35, 0.68),
-        Offset(0.82, 0.78),
-      ];
-      for (final k in knots) {
-        final kp = Offset(
-          inner.left + inner.width * k.dx,
-          inner.top + inner.height * k.dy,
-        );
-        canvas.drawCircle(
-          kp,
-          3.0,
-          Paint()..color = const Color(0xFF4A2D14).withValues(alpha: 0.22),
-        );
-        canvas.drawCircle(
-          kp,
-          5.0,
-          Paint()
-            ..color = const Color(0xFF6B3F1F).withValues(alpha: 0.12)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
-        );
-      }
-    }
-
-    // ── Felt board: tiny dot texture pattern ───────────────────────
-    if (theme.texture == _BoardTexture.felt) {
-      final dot = Paint()
-        ..color = Colors.white.withValues(alpha: 0.04);
-      for (int gy = 0; gy < 30; gy++) {
-        for (int gx = 0; gx < 30; gx++) {
-          final dx = inner.left + (inner.width / 30) * gx + (gy.isOdd ? 4 : 0);
-          final dy = inner.top + (inner.height / 30) * gy + 4;
-          if (dx > inner.right - 4 || dy > inner.bottom - 4) continue;
-          canvas.drawCircle(Offset(dx, dy), 0.7, dot);
-        }
-      }
-      // Subtle vignette for depth.
-      canvas.drawRect(
-        inner,
-        Paint()
-          ..shader = RadialGradient(
-            colors: [
-              Colors.transparent,
-              Colors.transparent,
-              Colors.black.withValues(alpha: 0.25),
-            ],
-            stops: const [0.0, 0.65, 1.0],
-          ).createShader(inner),
-      );
-    }
+    // ── Striker baseline arcs (theme-specific brass/gold/cyan) ────
+    _paintStrikerBaselines(canvas, inner, theme);
 
     // ── 4 pockets — beveled hole with depth ───────────────────────
     final pocketRim = Paint()
@@ -581,58 +407,574 @@ class BoardBackground extends PositionComponent {
       );
     }
 
-    // ── Centre red ring (queen spot — never themed) ───────────────
-    final center = Offset(size.x / 2, size.y / 2);
-    canvas.drawCircle(
-      center,
-      26,
-      Paint()
-        ..color = centerRing
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-    canvas.drawCircle(
-      center,
-      8,
-      Paint()..color = centerRing.withValues(alpha: 0.7),
-    );
+    // ── Centre rosette — themed, multi-layer ──────────────────────
+    _paintCenterRosette(canvas, Offset(size.x / 2, size.y / 2), theme);
 
-    // Royal crown emblem above the centre.
+    // ── Crown emblems for royal_navy ──────────────────────────────
     if (theme.borderStyle == _BorderStyle.goldCrown) {
       final tp = TextPainter(
         text: TextSpan(
           text: '♛',
           style: TextStyle(
-            color: theme.accent.withValues(alpha: 0.85),
-            fontSize: 64,
+            color: theme.accentAlt ?? theme.accent,
+            fontSize: 56,
             fontWeight: FontWeight.w900,
+            shadows: [
+              Shadow(
+                color: theme.accent.withValues(alpha: 0.55),
+                blurRadius: 12,
+              ),
+            ],
           ),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(
         canvas,
-        Offset(center.dx - tp.width / 2, inner.top + 16),
+        Offset(size.x / 2 - tp.width / 2, inner.top + 12),
       );
       tp.paint(
         canvas,
-        Offset(center.dx - tp.width / 2, inner.bottom - tp.height - 16),
+        Offset(size.x / 2 - tp.width / 2, inner.bottom - tp.height - 12),
       );
     }
 
-    // ── Baselines (front of each player) ───────────────────────────
+    // ── Straight baselines (a hair away from the arcs) ────────────
     final baselinePaint = Paint()
-      ..color = theme.lineColor.withValues(alpha: 0.6)
-      ..strokeWidth = 1.2;
+      ..color = theme.lineColor.withValues(alpha: 0.50)
+      ..strokeWidth = 1.0;
     canvas.drawLine(
-      Offset(inner.left + 60, inner.top + 70),
-      Offset(inner.right - 60, inner.top + 70),
+      Offset(inner.left + 60, inner.top + 72),
+      Offset(inner.right - 60, inner.top + 72),
       baselinePaint,
     );
     canvas.drawLine(
-      Offset(inner.left + 60, inner.bottom - 70),
-      Offset(inner.right - 60, inner.bottom - 70),
+      Offset(inner.left + 60, inner.bottom - 72),
+      Offset(inner.right - 60, inner.bottom - 72),
       baselinePaint,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  //  Theme-specific painters
+  // ─────────────────────────────────────────────────────────────────
+
+  /// Frame: heavy multi-band band, per-theme.
+  /// Wood gets a 3-band rosewood look. Marble gets a champagne gold
+  /// frame with bright inlay. Royal gets brushed gold + filigree
+  /// corner studs. Neon gets dual cyan/magenta glow rings.
+  void _paintFrame(
+    Canvas canvas,
+    Rect rect,
+    Rect inner,
+    _BoardTheme theme,
+  ) {
+    // 1) Base frame (theme-specific gradient).
+    final framePaint = Paint();
+    switch (theme.borderStyle) {
+      case _BorderStyle.wood:
+        // Rosewood — deep walnut with grain hint.
+        framePaint.shader = LinearGradient(
+          colors: [
+            const Color(0xFF7A4A22),
+            theme.accent,                 // deep walnut
+            const Color(0xFF3A1F0C),
+            theme.accent,
+            const Color(0xFF5A2F12),
+          ],
+          stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(rect);
+        break;
+      case _BorderStyle.thinGold:
+        // Antique champagne gold — 3 stops with proper shine.
+        framePaint.shader = LinearGradient(
+          colors: [
+            const Color(0xFFE8C16A),
+            theme.accent,
+            const Color(0xFFC9A04F),
+            theme.accent,
+            const Color(0xFFB8924A),
+          ],
+          stops: const [0.0, 0.3, 0.55, 0.8, 1.0],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(rect);
+        break;
+      case _BorderStyle.goldCrown:
+        // Brushed royal gold — bright on top, darker on bottom.
+        framePaint.shader = LinearGradient(
+          colors: [
+            const Color(0xFFFFE3A0),
+            theme.accent,
+            const Color(0xFFB3933A),
+            theme.accent,
+            const Color(0xFF8B6E2C),
+          ],
+          stops: const [0.0, 0.25, 0.55, 0.78, 1.0],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(rect);
+        break;
+      case _BorderStyle.neonGlow:
+        // Outer halo (cyan).
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(rect.inflate(4), const Radius.circular(22)),
+          Paint()
+            ..color = theme.accent.withValues(alpha: 0.55)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14),
+        );
+        // Outer halo (magenta).
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(rect.inflate(2), const Radius.circular(20)),
+          Paint()
+            ..color = (theme.accentAlt ?? theme.accent).withValues(alpha: 0.40)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+        );
+        framePaint.color = const Color(0xFF0A0A18);
+        break;
+    }
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(18)),
+      framePaint,
+    );
+
+    // 2) Frame inner darkening — fakes a recessed playfield well.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(inner.inflate(2), const Radius.circular(8)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.35)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+    );
+
+    // 3) Per-theme frame ornaments.
+    switch (theme.borderStyle) {
+      case _BorderStyle.wood:
+        // Subtle grain stripes on the frame band.
+        for (int i = 0; i < 6; i++) {
+          final dy = rect.top + 4 + i * 2.5;
+          canvas.drawLine(
+            Offset(rect.left + 10, dy),
+            Offset(rect.right - 10, dy),
+            Paint()
+              ..color = Colors.black.withValues(alpha: 0.10)
+              ..strokeWidth = 0.6,
+          );
+          final dyB = rect.bottom - 4 - i * 2.5;
+          canvas.drawLine(
+            Offset(rect.left + 10, dyB),
+            Offset(rect.right - 10, dyB),
+            Paint()
+              ..color = Colors.black.withValues(alpha: 0.10)
+              ..strokeWidth = 0.6,
+          );
+        }
+        break;
+      case _BorderStyle.goldCrown:
+        // Corner filigree studs (gold dots in each corner).
+        const studPositions = [
+          Offset(0.04, 0.04),
+          Offset(0.96, 0.04),
+          Offset(0.04, 0.96),
+          Offset(0.96, 0.96),
+        ];
+        for (final p in studPositions) {
+          final c = Offset(
+            rect.left + rect.width * p.dx,
+            rect.top + rect.height * p.dy,
+          );
+          canvas.drawCircle(
+            c,
+            4.5,
+            Paint()..color = (theme.accentAlt ?? theme.accent),
+          );
+          canvas.drawCircle(
+            c,
+            4.5,
+            Paint()
+              ..color = Colors.black.withValues(alpha: 0.55)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 0.8,
+          );
+          canvas.drawCircle(
+            c.translate(-1.2, -1.4),
+            1.4,
+            Paint()..color = Colors.white.withValues(alpha: 0.85),
+          );
+        }
+        break;
+      case _BorderStyle.neonGlow:
+        // Hex-vertex accents (4 tiny cyan diamonds on the inner frame).
+        final diamondPositions = [
+          Offset(rect.center.dx, rect.top + 8),
+          Offset(rect.center.dx, rect.bottom - 8),
+          Offset(rect.left + 8, rect.center.dy),
+          Offset(rect.right - 8, rect.center.dy),
+        ];
+        for (final c in diamondPositions) {
+          final path = Path()
+            ..moveTo(c.dx, c.dy - 4)
+            ..lineTo(c.dx + 4, c.dy)
+            ..lineTo(c.dx, c.dy + 4)
+            ..lineTo(c.dx - 4, c.dy)
+            ..close();
+          canvas.drawPath(
+            path,
+            Paint()
+              ..color = theme.accent
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+          );
+        }
+        break;
+      case _BorderStyle.thinGold:
+        // Slim brass rivets on each frame side (3 per side).
+        for (int i = 0; i < 3; i++) {
+          final f = (i + 1) / 4;
+          final positions = [
+            Offset(rect.left + rect.width * f, rect.top + 6),
+            Offset(rect.left + rect.width * f, rect.bottom - 6),
+            Offset(rect.left + 6, rect.top + rect.height * f),
+            Offset(rect.right - 6, rect.top + rect.height * f),
+          ];
+          for (final c in positions) {
+            canvas.drawCircle(
+              c,
+              2.4,
+              Paint()..color = (theme.accentAlt ?? theme.accent),
+            );
+            canvas.drawCircle(
+              c.translate(-0.6, -0.7),
+              0.8,
+              Paint()..color = Colors.white.withValues(alpha: 0.85),
+            );
+          }
+        }
+        break;
+    }
+  }
+
+  /// Play surface — wood/marble/felt/neon — with real materiality.
+  void _paintSurface(Canvas canvas, Rect inner, _BoardTheme theme) {
+    final playPaint = Paint();
+    switch (theme.texture) {
+      case _BoardTexture.wood:
+        // Honey birch with sun glow + vignette.
+        playPaint.shader = RadialGradient(
+          colors: [
+            Color.lerp(theme.base, Colors.white, 0.18)!,
+            theme.base,
+            Color.lerp(theme.base, const Color(0xFF7A4A22), 0.30)!,
+          ],
+          stops: const [0.0, 0.55, 1.0],
+          center: const Alignment(-0.20, -0.25),
+          radius: 1.05,
+        ).createShader(inner);
+        break;
+      case _BoardTexture.marble:
+        playPaint.shader = RadialGradient(
+          colors: [
+            const Color(0xFFFFFFFF),
+            theme.base,
+            const Color(0xFFEDE6D8),
+            const Color(0xFFD8CFB8),
+          ],
+          stops: const [0.0, 0.45, 0.85, 1.0],
+          center: const Alignment(-0.2, -0.3),
+          radius: 1.1,
+        ).createShader(inner);
+        break;
+      case _BoardTexture.felt:
+        playPaint.shader = RadialGradient(
+          colors: [
+            Color.lerp(theme.base, Colors.white, 0.08)!,
+            theme.base,
+            Color.lerp(theme.base, Colors.black, 0.40)!,
+          ],
+          stops: const [0.0, 0.55, 1.0],
+        ).createShader(inner);
+        break;
+      case _BoardTexture.neon:
+        // Black with very subtle cyan radial bleed.
+        playPaint.shader = RadialGradient(
+          colors: [
+            const Color(0xFF0F1430),
+            theme.base,
+            const Color(0xFF000000),
+          ],
+          stops: const [0.0, 0.45, 1.0],
+        ).createShader(inner);
+        break;
+    }
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(inner, const Radius.circular(8)),
+      playPaint,
+    );
+
+    // ── Texture overlays (theme-specific) ─────────────────────────
+    switch (theme.texture) {
+      case _BoardTexture.wood:
+        _paintWoodGrain(canvas, inner);
+        break;
+      case _BoardTexture.marble:
+        _paintMarbleVeining(canvas, inner);
+        break;
+      case _BoardTexture.felt:
+        _paintFeltPattern(canvas, inner);
+        break;
+      case _BoardTexture.neon:
+        _paintHexGrid(canvas, inner, theme);
+        break;
+    }
+  }
+
+  /// Long, denser, multi-pass wood grain with knots.
+  void _paintWoodGrain(Canvas canvas, Rect inner) {
+    final grain = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+    // Layer 1: thin dark grain.
+    for (int i = 0; i < 22; i++) {
+      final y = inner.top + (inner.height / 22) * i + 3;
+      final path = Path()..moveTo(inner.left + 4, y);
+      for (double x = inner.left + 4; x <= inner.right - 4; x += 4) {
+        final yWave = y + math.sin((x + i * 31) * 0.035) * 1.8;
+        path.lineTo(x, yWave);
+      }
+      grain.color = (i % 3 == 0
+              ? const Color(0xFF5A3315)
+              : const Color(0xFF8B5A2B))
+          .withValues(alpha: i.isEven ? 0.10 : 0.05);
+      canvas.drawPath(path, grain);
+    }
+    // Layer 2: 6 deterministic knots.
+    const knots = [
+      Offset(0.18, 0.32),
+      Offset(0.72, 0.22),
+      Offset(0.35, 0.68),
+      Offset(0.82, 0.78),
+      Offset(0.55, 0.45),
+      Offset(0.12, 0.85),
+    ];
+    for (final k in knots) {
+      final kp = Offset(
+        inner.left + inner.width * k.dx,
+        inner.top + inner.height * k.dy,
+      );
+      // Dark knot core.
+      canvas.drawCircle(
+        kp,
+        2.5,
+        Paint()..color = const Color(0xFF3A1F0C).withValues(alpha: 0.30),
+      );
+      // Soft halo around knot.
+      canvas.drawCircle(
+        kp,
+        5.0,
+        Paint()
+          ..color = const Color(0xFF5A3315).withValues(alpha: 0.18)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+      );
+    }
+  }
+
+  /// Carrara-style marble veining (3 organic Bezier paths + faint dots).
+  void _paintMarbleVeining(Canvas canvas, Rect inner) {
+    // Path 1: thick gray vein.
+    final v1 = Paint()
+      ..color = const Color(0xFFAFAAA0).withValues(alpha: 0.50)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    final p1 = Path()
+      ..moveTo(inner.left + inner.width * 0.05, inner.top + 16)
+      ..cubicTo(
+        inner.center.dx - 60, inner.top + 80,
+        inner.center.dx + 30, inner.center.dy - 20,
+        inner.right - 30, inner.bottom - 110,
+      );
+    canvas.drawPath(p1, v1);
+
+    // Path 2: thin gold vein.
+    final v2 = Paint()
+      ..color = const Color(0xFFC2A06A).withValues(alpha: 0.45)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9;
+    final p2 = Path()
+      ..moveTo(inner.right - 22, inner.top + 40)
+      ..cubicTo(
+        inner.center.dx + 40, inner.center.dy - 80,
+        inner.center.dx - 60, inner.center.dy + 30,
+        inner.left + 50, inner.bottom - 40,
+      );
+    canvas.drawPath(p2, v2);
+
+    // Path 3: secondary dark vein.
+    final v3 = Paint()
+      ..color = const Color(0xFF8A8478).withValues(alpha: 0.30)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.7;
+    final p3 = Path()
+      ..moveTo(inner.left + inner.width * 0.55, inner.top + 20)
+      ..quadraticBezierTo(
+        inner.center.dx + 20, inner.center.dy,
+        inner.center.dx - 80, inner.bottom - 20,
+      );
+    canvas.drawPath(p3, v3);
+
+    // Subtle dot speckle.
+    const speckles = [
+      Offset(0.22, 0.28), Offset(0.78, 0.16), Offset(0.42, 0.55),
+      Offset(0.66, 0.72), Offset(0.15, 0.78), Offset(0.85, 0.62),
+      Offset(0.30, 0.40), Offset(0.58, 0.32), Offset(0.48, 0.85),
+    ];
+    final dot = Paint()
+      ..color = const Color(0xFF8A8478).withValues(alpha: 0.35);
+    for (final s in speckles) {
+      canvas.drawCircle(
+        Offset(
+          inner.left + inner.width * s.dx,
+          inner.top + inner.height * s.dy,
+        ),
+        0.8,
+        dot,
+      );
+    }
+  }
+
+  /// Felt: dense subtle weave + radial vignette.
+  void _paintFeltPattern(Canvas canvas, Rect inner) {
+    final dot = Paint()
+      ..color = Colors.white.withValues(alpha: 0.045);
+    for (int gy = 0; gy < 38; gy++) {
+      for (int gx = 0; gx < 38; gx++) {
+        final dx = inner.left + (inner.width / 38) * gx + (gy.isOdd ? 3 : 0);
+        final dy = inner.top + (inner.height / 38) * gy + 3;
+        if (dx > inner.right - 4 || dy > inner.bottom - 4) continue;
+        canvas.drawCircle(Offset(dx, dy), 0.55, dot);
+      }
+    }
+    // Strong vignette for premium felt feel.
+    canvas.drawRect(
+      inner,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            Colors.transparent,
+            Colors.transparent,
+            Colors.black.withValues(alpha: 0.35),
+          ],
+          stops: const [0.0, 0.60, 1.0],
+        ).createShader(inner),
+    );
+  }
+
+  /// Neon: hex-style grid pattern.
+  void _paintHexGrid(Canvas canvas, Rect inner, _BoardTheme theme) {
+    final grid = Paint()
+      ..color = theme.accent.withValues(alpha: 0.10)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6;
+    const cell = 28.0;
+    for (double y = inner.top; y < inner.bottom; y += cell * 0.866) {
+      final row = ((y - inner.top) / (cell * 0.866)).floor();
+      for (double x = inner.left + (row.isOdd ? cell * 0.5 : 0);
+          x < inner.right;
+          x += cell) {
+        final path = Path();
+        for (int i = 0; i < 6; i++) {
+          final angle = i * math.pi / 3 + math.pi / 6;
+          final px = x + cell * 0.30 * math.cos(angle);
+          final py = y + cell * 0.30 * math.sin(angle);
+          if (i == 0) {
+            path.moveTo(px, py);
+          } else {
+            path.lineTo(px, py);
+          }
+        }
+        path.close();
+        canvas.drawPath(path, grid);
+      }
+    }
+    // Subtle scan-line at center.
+    canvas.drawLine(
+      Offset(inner.left + 20, inner.center.dy),
+      Offset(inner.right - 20, inner.center.dy),
+      Paint()
+        ..color = (theme.accentAlt ?? theme.accent).withValues(alpha: 0.10)
+        ..strokeWidth = 0.5,
+    );
+  }
+
+  /// Striker arc on each player's baseline — 2 short arcs per side.
+  void _paintStrikerBaselines(Canvas canvas, Rect inner, _BoardTheme theme) {
+    final paint = Paint()
+      ..color = (theme.accentAlt ?? theme.accent).withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3;
+    // Top baseline (small dot in middle + 2 lateral marks)
+    void drawSideMark(double y, bool top) {
+      final cx = inner.center.dx;
+      final yLine = top ? y : y;
+      // Mid dot.
+      canvas.drawCircle(Offset(cx, yLine), 2.2, Paint()..color = paint.color);
+      // Two flanking marks ~ 80 units from center.
+      for (final dx in [-78.0, 78.0]) {
+        canvas.drawLine(
+          Offset(cx + dx, yLine - 4),
+          Offset(cx + dx, yLine + 4),
+          paint,
+        );
+      }
+    }
+
+    drawSideMark(inner.top + 72, true);
+    drawSideMark(inner.bottom - 72, false);
+  }
+
+  /// Center rosette — themed, layered.
+  void _paintCenterRosette(Canvas canvas, Offset center, _BoardTheme theme) {
+    // 1) Outer ring.
+    canvas.drawCircle(
+      center,
+      28,
+      Paint()
+        ..color = (theme.accentAlt ?? theme.accent).withValues(alpha: 0.65)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+    // 2) Mid ring — themed.
+    canvas.drawCircle(
+      center,
+      22,
+      Paint()
+        ..color = centerRing.withValues(alpha: 0.85)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+    // 3) 8 small dots around the ring — a "star" effect.
+    for (int i = 0; i < 8; i++) {
+      final angle = (i / 8) * 2 * math.pi;
+      final p = Offset(
+        center.dx + 22 * math.cos(angle),
+        center.dy + 22 * math.sin(angle),
+      );
+      canvas.drawCircle(
+        p,
+        1.5,
+        Paint()
+          ..color = (theme.accentAlt ?? theme.accent).withValues(alpha: 0.85),
+      );
+    }
+    // 4) Inner red dot — where the queen will sit.
+    canvas.drawCircle(
+      center,
+      8,
+      Paint()..color = centerRing.withValues(alpha: 0.55),
+    );
+    canvas.drawCircle(
+      center,
+      3.5,
+      Paint()..color = centerRing,
     );
   }
 
@@ -805,6 +1147,35 @@ class PieceComponent extends PositionComponent {
       r * 0.10,
       Paint()
         ..color = Colors.white.withValues(alpha: isLight ? 0.95 : 0.80),
+    );
+
+    // ── Embossed central seal — gives every piece a maker's-mark ──
+    // Real tournament pieces have a faint impressed mark in the
+    // middle. We draw a tiny dot ring (3 rings) with a subtle highlight.
+    canvas.drawCircle(
+      center,
+      r * 0.32,
+      Paint()
+        ..color = Color.lerp(fillColor, Colors.black, isLight ? 0.18 : 0.55)!
+            .withValues(alpha: 0.45)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.7,
+    );
+    canvas.drawCircle(
+      center,
+      r * 0.18,
+      Paint()
+        ..color = Color.lerp(fillColor, Colors.black, isLight ? 0.10 : 0.40)!
+            .withValues(alpha: 0.30)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5,
+    );
+    canvas.drawCircle(
+      center,
+      r * 0.06,
+      Paint()
+        ..color = Color.lerp(fillColor, Colors.white, 0.40)!
+            .withValues(alpha: 0.55),
     );
 
     // ── Bottom rim-light (back-scatter for jewel/gem only) ─────────

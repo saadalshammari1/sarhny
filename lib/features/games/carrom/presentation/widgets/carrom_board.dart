@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
@@ -462,15 +463,122 @@ class BoardBackground extends PositionComponent {
       ..strokeWidth = 1.5;
     canvas.drawRect(inner.deflate(6), linePaint);
 
-    // ── 4 pockets (always matte black) ────────────────────────────
-    final pocketPaint = Paint()..color = const Color(0xFF0A0A0A);
+    // ── Wood-grain procedural lines (classic_wood only) ───────────
+    if (theme.texture == _BoardTexture.wood) {
+      final grain = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.6;
+      // 14 evenly spaced sine-curves give a directional wood-grain feel.
+      for (int i = 0; i < 14; i++) {
+        final y = inner.top + (inner.height / 14) * i + 4;
+        final path = Path()..moveTo(inner.left + 4, y);
+        for (double x = inner.left + 4; x <= inner.right - 4; x += 6) {
+          final yWave = y + math.sin((x + i * 23) * 0.04) * 2.5;
+          path.lineTo(x, yWave);
+        }
+        grain.color = (i % 3 == 0
+                ? const Color(0xFF6B3F1F)
+                : const Color(0xFF8B5A2B))
+            .withValues(alpha: 0.12);
+        canvas.drawPath(path, grain);
+      }
+      // A few "knots" scattered randomly but deterministically.
+      const knots = [
+        Offset(0.18, 0.32),
+        Offset(0.72, 0.22),
+        Offset(0.35, 0.68),
+        Offset(0.82, 0.78),
+      ];
+      for (final k in knots) {
+        final kp = Offset(
+          inner.left + inner.width * k.dx,
+          inner.top + inner.height * k.dy,
+        );
+        canvas.drawCircle(
+          kp,
+          3.0,
+          Paint()..color = const Color(0xFF4A2D14).withValues(alpha: 0.22),
+        );
+        canvas.drawCircle(
+          kp,
+          5.0,
+          Paint()
+            ..color = const Color(0xFF6B3F1F).withValues(alpha: 0.12)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+        );
+      }
+    }
+
+    // ── Felt board: tiny dot texture pattern ───────────────────────
+    if (theme.texture == _BoardTexture.felt) {
+      final dot = Paint()
+        ..color = Colors.white.withValues(alpha: 0.04);
+      for (int gy = 0; gy < 30; gy++) {
+        for (int gx = 0; gx < 30; gx++) {
+          final dx = inner.left + (inner.width / 30) * gx + (gy.isOdd ? 4 : 0);
+          final dy = inner.top + (inner.height / 30) * gy + 4;
+          if (dx > inner.right - 4 || dy > inner.bottom - 4) continue;
+          canvas.drawCircle(Offset(dx, dy), 0.7, dot);
+        }
+      }
+      // Subtle vignette for depth.
+      canvas.drawRect(
+        inner,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              Colors.transparent,
+              Colors.transparent,
+              Colors.black.withValues(alpha: 0.25),
+            ],
+            stops: const [0.0, 0.65, 1.0],
+          ).createShader(inner),
+      );
+    }
+
+    // ── 4 pockets — beveled hole with depth ───────────────────────
     final pocketRim = Paint()
-      ..color = theme.accent.withValues(alpha: 0.55)
+      ..color = theme.accent.withValues(alpha: 0.85)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
+      ..strokeWidth = 1.8;
+    final pocketInnerRim = Paint()
+      ..color = Color.lerp(theme.accent, Colors.black, 0.5)!
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
     for (final c in _pocketCenters()) {
-      canvas.drawCircle(c, CarromBoardGame.pocketRadius, pocketPaint);
-      canvas.drawCircle(c, CarromBoardGame.pocketRadius - 1.5, pocketRim);
+      // Soft outer shadow that hints the pocket sits below surface.
+      canvas.drawCircle(
+        c.translate(0, 1),
+        CarromBoardGame.pocketRadius + 2,
+        Paint()
+          ..color = const Color(0x66000000)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+      );
+      // Outer themed rim ring (gold/silver/neon).
+      canvas.drawCircle(c, CarromBoardGame.pocketRadius + 1, pocketRim);
+      // Dark depth gradient — pure black at center, slightly grey at rim.
+      canvas.drawCircle(
+        c,
+        CarromBoardGame.pocketRadius,
+        Paint()
+          ..shader = RadialGradient(
+            colors: const [
+              Color(0xFF000000),
+              Color(0xFF050505),
+              Color(0xFF1A1A1A),
+            ],
+            stops: [0.0, 0.7, 1.0],
+            center: const Alignment(0.15, 0.15),
+          ).createShader(
+            Rect.fromCircle(center: c, radius: CarromBoardGame.pocketRadius),
+          ),
+      );
+      // Inner dark rim — closes the hole feel.
+      canvas.drawCircle(
+        c,
+        CarromBoardGame.pocketRadius - 0.8,
+        pocketInnerRim,
+      );
     }
 
     // ── Centre red ring (queen spot — never themed) ───────────────
@@ -585,11 +693,22 @@ class PieceComponent extends PositionComponent {
     final r = size.x / 2;
     final center = Offset(r, r);
 
-    // shadow under
+    // ── Multi-layer shadow ─────────────────────────────────────────
+    // Soft ambient occlusion + sharper contact shadow gives the
+    // illusion of a 3D disk sitting on the table.
     canvas.drawCircle(
-      Offset(r + 1, r + 2),
-      r,
-      Paint()..color = const Color(0x66000000),
+      Offset(r + 0.5, r + 3.5),
+      r * 1.05,
+      Paint()
+        ..color = const Color(0x55000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.5),
+    );
+    canvas.drawCircle(
+      Offset(r + 0.3, r + 1.6),
+      r * 0.98,
+      Paint()
+        ..color = const Color(0x44000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.2),
     );
 
     if (color == CarromPieceColor.queen) {
@@ -597,78 +716,182 @@ class PieceComponent extends PositionComponent {
       return;
     }
 
-    // Base body — finish-aware shader.
+    final isLight = _isLight(fillColor);
+
+    // ── Base body — sculpted gradient with proper depth ────────────
     final paint = Paint();
     switch (finish) {
       case 'metallic':
+        // Two-stop specular + dim rim to mimic brushed metal.
         paint.shader = RadialGradient(
           colors: [
-            Color.lerp(fillColor, Colors.white, 0.35)!,
+            Color.lerp(fillColor, Colors.white, 0.55)!,
+            Color.lerp(fillColor, Colors.white, 0.20)!,
             fillColor,
-            Color.lerp(fillColor, Colors.black, 0.30)!,
+            Color.lerp(fillColor, Colors.black, 0.45)!,
           ],
-          stops: const [0.0, 0.55, 1.0],
-          center: const Alignment(-0.3, -0.4),
+          stops: const [0.0, 0.25, 0.65, 1.0],
+          center: const Alignment(-0.40, -0.45),
+          radius: 1.05,
         ).createShader(Rect.fromCircle(center: center, radius: r));
         break;
       case 'jewel':
       case 'gem':
+        // Sub-surface scattering vibe: bright core, saturated mid, dark edge.
         paint.shader = RadialGradient(
           colors: [
-            Color.lerp(fillColor, Colors.white, 0.5)!,
+            Color.lerp(fillColor, Colors.white, 0.62)!,
+            Color.lerp(fillColor, Colors.white, 0.18)!,
             fillColor,
-            Color.lerp(fillColor, Colors.black, 0.18)!,
+            Color.lerp(fillColor, Colors.black, 0.28)!,
           ],
-          stops: const [0.0, 0.5, 1.0],
-          center: const Alignment(-0.4, -0.4),
+          stops: const [0.0, 0.30, 0.70, 1.0],
+          center: const Alignment(-0.45, -0.45),
+          radius: 1.0,
         ).createShader(Rect.fromCircle(center: center, radius: r));
         break;
-      default: // 'matte' or unknown
+      default: // 'matte' or unknown — ivory/wood feel
         paint.shader = RadialGradient(
           colors: [
-            Color.lerp(fillColor, Colors.white, 0.20)!,
+            Color.lerp(fillColor, Colors.white, 0.30)!,
+            Color.lerp(fillColor, Colors.white, 0.05)!,
             fillColor,
+            Color.lerp(fillColor, Colors.black, 0.22)!,
           ],
-          center: const Alignment(-0.3, -0.4),
+          stops: const [0.0, 0.40, 0.78, 1.0],
+          center: const Alignment(-0.35, -0.40),
+          radius: 1.05,
         ).createShader(Rect.fromCircle(center: center, radius: r));
     }
     canvas.drawCircle(center, r, paint);
 
-    // Rim.
+    // ── Beveled inner ring (depth illusion) ────────────────────────
+    // A faint dark band inside the rim suggests an embossed edge.
     canvas.drawCircle(
       center,
-      r,
+      r * 0.95,
       Paint()
-        ..color = Color.lerp(fillColor, Colors.black, 0.55)!.withValues(alpha: 0.75)
+        ..color = Color.lerp(fillColor, Colors.black, isLight ? 0.18 : 0.50)!
+            .withValues(alpha: 0.55)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2,
+        ..strokeWidth = 1.0,
     );
 
-    // Highlight.
+    // ── Outer rim (sharper) ────────────────────────────────────────
     canvas.drawCircle(
-      Offset(r - r * 0.35, r - r * 0.35),
-      r * 0.20,
-      Paint()..color = Colors.white.withValues(alpha: 0.55),
+      center,
+      r - 0.3,
+      Paint()
+        ..color = Color.lerp(fillColor, Colors.black, isLight ? 0.45 : 0.75)!
+            .withValues(alpha: 0.85)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.9,
     );
+
+    // ── Specular highlights — two oval gleams ──────────────────────
+    // Elongated soft glow (sub-surface).
+    final softHighlight = Paint()
+      ..color = Colors.white.withValues(alpha: isLight ? 0.55 : 0.42)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
+    canvas.save();
+    canvas.translate(center.dx - r * 0.35, center.dy - r * 0.40);
+    canvas.scale(1.0, 0.55);
+    canvas.drawCircle(Offset.zero, r * 0.32, softHighlight);
+    canvas.restore();
+
+    // Sharp specular dot (top-left).
+    canvas.drawCircle(
+      Offset(center.dx - r * 0.42, center.dy - r * 0.48),
+      r * 0.10,
+      Paint()
+        ..color = Colors.white.withValues(alpha: isLight ? 0.95 : 0.80),
+    );
+
+    // ── Bottom rim-light (back-scatter for jewel/gem only) ─────────
+    if (finish == 'jewel' || finish == 'gem') {
+      canvas.drawCircle(
+        Offset(center.dx + r * 0.20, center.dy + r * 0.45),
+        r * 0.20,
+        Paint()
+          ..color =
+              Color.lerp(fillColor, Colors.white, 0.40)!.withValues(alpha: 0.30)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+      );
+    }
+  }
+
+  static bool _isLight(Color c) {
+    // Standard luma — used to flip rim/highlight strength so white
+    // pieces don't get blown out and dark pieces don't lose their edge.
+    final luma =
+        0.299 * (c.r * 255) + 0.587 * (c.g * 255) + 0.114 * (c.b * 255);
+    return luma > 140;
   }
 
   void _paintQueen(Canvas canvas, Offset center, double r) {
+    // ── Queen body — ruby-red with deep sub-surface glow ──────────
     canvas.drawCircle(
       center,
       r,
       Paint()
         ..shader = RadialGradient(
-          colors: const [Color(0xFFE74C3C), Color(0xFF8E2B22)],
-          center: const Alignment(-0.3, -0.4),
+          colors: const [
+            Color(0xFFFF8088),
+            Color(0xFFE63946),
+            Color(0xFFB31E2C),
+            Color(0xFF5A0E14),
+          ],
+          stops: [0.0, 0.30, 0.72, 1.0],
+          center: const Alignment(-0.40, -0.45),
+          radius: 1.05,
         ).createShader(Rect.fromCircle(center: center, radius: r)),
     );
+
+    // ── Beveled inner ring ────────────────────────────────────────
+    canvas.drawCircle(
+      center,
+      r * 0.95,
+      Paint()
+        ..color = const Color(0xFF7A0A12).withValues(alpha: 0.65)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
+
+    // ── Outer gold rim — the queen wears a gold band ──────────────
+    canvas.drawCircle(
+      center,
+      r - 0.3,
+      Paint()
+        ..color = const Color(0xFFFFD700).withValues(alpha: 0.85)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
+
+    // ── Subtle ruby caustic at the bottom ─────────────────────────
+    canvas.drawCircle(
+      Offset(center.dx + r * 0.15, center.dy + r * 0.45),
+      r * 0.30,
+      Paint()
+        ..color = const Color(0xFFFFE3DE).withValues(alpha: 0.20)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+    );
+
+    // ── Gold crown emblem (♛) — properly sized to the piece ───────
+    final emblemSize = r * 1.15;
     final tp = TextPainter(
-      text: const TextSpan(
-        text: '✦',
+      text: TextSpan(
+        text: '♛',
         style: TextStyle(
-          color: Color(0xFFFFE7B0),
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
+          color: const Color(0xFFFFE7A0),
+          fontSize: emblemSize,
+          fontWeight: FontWeight.w900,
+          shadows: const [
+            Shadow(
+              color: Color(0x88000000),
+              blurRadius: 1.5,
+              offset: Offset(0, 0.8),
+            ),
+          ],
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -676,6 +899,26 @@ class PieceComponent extends PositionComponent {
     tp.paint(
       canvas,
       Offset(center.dx - tp.width / 2, center.dy - tp.height / 2),
+    );
+
+    // ── Top specular gleam ─────────────────────────────────────────
+    canvas.save();
+    canvas.translate(center.dx - r * 0.35, center.dy - r * 0.45);
+    canvas.scale(1.0, 0.55);
+    canvas.drawCircle(
+      Offset.zero,
+      r * 0.30,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.55)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0),
+    );
+    canvas.restore();
+
+    // ── Sharp top-left specular dot ───────────────────────────────
+    canvas.drawCircle(
+      Offset(center.dx - r * 0.42, center.dy - r * 0.50),
+      r * 0.10,
+      Paint()..color = Colors.white.withValues(alpha: 0.95),
     );
   }
 }
@@ -717,112 +960,204 @@ class StrikerComponent extends PositionComponent {
     final center = Offset(r, r);
     final theme = _theme;
 
-    // Outer glow for special skins.
-    if (theme.special == _StrikerSpecial.shine ||
-        theme.special == _StrikerSpecial.crystal) {
+    // ── Outer glow halo for premium skins ─────────────────────────
+    if (theme.special == _StrikerSpecial.shine) {
       canvas.drawCircle(
         center,
-        r * 1.18,
+        r * 1.28,
         Paint()
-          ..color = theme.base.withValues(alpha: 0.45)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+          ..color = const Color(0xFFFFD700).withValues(alpha: 0.40)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+      );
+    } else if (theme.special == _StrikerSpecial.crystal) {
+      canvas.drawCircle(
+        center,
+        r * 1.30,
+        Paint()
+          ..color = const Color(0xFFB4E7FF).withValues(alpha: 0.55)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
       );
     }
 
-    // Shadow.
+    // ── Multi-layer shadow (proper 3D contact) ────────────────────
     canvas.drawCircle(
-      Offset(r + 1, r + 2),
+      Offset(r + 0.8, r + 4),
+      r * 1.08,
+      Paint()
+        ..color = const Color(0x66000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.5),
+    );
+    canvas.drawCircle(
+      Offset(r + 0.4, r + 2),
       r,
-      Paint()..color = const Color(0x77000000),
+      Paint()
+        ..color = const Color(0x55000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
     );
 
-    // Base body — finish per special.
+    // ── Base body — finish-specific deep shaders ──────────────────
     final paint = Paint();
     switch (theme.special) {
       case _StrikerSpecial.shine:
+        // Polished gold — 4-stop gradient mimicking real reflection.
         paint.shader = RadialGradient(
-          colors: [
-            Color.lerp(theme.base, Colors.white, 0.55)!,
-            theme.base,
-            Color.lerp(theme.base, const Color(0xFF6E4B12), 0.45)!,
+          colors: const [
+            Color(0xFFFFF7C2),
+            Color(0xFFFFE066),
+            Color(0xFFFFD700),
+            Color(0xFFA67800),
+            Color(0xFF5C4200),
           ],
-          stops: const [0.0, 0.55, 1.0],
-          center: const Alignment(-0.35, -0.4),
+          stops: [0.0, 0.20, 0.45, 0.82, 1.0],
+          center: const Alignment(-0.42, -0.50),
+          radius: 1.05,
         ).createShader(Rect.fromCircle(center: center, radius: r));
         break;
       case _StrikerSpecial.matteBlack:
+        // Obsidian — deep, low-key, subtle dark transition.
         paint.shader = RadialGradient(
           colors: const [
-            Color(0xFF3A3A3A),
-            Color(0xFF1A1A1A),
-            Color(0xFF050505),
+            Color(0xFF4E4E4E),
+            Color(0xFF2A2A2A),
+            Color(0xFF111111),
+            Color(0xFF000000),
           ],
-          stops: const [0.0, 0.7, 1.0],
-          center: const Alignment(-0.3, -0.4),
+          stops: [0.0, 0.40, 0.80, 1.0],
+          center: const Alignment(-0.35, -0.45),
+          radius: 1.05,
         ).createShader(Rect.fromCircle(center: center, radius: r));
         break;
       case _StrikerSpecial.crystal:
+        // Crystal — internal refraction look, lots of light.
         paint.shader = RadialGradient(
-          colors: [
-            Colors.white.withValues(alpha: 0.95),
-            theme.base.withValues(alpha: 0.85),
-            theme.base.withValues(alpha: 0.65),
+          colors: const [
+            Color(0xFFFFFFFF),
+            Color(0xFFEAF8FF),
+            Color(0xFFA8E0FF),
+            Color(0xFF6CB8E8),
+            Color(0xFF3A7CB0),
           ],
-          stops: const [0.0, 0.5, 1.0],
-          center: const Alignment(-0.3, -0.3),
+          stops: [0.0, 0.25, 0.55, 0.85, 1.0],
+          center: const Alignment(-0.35, -0.40),
+          radius: 1.0,
         ).createShader(Rect.fromCircle(center: center, radius: r));
         break;
       case _StrikerSpecial.standard:
+        // Brushed silver — cool steel with proper depth.
         paint.shader = RadialGradient(
           colors: const [
-            Color(0xFFEAF0F5),
-            Color(0xFF8AA0B5),
-            Color(0xFF4A6075),
+            Color(0xFFFFFFFF),
+            Color(0xFFE0E8F0),
+            Color(0xFFA8B5C2),
+            Color(0xFF5A6878),
+            Color(0xFF2C3A48),
           ],
-          stops: const [0.0, 0.6, 1.0],
-          center: const Alignment(-0.3, -0.4),
+          stops: [0.0, 0.22, 0.55, 0.85, 1.0],
+          center: const Alignment(-0.40, -0.45),
+          radius: 1.05,
         ).createShader(Rect.fromCircle(center: center, radius: r));
         break;
     }
     canvas.drawCircle(center, r, paint);
 
-    // Rim.
+    // ── Beveled inner ring (depth) ────────────────────────────────
     canvas.drawCircle(
       center,
-      r,
+      r * 0.93,
       Paint()
-        ..color = Color.lerp(theme.base, Colors.black, 0.6)!
+        ..color = Color.lerp(theme.base, Colors.black, 0.50)!
+            .withValues(alpha: 0.40)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4,
+        ..strokeWidth = 1.2,
     );
 
-    // Highlights.
+    // ── Outer sharp rim ───────────────────────────────────────────
+    canvas.drawCircle(
+      center,
+      r - 0.3,
+      Paint()
+        ..color = Color.lerp(theme.base, Colors.black, 0.70)!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1,
+    );
+
+    // ── Top specular sweep (elongated highlight) ──────────────────
+    canvas.save();
+    canvas.translate(center.dx - r * 0.30, center.dy - r * 0.45);
+    canvas.rotate(-0.45);
+    canvas.scale(1.0, 0.40);
+    canvas.drawCircle(
+      Offset.zero,
+      r * 0.55,
+      Paint()
+        ..color = Colors.white.withValues(
+          alpha: theme.special == _StrikerSpecial.matteBlack ? 0.18 : 0.65,
+        )
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+    );
+    canvas.restore();
+
+    // ── Sharp catchlight (top-left dot) ───────────────────────────
+    canvas.drawCircle(
+      Offset(center.dx - r * 0.44, center.dy - r * 0.52),
+      r * 0.12,
+      Paint()
+        ..color = Colors.white.withValues(
+          alpha: theme.special == _StrikerSpecial.matteBlack ? 0.45 : 0.95,
+        ),
+    );
+
+    // ── Crystal-only: extra sparkle stars ─────────────────────────
     if (theme.special == _StrikerSpecial.crystal) {
-      final sparkle = Paint()..color = Colors.white.withValues(alpha: 0.85);
+      // Bottom-right small twinkle.
       canvas.drawCircle(
-        Offset(r - r * 0.30, r - r * 0.30),
-        r * 0.18,
-        sparkle,
+        Offset(center.dx + r * 0.30, center.dy + r * 0.25),
+        r * 0.08,
+        Paint()..color = Colors.white.withValues(alpha: 0.70),
       );
+      // Tiny ✦ marker — micro-sparkle vibe.
+      final tp = TextPainter(
+        text: TextSpan(
+          text: '✦',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.80),
+            fontSize: r * 0.55,
+            fontWeight: FontWeight.w900,
+            shadows: const [
+              Shadow(color: Color(0x66FFFFFF), blurRadius: 4),
+            ],
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(
+        canvas,
+        Offset(center.dx + r * 0.12 - tp.width / 2,
+            center.dy - r * 0.20 - tp.height / 2),
+      );
+    }
+
+    // ── Gold-only: subtle inner gold ring inscription ─────────────
+    if (theme.special == _StrikerSpecial.shine) {
       canvas.drawCircle(
-        Offset(r + r * 0.25, r + r * 0.20),
-        r * 0.10,
-        Paint()..color = Colors.white.withValues(alpha: 0.6),
+        center,
+        r * 0.78,
+        Paint()
+          ..color = const Color(0xFFFFE066).withValues(alpha: 0.35)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8,
       );
-      // a tiny twinkle line
-      final twinkle = Paint()
-        ..color = Colors.white.withValues(alpha: 0.55)
-        ..strokeWidth = 1.4;
-      canvas.drawLine(
-        Offset(r + r * 0.05, r - r * 0.6),
-        Offset(r + r * 0.05, r - r * 0.35),
-        twinkle,
-      );
-    } else {
+    }
+
+    // ── Bottom rim-light (back-scatter) for non-matte ─────────────
+    if (theme.special != _StrikerSpecial.matteBlack) {
       canvas.drawCircle(
-        Offset(r - r * 0.35, r - r * 0.35),
-        r * 0.25,
-        Paint()..color = Colors.white.withValues(alpha: 0.7),
+        Offset(center.dx + r * 0.15, center.dy + r * 0.50),
+        r * 0.22,
+        Paint()
+          ..color = Color.lerp(theme.base, Colors.white, 0.50)!
+              .withValues(alpha: 0.30)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0),
       );
     }
   }

@@ -1026,7 +1026,9 @@ class _QuickLinks extends StatelessWidget {
       (
         icon: Icons.sports_esports_outlined,
         label: 'العب وتحدى',
-        onTap: () => context.push('/game'),
+        // Route to the games hub (الساحة) — Carrom + RPS + Ludo teaser —
+        // not directly into the RPS lobby which the old build did.
+        onTap: () => context.push(AppRoutes.gamesHub),
         highlight: true,
       ),
       (

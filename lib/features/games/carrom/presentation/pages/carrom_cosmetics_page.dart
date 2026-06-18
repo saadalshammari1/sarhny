@@ -404,6 +404,11 @@ class _PickerCard extends StatelessWidget {
 }
 
 // ── Board preview ─────────────────────────────────────────────────────
+//
+// كل preview = نسخة مصغّرة طبق الأصل من الـ BoardBackground.render()
+// في carrom_board.dart. نفس الـ frame gradients، نفس الـ surface
+// shaders، نفس الـ ornaments والـ rosette والـ baselines. الـ scale
+// محسوب بحيث 600 وحدة (الـ board) → ~120 px (الـ preview).
 
 class _BoardPreview extends StatelessWidget {
   const _BoardPreview({required this.skin});
@@ -425,156 +430,617 @@ class _BoardPreviewPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    // Outer frame (accent)
-    final framePaint = Paint();
-    if (skin.borderStyle == 'neon_glow') {
-      framePaint.shader = LinearGradient(
-        colors: [
-          skin.accentColor,
-          skin.accentColorAlt ?? skin.accentColor,
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ).createShader(rect);
-    } else if (skin.borderStyle == 'wood') {
-      framePaint.shader = LinearGradient(
-        colors: [
-          skin.accentColor,
-          Color.lerp(skin.accentColor, Colors.white, 0.18)!,
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ).createShader(rect);
-    } else {
-      framePaint.color = skin.accentColor;
-    }
-    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(10));
-    canvas.drawRRect(rrect, framePaint);
+    // Frame margin scaled: board uses 40/600 ≈ 0.066 — slightly larger
+    // here so ornaments stay legible on a 120 px preview.
+    final inset = math.min(size.width, size.height) * 0.10;
+    final inner = rect.deflate(inset);
 
-    // Inner play surface
-    final inset = math.min(size.width, size.height) * 0.08;
-    final innerRect = rect.deflate(inset);
-    final innerRRect =
-        RRect.fromRectAndRadius(innerRect, const Radius.circular(6));
+    // ── Outer ambient shadow ──────────────────────────────────────
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        rect.translate(0, 1.5),
+        const Radius.circular(11),
+      ),
+      Paint()
+        ..color = const Color(0x55000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+    );
 
-    final basePaint = Paint();
-    switch (skin.texture) {
-      case 'neon':
-        basePaint.shader = RadialGradient(
-          colors: [
-            Color.lerp(skin.baseColor, Colors.white, 0.04)!,
-            skin.baseColor,
-          ],
-          center: Alignment.center,
-        ).createShader(innerRect);
-        break;
-      case 'marble':
-        basePaint.shader = LinearGradient(
-          colors: [
-            skin.baseColor,
-            Color.lerp(skin.baseColor, Colors.grey.shade300, 0.18)!,
-            skin.baseColor,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ).createShader(innerRect);
-        break;
-      case 'felt':
-        basePaint.shader = RadialGradient(
-          colors: [
-            Color.lerp(skin.baseColor, Colors.white, 0.05)!,
-            skin.baseColor,
-          ],
-        ).createShader(innerRect);
-        break;
-      default:
-        basePaint.shader = LinearGradient(
-          colors: [
-            skin.baseColor,
-            Color.lerp(skin.baseColor, Colors.black, 0.06)!,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ).createShader(innerRect);
-    }
-    canvas.drawRRect(innerRRect, basePaint);
+    // ── Frame (theme-specific gradient + ornaments) ───────────────
+    _paintFrame(canvas, rect, inner);
 
-    // 4 pockets (always black)
-    final pocketR = math.min(size.width, size.height) * 0.08;
-    final pocketPaint = Paint()..color = const Color(0xFF0A0A0A);
-    final corners = [
-      innerRect.topLeft + Offset(pocketR, pocketR),
-      innerRect.topRight + Offset(-pocketR, pocketR),
-      innerRect.bottomLeft + Offset(pocketR, -pocketR),
-      innerRect.bottomRight + Offset(-pocketR, -pocketR),
+    // ── Play surface ──────────────────────────────────────────────
+    _paintSurface(canvas, inner);
+
+    // ── Brass inlay ring inside the frame ─────────────────────────
+    final accentAlt = skin.accentColorAlt ?? skin.accentColor;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(inner.deflate(0.8), const Radius.circular(4)),
+      Paint()
+        ..color = accentAlt.withValues(alpha: 0.85)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.6,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(inner.deflate(2.4), const Radius.circular(3)),
+      Paint()
+        ..color = skin.accentColor.withValues(alpha: 0.55)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5,
+    );
+
+    // ── Striker baseline marks (scaled-down) ──────────────────────
+    _paintStrikerBaselines(canvas, inner);
+
+    // ── 4 pockets (beveled hole with depth) ───────────────────────
+    final pocketR = math.min(inner.width, inner.height) * 0.10;
+    final inset2 = pocketR;
+    final pocketCenters = [
+      Offset(inner.left + inset2, inner.top + inset2),
+      Offset(inner.right - inset2, inner.top + inset2),
+      Offset(inner.left + inset2, inner.bottom - inset2),
+      Offset(inner.right - inset2, inner.bottom - inset2),
     ];
-    for (final c in corners) {
-      canvas.drawCircle(c, pocketR, pocketPaint);
+    final pocketRim = Paint()
+      ..color = skin.accentColor.withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9;
+    final pocketInnerRim = Paint()
+      ..color = Color.lerp(skin.accentColor, Colors.black, 0.5)!
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+    for (final c in pocketCenters) {
+      // Soft shadow under each pocket.
+      canvas.drawCircle(
+        c.translate(0, 0.6),
+        pocketR + 1.0,
+        Paint()
+          ..color = const Color(0x66000000)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+      );
+      // Outer themed rim ring.
+      canvas.drawCircle(c, pocketR + 0.5, pocketRim);
+      // Dark depth gradient.
       canvas.drawCircle(
         c,
-        pocketR - 1.5,
+        pocketR,
         Paint()
-          ..color = skin.accentColor.withValues(alpha: 0.35)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.2,
+          ..shader = RadialGradient(
+            colors: const [
+              Color(0xFF000000),
+              Color(0xFF050505),
+              Color(0xFF1A1A1A),
+            ],
+            stops: [0.0, 0.7, 1.0],
+            center: const Alignment(0.15, 0.15),
+          ).createShader(Rect.fromCircle(center: c, radius: pocketR)),
       );
+      canvas.drawCircle(c, pocketR - 0.4, pocketInnerRim);
     }
 
-    // Center ring (red queen ring — same in every theme)
-    final center = innerRect.center;
-    final ringR = math.min(size.width, size.height) * 0.10;
-    canvas.drawCircle(
-      center,
-      ringR,
-      Paint()
-        ..color = const Color(0xFFC0392B)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
-    );
-    canvas.drawCircle(
-      center,
-      ringR * 0.35,
-      Paint()..color = const Color(0xCCC0392B),
-    );
+    // ── Center rosette (themed, multi-layer) ──────────────────────
+    _paintCenterRosette(canvas, inner.center);
 
-    // Crown emblem for royal_navy
+    // ── Crown emblems for royal_navy ──────────────────────────────
     if (skin.borderStyle == 'gold_crown') {
+      final crownSize = math.min(inner.width, inner.height) * 0.18;
       final tp = TextPainter(
         text: TextSpan(
-          text: '♛', // black queen unicode — stand-in crown glyph
+          text: '♛',
           style: TextStyle(
-            color: skin.accentColor,
-            fontSize: ringR * 1.3,
+            color: accentAlt,
+            fontSize: crownSize,
             fontWeight: FontWeight.w900,
+            shadows: [
+              Shadow(
+                color: skin.accentColor.withValues(alpha: 0.55),
+                blurRadius: 4,
+              ),
+            ],
           ),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(
         canvas,
-        center - Offset(tp.width / 2, tp.height / 2 + ringR * 1.6),
+        Offset(inner.center.dx - tp.width / 2, inner.top + 2),
+      );
+      tp.paint(
+        canvas,
+        Offset(
+          inner.center.dx - tp.width / 2,
+          inner.bottom - tp.height - 2,
+        ),
       );
     }
+  }
 
-    // Neon glow overlay for neon_dark
-    if (skin.borderStyle == 'neon_glow') {
-      final glowPaint = Paint()
-        ..color = skin.accentColor.withValues(alpha: 0.55)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-      canvas.drawRRect(innerRRect.deflate(2), glowPaint);
-      if (skin.accentColorAlt != null) {
+  // ── Frame painter — mirrors carrom_board.dart::_paintFrame ──────────
+  void _paintFrame(Canvas canvas, Rect rect, Rect inner) {
+    final framePaint = Paint();
+    final accent = skin.accentColor;
+    final accentAlt = skin.accentColorAlt ?? accent;
+
+    switch (skin.borderStyle) {
+      case 'wood':
+        // Rosewood — deep walnut with grain hint.
+        framePaint.shader = LinearGradient(
+          colors: [
+            const Color(0xFF7A4A22),
+            accent,
+            const Color(0xFF3A1F0C),
+            accent,
+            const Color(0xFF5A2F12),
+          ],
+          stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(rect);
+        break;
+      case 'thin_gold':
+        framePaint.shader = LinearGradient(
+          colors: [
+            const Color(0xFFE8C16A),
+            accent,
+            const Color(0xFFC9A04F),
+            accent,
+            const Color(0xFFB8924A),
+          ],
+          stops: const [0.0, 0.3, 0.55, 0.8, 1.0],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(rect);
+        break;
+      case 'gold_crown':
+        framePaint.shader = LinearGradient(
+          colors: [
+            const Color(0xFFFFE3A0),
+            accent,
+            const Color(0xFFB3933A),
+            accent,
+            const Color(0xFF8B6E2C),
+          ],
+          stops: const [0.0, 0.25, 0.55, 0.78, 1.0],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(rect);
+        break;
+      case 'neon_glow':
+        // Dual outer halo (cyan + magenta).
         canvas.drawRRect(
-          innerRRect.deflate(5),
+          RRect.fromRectAndRadius(rect.inflate(1.2), const Radius.circular(11)),
           Paint()
-            ..color = skin.accentColorAlt!.withValues(alpha: 0.30)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.4
+            ..color = accent.withValues(alpha: 0.55)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+        );
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(rect.inflate(0.6), const Radius.circular(10)),
+          Paint()
+            ..color = accentAlt.withValues(alpha: 0.40)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+        );
+        framePaint.color = const Color(0xFF0A0A18);
+        break;
+      default:
+        framePaint.color = accent;
+    }
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(10)),
+      framePaint,
+    );
+
+    // Recessed-playfield darkening behind the inlay.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(inner.inflate(0.6), const Radius.circular(4)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.35)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.2),
+    );
+
+    // ── Per-theme frame ornaments ────────────────────────────────
+    switch (skin.borderStyle) {
+      case 'wood':
+        // Subtle grain stripes on the frame band (top + bottom).
+        for (int i = 0; i < 4; i++) {
+          final dy = rect.top + 1.5 + i * 1.2;
+          final dyB = rect.bottom - 1.5 - i * 1.2;
+          final pStripe = Paint()
+            ..color = Colors.black.withValues(alpha: 0.10)
+            ..strokeWidth = 0.3;
+          canvas.drawLine(
+            Offset(rect.left + 3, dy),
+            Offset(rect.right - 3, dy),
+            pStripe,
+          );
+          canvas.drawLine(
+            Offset(rect.left + 3, dyB),
+            Offset(rect.right - 3, dyB),
+            pStripe,
+          );
+        }
+        break;
+      case 'gold_crown':
+        // 4 filigree corner studs.
+        const studPositions = [
+          Offset(0.06, 0.06),
+          Offset(0.94, 0.06),
+          Offset(0.06, 0.94),
+          Offset(0.94, 0.94),
+        ];
+        for (final p in studPositions) {
+          final c = Offset(
+            rect.left + rect.width * p.dx,
+            rect.top + rect.height * p.dy,
+          );
+          canvas.drawCircle(c, 1.8, Paint()..color = accentAlt);
+          canvas.drawCircle(
+            c,
+            1.8,
+            Paint()
+              ..color = Colors.black.withValues(alpha: 0.55)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 0.4,
+          );
+          canvas.drawCircle(
+            c.translate(-0.5, -0.6),
+            0.6,
+            Paint()..color = Colors.white.withValues(alpha: 0.85),
+          );
+        }
+        break;
+      case 'neon_glow':
+        // 4 hex-vertex diamonds (top/bottom/left/right mid).
+        final diamondPositions = [
+          Offset(rect.center.dx, rect.top + 2.5),
+          Offset(rect.center.dx, rect.bottom - 2.5),
+          Offset(rect.left + 2.5, rect.center.dy),
+          Offset(rect.right - 2.5, rect.center.dy),
+        ];
+        for (final c in diamondPositions) {
+          final path = Path()
+            ..moveTo(c.dx, c.dy - 1.4)
+            ..lineTo(c.dx + 1.4, c.dy)
+            ..lineTo(c.dx, c.dy + 1.4)
+            ..lineTo(c.dx - 1.4, c.dy)
+            ..close();
+          canvas.drawPath(
+            path,
+            Paint()
+              ..color = accent
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.8),
+          );
+        }
+        break;
+      case 'thin_gold':
+        // Brass rivets (3 per side).
+        for (int i = 0; i < 3; i++) {
+          final f = (i + 1) / 4;
+          final positions = [
+            Offset(rect.left + rect.width * f, rect.top + 2.2),
+            Offset(rect.left + rect.width * f, rect.bottom - 2.2),
+            Offset(rect.left + 2.2, rect.top + rect.height * f),
+            Offset(rect.right - 2.2, rect.top + rect.height * f),
+          ];
+          for (final c in positions) {
+            canvas.drawCircle(c, 1.0, Paint()..color = accentAlt);
+            canvas.drawCircle(
+              c.translate(-0.25, -0.3),
+              0.35,
+              Paint()..color = Colors.white.withValues(alpha: 0.85),
+            );
+          }
+        }
+        break;
+    }
+  }
+
+  // ── Surface painter — mirrors carrom_board.dart::_paintSurface ──────
+  void _paintSurface(Canvas canvas, Rect inner) {
+    final playPaint = Paint();
+    final base = skin.baseColor;
+    switch (skin.texture) {
+      case 'wood':
+        playPaint.shader = RadialGradient(
+          colors: [
+            Color.lerp(base, Colors.white, 0.18)!,
+            base,
+            Color.lerp(base, const Color(0xFF7A4A22), 0.30)!,
+          ],
+          stops: const [0.0, 0.55, 1.0],
+          center: const Alignment(-0.20, -0.25),
+          radius: 1.05,
+        ).createShader(inner);
+        break;
+      case 'marble':
+        playPaint.shader = RadialGradient(
+          colors: [
+            const Color(0xFFFFFFFF),
+            base,
+            const Color(0xFFEDE6D8),
+            const Color(0xFFD8CFB8),
+          ],
+          stops: const [0.0, 0.45, 0.85, 1.0],
+          center: const Alignment(-0.2, -0.3),
+          radius: 1.1,
+        ).createShader(inner);
+        break;
+      case 'felt':
+        playPaint.shader = RadialGradient(
+          colors: [
+            Color.lerp(base, Colors.white, 0.08)!,
+            base,
+            Color.lerp(base, Colors.black, 0.40)!,
+          ],
+          stops: const [0.0, 0.55, 1.0],
+        ).createShader(inner);
+        break;
+      case 'neon':
+        playPaint.shader = RadialGradient(
+          colors: [
+            const Color(0xFF0F1430),
+            base,
+            const Color(0xFF000000),
+          ],
+          stops: const [0.0, 0.45, 1.0],
+        ).createShader(inner);
+        break;
+      default:
+        playPaint.color = base;
+    }
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(inner, const Radius.circular(4)),
+      playPaint,
+    );
+
+    // ── Texture overlays ──────────────────────────────────────────
+    switch (skin.texture) {
+      case 'wood':
+        _paintWoodGrain(canvas, inner);
+        break;
+      case 'marble':
+        _paintMarbleVeining(canvas, inner);
+        break;
+      case 'felt':
+        _paintFeltPattern(canvas, inner);
+        break;
+      case 'neon':
+        _paintHexGrid(canvas, inner);
+        break;
+    }
+  }
+
+  /// 6 thin wood-grain stripes + 3 deterministic knots — scaled down.
+  void _paintWoodGrain(Canvas canvas, Rect inner) {
+    final grain = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.25;
+    for (int i = 0; i < 6; i++) {
+      final y = inner.top + (inner.height / 6) * i + 1.2;
+      final path = Path()..moveTo(inner.left + 1.2, y);
+      for (double x = inner.left + 1.2; x <= inner.right - 1.2; x += 2.0) {
+        final yWave = y + math.sin((x + i * 31) * 0.20) * 0.6;
+        path.lineTo(x, yWave);
+      }
+      grain.color = (i % 3 == 0
+              ? const Color(0xFF5A3315)
+              : const Color(0xFF8B5A2B))
+          .withValues(alpha: i.isEven ? 0.10 : 0.05);
+      canvas.drawPath(path, grain);
+    }
+    const knots = [
+      Offset(0.20, 0.30),
+      Offset(0.72, 0.22),
+      Offset(0.55, 0.78),
+    ];
+    for (final k in knots) {
+      final kp = Offset(
+        inner.left + inner.width * k.dx,
+        inner.top + inner.height * k.dy,
+      );
+      canvas.drawCircle(
+        kp,
+        0.9,
+        Paint()..color = const Color(0xFF3A1F0C).withValues(alpha: 0.30),
+      );
+      canvas.drawCircle(
+        kp,
+        1.6,
+        Paint()
+          ..color = const Color(0xFF5A3315).withValues(alpha: 0.18)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.8),
+      );
+    }
+  }
+
+  /// Carrara veining — 2 Bezier veins + 5 specks.
+  void _paintMarbleVeining(Canvas canvas, Rect inner) {
+    // Gray vein.
+    final v1 = Paint()
+      ..color = const Color(0xFFAFAAA0).withValues(alpha: 0.50)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+    final p1 = Path()
+      ..moveTo(inner.left + inner.width * 0.05, inner.top + 4)
+      ..cubicTo(
+        inner.center.dx - 14, inner.top + inner.height * 0.30,
+        inner.center.dx + 8, inner.center.dy - 4,
+        inner.right - 6, inner.bottom - inner.height * 0.20,
+      );
+    canvas.drawPath(p1, v1);
+
+    // Gold vein.
+    final v2 = Paint()
+      ..color = const Color(0xFFC2A06A).withValues(alpha: 0.45)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.35;
+    final p2 = Path()
+      ..moveTo(inner.right - 4, inner.top + 8)
+      ..cubicTo(
+        inner.center.dx + 10, inner.center.dy - 16,
+        inner.center.dx - 12, inner.center.dy + 6,
+        inner.left + 10, inner.bottom - 8,
+      );
+    canvas.drawPath(p2, v2);
+
+    const speckles = [
+      Offset(0.22, 0.28),
+      Offset(0.78, 0.16),
+      Offset(0.42, 0.55),
+      Offset(0.66, 0.72),
+      Offset(0.15, 0.78),
+    ];
+    final dot = Paint()
+      ..color = const Color(0xFF8A8478).withValues(alpha: 0.35);
+    for (final s in speckles) {
+      canvas.drawCircle(
+        Offset(
+          inner.left + inner.width * s.dx,
+          inner.top + inner.height * s.dy,
+        ),
+        0.4,
+        dot,
+      );
+    }
+  }
+
+  /// Felt weave + vignette.
+  void _paintFeltPattern(Canvas canvas, Rect inner) {
+    final dot = Paint()..color = Colors.white.withValues(alpha: 0.045);
+    const cells = 14;
+    for (int gy = 0; gy < cells; gy++) {
+      for (int gx = 0; gx < cells; gx++) {
+        final dx =
+            inner.left + (inner.width / cells) * gx + (gy.isOdd ? 0.7 : 0);
+        final dy = inner.top + (inner.height / cells) * gy + 0.7;
+        if (dx > inner.right - 1 || dy > inner.bottom - 1) continue;
+        canvas.drawCircle(Offset(dx, dy), 0.22, dot);
+      }
+    }
+    canvas.drawRect(
+      inner,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            Colors.transparent,
+            Colors.transparent,
+            Colors.black.withValues(alpha: 0.35),
+          ],
+          stops: const [0.0, 0.60, 1.0],
+        ).createShader(inner),
+    );
+  }
+
+  /// Hex grid + scan-line.
+  void _paintHexGrid(Canvas canvas, Rect inner) {
+    final accent = skin.accentColor;
+    final grid = Paint()
+      ..color = accent.withValues(alpha: 0.10)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.3;
+    const cell = 8.5;
+    for (double y = inner.top; y < inner.bottom; y += cell * 0.866) {
+      final row = ((y - inner.top) / (cell * 0.866)).floor();
+      for (double x = inner.left + (row.isOdd ? cell * 0.5 : 0);
+          x < inner.right;
+          x += cell) {
+        final path = Path();
+        for (int i = 0; i < 6; i++) {
+          final angle = i * math.pi / 3 + math.pi / 6;
+          final px = x + cell * 0.30 * math.cos(angle);
+          final py = y + cell * 0.30 * math.sin(angle);
+          if (i == 0) {
+            path.moveTo(px, py);
+          } else {
+            path.lineTo(px, py);
+          }
+        }
+        path.close();
+        canvas.drawPath(path, grid);
+      }
+    }
+    final accentAlt = skin.accentColorAlt ?? accent;
+    canvas.drawLine(
+      Offset(inner.left + 4, inner.center.dy),
+      Offset(inner.right - 4, inner.center.dy),
+      Paint()
+        ..color = accentAlt.withValues(alpha: 0.10)
+        ..strokeWidth = 0.25,
+    );
+  }
+
+  /// Striker baseline arcs — mid dot + 2 flanking marks each side.
+  void _paintStrikerBaselines(Canvas canvas, Rect inner) {
+    final accentAlt = skin.accentColorAlt ?? skin.accentColor;
+    final paint = Paint()
+      ..color = accentAlt.withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.45;
+    final dxOff = inner.width * 0.26;
+    final yOffset = inner.height * 0.18;
+    void drawSideMark(double y) {
+      final cx = inner.center.dx;
+      canvas.drawCircle(Offset(cx, y), 0.7, Paint()..color = paint.color);
+      for (final dx in [-dxOff, dxOff]) {
+        canvas.drawLine(
+          Offset(cx + dx, y - 1.3),
+          Offset(cx + dx, y + 1.3),
+          paint,
         );
       }
     }
+
+    drawSideMark(inner.top + yOffset);
+    drawSideMark(inner.bottom - yOffset);
+  }
+
+  /// Center rosette — outer ring, 8 dots, red mid ring, red center dot.
+  void _paintCenterRosette(Canvas canvas, Offset center) {
+    final accentAlt = skin.accentColorAlt ?? skin.accentColor;
+    const centerRing = Color(0xFFC0392B);
+    final ringR = 5.8;
+    // 1) Outer ring.
+    canvas.drawCircle(
+      center,
+      ringR + 1.6,
+      Paint()
+        ..color = accentAlt.withValues(alpha: 0.65)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5,
+    );
+    // 2) Mid red ring.
+    canvas.drawCircle(
+      center,
+      ringR,
+      Paint()
+        ..color = centerRing.withValues(alpha: 0.85)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.7,
+    );
+    // 3) 8 small dots around the ring.
+    for (int i = 0; i < 8; i++) {
+      final angle = (i / 8) * 2 * math.pi;
+      final p = Offset(
+        center.dx + ringR * math.cos(angle),
+        center.dy + ringR * math.sin(angle),
+      );
+      canvas.drawCircle(
+        p,
+        0.5,
+        Paint()..color = accentAlt.withValues(alpha: 0.85),
+      );
+    }
+    // 4) Inner red dot.
+    canvas.drawCircle(
+      center,
+      2.2,
+      Paint()..color = centerRing.withValues(alpha: 0.55),
+    );
+    canvas.drawCircle(
+      center,
+      1.0,
+      Paint()..color = centerRing,
+    );
   }
 
   @override
@@ -627,72 +1093,165 @@ class _PiecePreviewDot extends StatelessWidget {
   }
 }
 
+/// Piece preview dot — مرآة كاملة لـ PieceComponent.render() في
+/// carrom_board.dart. نفس الـ gradient stops، الـ beveled ring،
+/// الـ specular sweep، والـ embossed maker's-mark seal.
 class _PieceDotPainter extends CustomPainter {
   _PieceDotPainter({required this.color, required this.finish});
   final Color color;
   final String finish;
 
+  static bool _isLight(Color c) {
+    final luma =
+        0.299 * (c.r * 255) + 0.587 * (c.g * 255) + 0.114 * (c.b * 255);
+    return luma > 140;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    final r = math.min(size.width, size.height) / 2;
-    final c = Offset(size.width / 2, size.height / 2);
-    // shadow
+    // Leave breathing room for shadow/highlight overshoot.
+    final r = math.min(size.width, size.height) / 2 - 1.5;
+    final center = Offset(size.width / 2, size.height / 2);
+    final isLight = _isLight(color);
+
+    // ── Multi-layer shadow ─────────────────────────────────────────
     canvas.drawCircle(
-      c.translate(1, 2.4),
-      r,
-      Paint()..color = const Color(0x66000000),
+      Offset(center.dx + 0.3, center.dy + 1.8),
+      r * 1.05,
+      Paint()
+        ..color = const Color(0x55000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.8),
     );
-    // base
-    Paint base = Paint();
+    canvas.drawCircle(
+      Offset(center.dx + 0.2, center.dy + 0.9),
+      r * 0.98,
+      Paint()
+        ..color = const Color(0x44000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.7),
+    );
+
+    // ── Base body — 4-stop sculpted radial gradient per finish ────
+    final paint = Paint();
     switch (finish) {
       case 'metallic':
-        base.shader = RadialGradient(
+        paint.shader = RadialGradient(
           colors: [
-            Color.lerp(color, Colors.white, 0.35)!,
+            Color.lerp(color, Colors.white, 0.55)!,
+            Color.lerp(color, Colors.white, 0.20)!,
             color,
-            Color.lerp(color, Colors.black, 0.30)!,
+            Color.lerp(color, Colors.black, 0.45)!,
           ],
-          stops: const [0.0, 0.55, 1.0],
-          center: const Alignment(-0.3, -0.4),
-        ).createShader(Rect.fromCircle(center: c, radius: r));
+          stops: const [0.0, 0.25, 0.65, 1.0],
+          center: const Alignment(-0.40, -0.45),
+          radius: 1.05,
+        ).createShader(Rect.fromCircle(center: center, radius: r));
         break;
       case 'jewel':
       case 'gem':
-        base.shader = RadialGradient(
+        paint.shader = RadialGradient(
           colors: [
-            Color.lerp(color, Colors.white, 0.45)!,
-            color,
-            Color.lerp(color, Colors.black, 0.18)!,
-          ],
-          stops: const [0.0, 0.5, 1.0],
-          center: const Alignment(-0.4, -0.4),
-        ).createShader(Rect.fromCircle(center: c, radius: r));
-        break;
-      default:
-        base.shader = RadialGradient(
-          colors: [
+            Color.lerp(color, Colors.white, 0.62)!,
             Color.lerp(color, Colors.white, 0.18)!,
             color,
+            Color.lerp(color, Colors.black, 0.28)!,
           ],
-          center: const Alignment(-0.3, -0.4),
-        ).createShader(Rect.fromCircle(center: c, radius: r));
+          stops: const [0.0, 0.30, 0.70, 1.0],
+          center: const Alignment(-0.45, -0.45),
+          radius: 1.0,
+        ).createShader(Rect.fromCircle(center: center, radius: r));
+        break;
+      default: // matte
+        paint.shader = RadialGradient(
+          colors: [
+            Color.lerp(color, Colors.white, 0.30)!,
+            Color.lerp(color, Colors.white, 0.05)!,
+            color,
+            Color.lerp(color, Colors.black, 0.22)!,
+          ],
+          stops: const [0.0, 0.40, 0.78, 1.0],
+          center: const Alignment(-0.35, -0.40),
+          radius: 1.05,
+        ).createShader(Rect.fromCircle(center: center, radius: r));
     }
-    canvas.drawCircle(c, r, base);
-    // rim
+    canvas.drawCircle(center, r, paint);
+
+    // ── Beveled inner ring ─────────────────────────────────────────
     canvas.drawCircle(
-      c,
-      r,
+      center,
+      r * 0.95,
       Paint()
-        ..color = Color.lerp(color, Colors.black, 0.40)!.withValues(alpha: 0.75)
+        ..color = Color.lerp(color, Colors.black, isLight ? 0.18 : 0.50)!
+            .withValues(alpha: 0.55)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2,
+        ..strokeWidth = 0.7,
     );
-    // highlight
+
+    // ── Outer rim ──────────────────────────────────────────────────
     canvas.drawCircle(
-      c.translate(-r * 0.35, -r * 0.35),
-      r * 0.22,
-      Paint()..color = Colors.white.withValues(alpha: 0.55),
+      center,
+      r - 0.2,
+      Paint()
+        ..color = Color.lerp(color, Colors.black, isLight ? 0.45 : 0.75)!
+            .withValues(alpha: 0.85)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.6,
     );
+
+    // ── Specular sweep (elongated) ─────────────────────────────────
+    final softHighlight = Paint()
+      ..color = Colors.white.withValues(alpha: isLight ? 0.55 : 0.42)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.2);
+    canvas.save();
+    canvas.translate(center.dx - r * 0.35, center.dy - r * 0.40);
+    canvas.scale(1.0, 0.55);
+    canvas.drawCircle(Offset.zero, r * 0.32, softHighlight);
+    canvas.restore();
+
+    // ── Sharp catchlight (top-left) ────────────────────────────────
+    canvas.drawCircle(
+      Offset(center.dx - r * 0.42, center.dy - r * 0.48),
+      r * 0.10,
+      Paint()..color = Colors.white.withValues(alpha: isLight ? 0.95 : 0.80),
+    );
+
+    // ── Embossed maker's-mark seal (3 rings) ───────────────────────
+    canvas.drawCircle(
+      center,
+      r * 0.32,
+      Paint()
+        ..color = Color.lerp(color, Colors.black, isLight ? 0.18 : 0.55)!
+            .withValues(alpha: 0.45)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5,
+    );
+    canvas.drawCircle(
+      center,
+      r * 0.18,
+      Paint()
+        ..color = Color.lerp(color, Colors.black, isLight ? 0.10 : 0.40)!
+            .withValues(alpha: 0.30)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.35,
+    );
+    canvas.drawCircle(
+      center,
+      r * 0.06,
+      Paint()
+        ..color =
+            Color.lerp(color, Colors.white, 0.40)!.withValues(alpha: 0.55),
+    );
+
+    // ── Back-scatter for jewel/gem ─────────────────────────────────
+    if (finish == 'jewel' || finish == 'gem') {
+      canvas.drawCircle(
+        Offset(center.dx + r * 0.20, center.dy + r * 0.45),
+        r * 0.20,
+        Paint()
+          ..color = Color.lerp(color, Colors.white, 0.40)!
+              .withValues(alpha: 0.30)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.0),
+      );
+    }
   }
 
   @override
@@ -725,99 +1284,216 @@ class _StrikerPreview extends StatelessWidget {
   }
 }
 
+/// Striker preview — مرآة كاملة لـ StrikerComponent.render() في
+/// carrom_board.dart. نفس الـ halos، 4-5 stop gradients، beveled rim،
+/// rotated specular sweep، crystal sparkles، gold inscription ring،
+/// و back-scatter.
 class _StrikerPainter extends CustomPainter {
   _StrikerPainter({required this.skin});
   final StrikerSkin skin;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final r = math.min(size.width, size.height) / 2;
-    final c = Offset(size.width / 2, size.height / 2);
-    final color = skin.color;
-    // shadow
-    canvas.drawCircle(
-      c.translate(2, 3),
-      r,
-      Paint()..color = const Color(0x88000000),
-    );
-    // glow for crystal/gold
-    if (skin.special == 'translucent_sparkle' ||
-        skin.special == 'shine_gradient') {
+    // Leave room for halos/shadow outside the disk.
+    final r = math.min(size.width, size.height) / 2 - 4.5;
+    final center = Offset(size.width / 2, size.height / 2);
+    final special = skin.special;
+
+    // ── Outer glow halo for premium skins ─────────────────────────
+    if (special == 'shine_gradient') {
       canvas.drawCircle(
-        c,
-        r * 1.15,
+        center,
+        r * 1.28,
         Paint()
-          ..color = color.withValues(alpha: 0.35)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+          ..color = const Color(0xFFFFD700).withValues(alpha: 0.40)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+      );
+    } else if (special == 'translucent_sparkle') {
+      canvas.drawCircle(
+        center,
+        r * 1.30,
+        Paint()
+          ..color = const Color(0xFFB4E7FF).withValues(alpha: 0.55)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
       );
     }
-    // base
-    Paint base = Paint();
-    switch (skin.special) {
-      case 'shine_gradient':
-        base.shader = RadialGradient(
-          colors: [
-            Color.lerp(color, Colors.white, 0.6)!,
-            color,
-            Color.lerp(color, Colors.brown, 0.4)!,
-          ],
-          stops: const [0.0, 0.55, 1.0],
-          center: const Alignment(-0.35, -0.4),
-        ).createShader(Rect.fromCircle(center: c, radius: r));
-        break;
-      case 'matte_black':
-        base.shader = RadialGradient(
-          colors: [
-            const Color(0xFF3A3A3A),
-            const Color(0xFF1A1A1A),
-            const Color(0xFF0A0A0A),
-          ],
-          stops: const [0.0, 0.7, 1.0],
-          center: const Alignment(-0.3, -0.4),
-        ).createShader(Rect.fromCircle(center: c, radius: r));
-        break;
-      case 'translucent_sparkle':
-        base.shader = RadialGradient(
-          colors: [
-            Colors.white.withValues(alpha: 0.95),
-            color.withValues(alpha: 0.85),
-            color.withValues(alpha: 0.65),
-          ],
-          stops: const [0.0, 0.5, 1.0],
-          center: const Alignment(-0.3, -0.3),
-        ).createShader(Rect.fromCircle(center: c, radius: r));
-        break;
-      default:
-        base.shader = RadialGradient(
-          colors: [
-            Color.lerp(color, Colors.white, 0.42)!,
-            color,
-            Color.lerp(color, Colors.black, 0.30)!,
-          ],
-          stops: const [0.0, 0.6, 1.0],
-          center: const Alignment(-0.3, -0.4),
-        ).createShader(Rect.fromCircle(center: c, radius: r));
-    }
-    canvas.drawCircle(c, r, base);
-    // rim
+
+    // ── Multi-layer shadow ─────────────────────────────────────────
     canvas.drawCircle(
-      c,
+      Offset(center.dx + 0.6, center.dy + 2.2),
+      r * 1.08,
+      Paint()
+        ..color = const Color(0x66000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.4),
+    );
+    canvas.drawCircle(
+      Offset(center.dx + 0.3, center.dy + 1.1),
       r,
       Paint()
-        ..color = Color.lerp(color, Colors.black, 0.55)!
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4,
+        ..color = const Color(0x55000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.9),
     );
-    // sparkle for crystal
-    if (skin.special == 'translucent_sparkle') {
-      final sparklePaint = Paint()..color = Colors.white.withValues(alpha: 0.7);
-      canvas.drawCircle(c.translate(-r * 0.3, -r * 0.3), r * 0.10, sparklePaint);
-      canvas.drawCircle(c.translate(r * 0.25, r * 0.2), r * 0.06, sparklePaint);
-    } else {
+
+    // ── Base body — finish-specific shader ────────────────────────
+    final paint = Paint();
+    switch (special) {
+      case 'shine_gradient':
+        // Polished gold — 5-stop.
+        paint.shader = RadialGradient(
+          colors: const [
+            Color(0xFFFFF7C2),
+            Color(0xFFFFE066),
+            Color(0xFFFFD700),
+            Color(0xFFA67800),
+            Color(0xFF5C4200),
+          ],
+          stops: [0.0, 0.20, 0.45, 0.82, 1.0],
+          center: const Alignment(-0.42, -0.50),
+          radius: 1.05,
+        ).createShader(Rect.fromCircle(center: center, radius: r));
+        break;
+      case 'matte_black':
+        paint.shader = RadialGradient(
+          colors: const [
+            Color(0xFF4E4E4E),
+            Color(0xFF2A2A2A),
+            Color(0xFF111111),
+            Color(0xFF000000),
+          ],
+          stops: [0.0, 0.40, 0.80, 1.0],
+          center: const Alignment(-0.35, -0.45),
+          radius: 1.05,
+        ).createShader(Rect.fromCircle(center: center, radius: r));
+        break;
+      case 'translucent_sparkle':
+        paint.shader = RadialGradient(
+          colors: const [
+            Color(0xFFFFFFFF),
+            Color(0xFFEAF8FF),
+            Color(0xFFA8E0FF),
+            Color(0xFF6CB8E8),
+            Color(0xFF3A7CB0),
+          ],
+          stops: [0.0, 0.25, 0.55, 0.85, 1.0],
+          center: const Alignment(-0.35, -0.40),
+          radius: 1.0,
+        ).createShader(Rect.fromCircle(center: center, radius: r));
+        break;
+      default: // standard / silver
+        paint.shader = RadialGradient(
+          colors: const [
+            Color(0xFFFFFFFF),
+            Color(0xFFE0E8F0),
+            Color(0xFFA8B5C2),
+            Color(0xFF5A6878),
+            Color(0xFF2C3A48),
+          ],
+          stops: [0.0, 0.22, 0.55, 0.85, 1.0],
+          center: const Alignment(-0.40, -0.45),
+          radius: 1.05,
+        ).createShader(Rect.fromCircle(center: center, radius: r));
+    }
+    canvas.drawCircle(center, r, paint);
+
+    // ── Beveled inner ring ─────────────────────────────────────────
+    final baseColor = skin.color;
+    canvas.drawCircle(
+      center,
+      r * 0.93,
+      Paint()
+        ..color = Color.lerp(baseColor, Colors.black, 0.50)!
+            .withValues(alpha: 0.40)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.85,
+    );
+
+    // ── Outer sharp rim ───────────────────────────────────────────
+    canvas.drawCircle(
+      center,
+      r - 0.25,
+      Paint()
+        ..color = Color.lerp(baseColor, Colors.black, 0.70)!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
+    );
+
+    // ── Rotated specular sweep ────────────────────────────────────
+    canvas.save();
+    canvas.translate(center.dx - r * 0.30, center.dy - r * 0.45);
+    canvas.rotate(-0.45);
+    canvas.scale(1.0, 0.40);
+    canvas.drawCircle(
+      Offset.zero,
+      r * 0.55,
+      Paint()
+        ..color = Colors.white.withValues(
+          alpha: special == 'matte_black' ? 0.18 : 0.65,
+        )
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+    );
+    canvas.restore();
+
+    // ── Sharp catchlight (top-left) ───────────────────────────────
+    canvas.drawCircle(
+      Offset(center.dx - r * 0.44, center.dy - r * 0.52),
+      r * 0.12,
+      Paint()
+        ..color = Colors.white.withValues(
+          alpha: special == 'matte_black' ? 0.45 : 0.95,
+        ),
+    );
+
+    // ── Crystal: extra sparkle + ✦ micro-sparkle ──────────────────
+    if (special == 'translucent_sparkle') {
       canvas.drawCircle(
-        c.translate(-r * 0.35, -r * 0.35),
+        Offset(center.dx + r * 0.30, center.dy + r * 0.25),
+        r * 0.08,
+        Paint()..color = Colors.white.withValues(alpha: 0.70),
+      );
+      final tp = TextPainter(
+        text: TextSpan(
+          text: '✦',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.80),
+            fontSize: r * 0.55,
+            fontWeight: FontWeight.w900,
+            shadows: const [
+              Shadow(color: Color(0x66FFFFFF), blurRadius: 2.5),
+            ],
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(
+        canvas,
+        Offset(
+          center.dx + r * 0.12 - tp.width / 2,
+          center.dy - r * 0.20 - tp.height / 2,
+        ),
+      );
+    }
+
+    // ── Gold: inner inscription ring ──────────────────────────────
+    if (special == 'shine_gradient') {
+      canvas.drawCircle(
+        center,
+        r * 0.78,
+        Paint()
+          ..color = const Color(0xFFFFE066).withValues(alpha: 0.35)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.6,
+      );
+    }
+
+    // ── Bottom rim-light (back-scatter) for non-matte ─────────────
+    if (special != 'matte_black') {
+      canvas.drawCircle(
+        Offset(center.dx + r * 0.15, center.dy + r * 0.50),
         r * 0.22,
-        Paint()..color = Colors.white.withValues(alpha: 0.7),
+        Paint()
+          ..color = Color.lerp(baseColor, Colors.white, 0.50)!
+              .withValues(alpha: 0.30)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.2),
       );
     }
   }

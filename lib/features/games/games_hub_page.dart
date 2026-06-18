@@ -120,8 +120,12 @@ class _GamesHubPageState extends ConsumerState<GamesHubPage>
             ),
             const SizedBox(height: 14),
 
-            // ── Ludo teaser ───────────────────────────────────────
-            _LudoTeaserCard(colors: colors),
+            // ── Ludo card (active) ────────────────────────────────
+            _LudoFeatureCard(
+              colors: colors,
+              shimmer: _shimmer,
+              onTap: () => context.push(AppRoutes.ludoLobby),
+            ),
             const SizedBox(height: 28),
 
             // ── Footer shortcuts: cosmetics + how-to-earn ─────────
@@ -920,9 +924,299 @@ class _RpsCard extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-//  Ludo teaser — dimmed "coming soon" card
+//  Ludo feature card — active, mini-board + dice + CTA
 // ─────────────────────────────────────────────────────────────────────
 
+class _LudoFeatureCard extends StatelessWidget {
+  const _LudoFeatureCard({
+    required this.colors,
+    required this.shimmer,
+    required this.onTap,
+  });
+  final SarhnyColors colors;
+  final Animation<double> shimmer;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        height: 160,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              Color(0xCC3F1F6E), // royal violet
+              Color(0xCC0F2C4F), // deep blue
+              Color(0xE5050E27), // night
+            ],
+          ),
+          border: Border.all(
+            color: colors.crystal.withValues(alpha: 0.45),
+            width: 1.3,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFD4AF37).withValues(alpha: 0.18),
+              blurRadius: 22,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
+            children: [
+              // Painted mini ludo board fading to the right.
+              Positioned.fill(
+                child: CustomPaint(painter: _LudoHubMiniBoardPainter()),
+              ),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerRight,
+                      end: Alignment.centerLeft,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.55),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Shimmer sweep
+              AnimatedBuilder(
+                animation: shimmer,
+                builder: (context, _) {
+                  return Positioned(
+                    top: 0,
+                    bottom: 0,
+                    left: -120 + 480 * shimmer.value,
+                    width: 140,
+                    child: Transform.rotate(
+                      angle: -0.45,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              Colors.transparent,
+                              Colors.white.withValues(alpha: 0.08),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              _MiniBadge(
+                                text: 'جديد',
+                                bg: const Color(0xFFD4AF37),
+                                fg: const Color(0xFF1A1A1A),
+                              ),
+                              const SizedBox(width: 8),
+                              _MiniBadge(
+                                text: '2-4',
+                                bg: Colors.white.withValues(alpha: 0.18),
+                                fg: Colors.white,
+                                border: Colors.white.withValues(alpha: 0.3),
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'لودو',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'Tajawal',
+                                  height: 1.0,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'الزهر يقرر — والفائز يأخذ كل النقاط',
+                                style: TextStyle(
+                                  color:
+                                      Colors.white.withValues(alpha: 0.85),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD4AF37),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFD4AF37)
+                                          .withValues(alpha: 0.55),
+                                      blurRadius: 14,
+                                    ),
+                                  ],
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'العب الآن',
+                                      style: TextStyle(
+                                        color: Color(0xFF1A1A1A),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    SizedBox(width: 4),
+                                    Icon(
+                                      Icons.arrow_back,
+                                      color: Color(0xFF1A1A1A),
+                                      size: 18,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LudoHubMiniBoardPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final boardSize = size.height * 0.85;
+    final cx = size.width - boardSize / 2 - 12;
+    final cy = size.height / 2;
+    final origin = Offset(cx - boardSize / 2, cy - boardSize / 2);
+    final cs = boardSize / 15;
+
+    // gold frame
+    final rect = Rect.fromCenter(
+      center: Offset(cx, cy),
+      width: boardSize,
+      height: boardSize,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(6)),
+      Paint()..color = const Color(0xFF0E1320),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(6)),
+      Paint()
+        ..color = const Color(0xFFD4AF37).withValues(alpha: 0.8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+
+    // 4 home corners
+    const palette = [
+      Color(0xFFE53935),
+      Color(0xFF43A047),
+      Color(0xFFFDD835),
+      Color(0xFF1E88E5),
+    ];
+    final centers = [
+      const Offset(3, 3),
+      const Offset(11, 3),
+      const Offset(11, 11),
+      const Offset(3, 11),
+    ];
+    for (int i = 0; i < 4; i++) {
+      final r = Rect.fromCenter(
+        center: Offset(
+          origin.dx + (centers[i].dx + 0.5) * cs,
+          origin.dy + (centers[i].dy + 0.5) * cs,
+        ),
+        width: cs * 6,
+        height: cs * 6,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(r, const Radius.circular(3)),
+        Paint()..color = palette[i].withValues(alpha: 0.35),
+      );
+    }
+
+    // center triangle
+    final left = origin.dx + 6 * cs;
+    final top = origin.dy + 6 * cs;
+    final sz = 3 * cs;
+    final center = Offset(left + sz / 2, top + sz / 2);
+    final corners = [
+      Offset(left, top),
+      Offset(left + sz, top),
+      Offset(left + sz, top + sz),
+      Offset(left, top + sz),
+    ];
+    final tris = [
+      (palette[0], [corners[0], corners[3], center]),
+      (palette[1], [corners[0], corners[1], center]),
+      (palette[2], [corners[1], corners[2], center]),
+      (palette[3], [corners[2], corners[3], center]),
+    ];
+    for (final t in tris) {
+      final p = Path()
+        ..moveTo(t.$2[0].dx, t.$2[0].dy)
+        ..lineTo(t.$2[1].dx, t.$2[1].dy)
+        ..lineTo(t.$2[2].dx, t.$2[2].dy)
+        ..close();
+      canvas.drawPath(p, Paint()..color = t.$1);
+    }
+
+    // crown
+    canvas.drawCircle(
+      center,
+      cs * 0.55,
+      Paint()..color = const Color(0xFFD4AF37),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Ludo teaser — dimmed "coming soon" card (retained but unused)
+// ─────────────────────────────────────────────────────────────────────
+
+// ignore: unused_element
 class _LudoTeaserCard extends StatelessWidget {
   const _LudoTeaserCard({required this.colors});
   final SarhnyColors colors;

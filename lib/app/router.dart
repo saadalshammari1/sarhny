@@ -31,6 +31,12 @@ import '../features/games/carrom/presentation/pages/carrom_game_over_page.dart';
 import '../features/games/carrom/presentation/pages/carrom_lobby_page.dart';
 import '../features/games/carrom/presentation/pages/carrom_match_page.dart';
 import '../features/games/carrom/presentation/pages/carrom_matchmaking_page.dart';
+import '../features/games/ludo/application/ludo_match_state.dart';
+import '../features/games/ludo/domain/ludo_state.dart';
+import '../features/games/ludo/presentation/pages/ludo_game_over_page.dart';
+import '../features/games/ludo/presentation/pages/ludo_lobby_page.dart';
+import '../features/games/ludo/presentation/pages/ludo_match_page.dart';
+import '../features/games/ludo/presentation/pages/ludo_matchmaking_page.dart';
 import '../features/profile/presentation/pages/saved_posts_page.dart';
 import '../features/settings/presentation/pages/blocked_accounts_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
@@ -71,6 +77,12 @@ class AppRoutes {
   static String carromMatch(String roomId) => '/games/carrom/match/$roomId';
   static String carromGameOver(String roomId) =>
       '/games/carrom/over/$roomId';
+
+  // Ludo
+  static const String ludoLobby = '/games/ludo';
+  static const String ludoMatchmaking = '/games/ludo/matchmaking';
+  static String ludoMatch(String roomId) => '/games/ludo/match/$roomId';
+  static String ludoGameOver(String roomId) => '/games/ludo/over/$roomId';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -213,6 +225,37 @@ final routerProvider = Provider<GoRouter>((ref) {
             return const CarromLobbyPage();
           }
           return CarromGameOverPage(
+            roomId: state.pathParameters['roomId'] ?? '',
+            outcome: outcome,
+          );
+        },
+      ),
+      // ────────── Ludo ──────────
+      GoRoute(
+        path: AppRoutes.ludoLobby,
+        builder: (_, __) => const LudoLobbyPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.ludoMatchmaking,
+        builder: (_, state) {
+          final raw = state.uri.queryParameters['mode'] ?? '2p';
+          return LudoMatchmakingPage(mode: LudoModeParse.parse(raw));
+        },
+      ),
+      GoRoute(
+        path: '/games/ludo/match/:roomId',
+        builder: (_, state) => LudoMatchPage(
+          roomId: state.pathParameters['roomId'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/games/ludo/over/:roomId',
+        builder: (_, state) {
+          final outcome = state.extra;
+          if (outcome is! LudoOutcome) {
+            return const LudoLobbyPage();
+          }
+          return LudoGameOverPage(
             roomId: state.pathParameters['roomId'] ?? '',
             outcome: outcome,
           );

@@ -80,14 +80,26 @@ class GamesHubPage extends ConsumerWidget {
             ),
             const Gap(10),
             _GameCard(
-              title: 'كيرم — فيزياء جديدة',
-              subtitle: 'تجربة محلية بـ Box2D — تدرّب بدون منافس',
+              title: 'كيرم — تدريب محلي',
+              subtitle: 'فيزياء Box2D — تدرّب بدون إنترنت',
               icon: Icons.science_outlined,
               accent: colors.crystal,
               colors: colors,
               onTap: () {
                 GameHaptics.uiPop();
                 context.push(AppRoutes.carromPracticeV2);
+              },
+            ),
+            const Gap(10),
+            _GameCard(
+              title: 'كيرم — أونلاين',
+              subtitle: 'تحدّ منافساً حقيقياً بـ Box2D',
+              icon: Icons.public_rounded,
+              accent: colors.face,
+              colors: colors,
+              onTap: () {
+                GameHaptics.uiPop();
+                context.push(AppRoutes.carromV2Matchmaking);
               },
             ),
             const Gap(10),
@@ -100,6 +112,18 @@ class GamesHubPage extends ConsumerWidget {
               onTap: () {
                 GameHaptics.uiPop();
                 context.push(AppRoutes.ludoLobby);
+              },
+            ),
+            const Gap(10),
+            _GameCard(
+              title: 'لودو محلي — مع الأصدقاء',
+              subtitle: 'العبوا على نفس الجهاز بدون إنترنت',
+              icon: Icons.groups_rounded,
+              accent: colors.face,
+              colors: colors,
+              onTap: () {
+                GameHaptics.uiPop();
+                _showLudoLocalSheet(context, colors);
               },
             ),
             const Gap(10),
@@ -149,6 +173,103 @@ class GamesHubPage extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showLudoLocalSheet(BuildContext context, SarhnyColors colors) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        Widget choice(int n, String label, IconData icon) => InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
+                GameHaptics.uiPop();
+                Navigator.of(ctx).pop();
+                context.push('${AppRoutes.ludoLocalV2}?players=$n');
+              },
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: colors.border.withValues(alpha: 0.6),
+                    width: 0.8,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: colors.face.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(icon, color: colors.face, size: 20),
+                    ),
+                    const Gap(12),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.arrow_back_ios_new_rounded,
+                        color: colors.face, size: 14),
+                  ],
+                ),
+              ),
+            );
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 18),
+                  decoration: BoxDecoration(
+                    color: colors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text(
+                'كم لاعب؟',
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Gap(4),
+              Text(
+                'تبادل الجهاز بينكم لكل دور',
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+              const Gap(12),
+              choice(2, 'لاعبان', Icons.person_outline),
+              choice(3, 'ثلاثة لاعبين', Icons.people_outline),
+              choice(4, 'أربعة لاعبين', Icons.groups_outlined),
+            ],
+          ),
+        );
+      },
     );
   }
 

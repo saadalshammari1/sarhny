@@ -32,12 +32,16 @@ import '../features/games/carrom/presentation/pages/carrom_lobby_page.dart';
 import '../features/games/carrom/presentation/pages/carrom_match_page.dart';
 import '../features/games/carrom/presentation/pages/carrom_matchmaking_page.dart';
 import '../features/games/carrom_v2/presentation/carrom_match_page_v2.dart';
+import '../features/games/carrom_v2/presentation/carrom_v2_matchmaking_page.dart';
+import '../features/games/carrom_v2/presentation/carrom_v2_online_match_page.dart';
+import '../features/games/carrom_v2/world/board_dimensions.dart' as carrom_v2;
 import '../features/games/ludo/application/ludo_match_state.dart';
 import '../features/games/ludo/domain/ludo_state.dart';
 import '../features/games/ludo/presentation/pages/ludo_game_over_page.dart';
 import '../features/games/ludo/presentation/pages/ludo_lobby_page.dart';
 import '../features/games/ludo/presentation/pages/ludo_match_page.dart';
 import '../features/games/ludo/presentation/pages/ludo_matchmaking_page.dart';
+import '../features/games/ludo_v2/presentation/ludo_v2_match_page.dart';
 import '../features/profile/presentation/pages/saved_posts_page.dart';
 import '../features/settings/presentation/pages/blocked_accounts_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
@@ -82,11 +86,18 @@ class AppRoutes {
   /// independently of the WS matchmaking flow above.
   static const String carromPracticeV2 = '/games/carrom/practice-v2';
 
+  /// Carrom v2 — online matchmaking + online match.
+  static const String carromV2Matchmaking = '/games/carrom/online-v2/find';
+  static const String carromV2Match = '/games/carrom/online-v2/match';
+
   // Ludo
   static const String ludoLobby = '/games/ludo';
   static const String ludoMatchmaking = '/games/ludo/matchmaking';
   static String ludoMatch(String roomId) => '/games/ludo/match/$roomId';
   static String ludoGameOver(String roomId) => '/games/ludo/over/$roomId';
+  /// Ludo v2 — local pass-and-play (2/3/4 players on the same device).
+  /// Query string supports ?players=2|3|4 (default 4).
+  static const String ludoLocalV2 = '/games/ludo/local-v2';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -222,6 +233,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.carromPracticeV2,
         builder: (_, __) => const CarromMatchPageV2(),
       ),
+      // Carrom v2 — online matchmaking.
+      GoRoute(
+        path: AppRoutes.carromV2Matchmaking,
+        builder: (_, __) => const CarromV2MatchmakingPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.carromV2Match,
+        builder: (_, state) {
+          final roomId = state.uri.queryParameters['room'] ?? '';
+          final seatRaw = state.uri.queryParameters['seat'] ?? 'a';
+          final seat = seatRaw == 'b' ? carrom_v2.Seat.b : carrom_v2.Seat.a;
+          return CarromV2OnlineMatchPage(roomId: roomId, mySeat: seat);
+        },
+      ),
       GoRoute(
         path: '/games/carrom/over/:roomId',
         builder: (_, state) {
@@ -243,6 +268,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.ludoLobby,
         builder: (_, __) => const LudoLobbyPage(),
+      ),
+      // Ludo v2 — local pass-and-play.
+      GoRoute(
+        path: AppRoutes.ludoLocalV2,
+        builder: (_, state) {
+          final raw = state.uri.queryParameters['players'] ?? '4';
+          final n = int.tryParse(raw) ?? 4;
+          final players = (n == 2 || n == 3 || n == 4) ? n : 4;
+          return LudoV2MatchPage(playerCount: players);
+        },
       ),
       GoRoute(
         path: AppRoutes.ludoMatchmaking,

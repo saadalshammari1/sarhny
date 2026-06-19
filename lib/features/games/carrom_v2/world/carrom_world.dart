@@ -84,6 +84,11 @@ class CarromWorld extends Forge2DGame {
   /// Lift this completer so callers can `await` shot settlement.
   Future<ShotOutcome>? get currentShotFuture => _shotCompleter?.future;
 
+  /// Broadcast stream of locally-fired shot outcomes. Online match pages
+  /// subscribe to forward outcomes to the server. Local pages can ignore.
+  final _outcomeController = StreamController<ShotOutcome>.broadcast();
+  Stream<ShotOutcome> get outcomes => _outcomeController.stream;
+
   @override
   Future<void> onLoad() async {
     await super.onLoad();
@@ -184,6 +189,33 @@ class CarromWorld extends Forge2DGame {
     phase = nextShooter == mySeat ? WorldPhase.aiming : WorldPhase.remoteTurn;
   }
 
+  /// Apply an opponent's shot outcome to our local world. Called when the
+  /// server broadcasts a shot_result for the remote player. No simulation
+  /// happens locally — we just remove the pieces they pocketed (with the
+  /// existing sink animation) and re-arm the striker for whoever shoots
+  /// next. The scoreboard is owned by the calling controller; this method
+  /// updates only the visual + body state.
+  void applyRemoteOutcome({
+    required List<int> pocketedIds,
+    required bool strikerPocketed,
+    required Seat nextShooter,
+  }) {
+    for (final id in pocketedIds) {
+      final p = pieces[id];
+      if (p != null && !p.pocketed) {
+        p.pocketed = true; // triggers the sink animation in update()
+      }
+    }
+    if (strikerPocketed) {
+      final s = striker;
+      if (s != null) s.pocketed = true;
+    }
+    // Re-arm a frame later so the sink animation gets to play.
+    Future<void>.delayed(const Duration(milliseconds: 280), () {
+      rearmFor(nextShooter: nextShooter);
+    });
+  }
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -229,13 +261,21 @@ class CarromWorld extends Forge2DGame {
   void _emitOutcome() {
     final completer = _shotCompleter;
     if (completer == null || completer.isCompleted) return;
-    completer.complete(ShotOutcome(
+    final outcome = ShotOutcome(
       pocketedIds: List.unmodifiable(_pocketedThisShot),
       strikerPocketed: _strikerPocketedThisShot,
       queenPocketed: _pocketedThisShot.contains(0),
       firstPieceHitId: _firstPieceHitThisShot,
       durationSeconds: _shotElapsed,
-    ));
+    );
+    completer.complete(outcome);
+    if (!_outcomeController.isClosed) _outcomeController.add(outcome);
+  }
+
+  @override
+  void onRemove() {
+    _outcomeController.close();
+    super.onRemove();
   }
 
   // Called by the contact listener when a piece sensor-overlaps a pocket.

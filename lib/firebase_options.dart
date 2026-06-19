@@ -1,11 +1,11 @@
-// File-level FirebaseOptions for both platforms.
+﻿// File-level FirebaseOptions for both platforms.
 //
 // Values mirror what `flutterfire configure` would generate, taken verbatim
 // from the downloaded google-services.json (Android) and
 // GoogleService-Info.plist (iOS) of the Firebase project `sarhny-a0ce9`.
 //
 // Programmatic init means we don't need to register GoogleService-Info.plist
-// as an Xcode resource — keeps the pbxproj diff to a minimum.
+// as an Xcode resource â€” keeps the pbxproj diff to a minimum.
 
 // ignore_for_file: avoid_classes_with_only_static_members
 
@@ -16,7 +16,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError('Sarhny is mobile-only; no web Firebase setup.');
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -30,6 +30,13 @@ class DefaultFirebaseOptions {
     }
   }
 
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBq9WZvHZRT2t7CKxVYkG6IVqmaVVOKljM',
+    appId: '1:843994148290:web:local-preview',
+    messagingSenderId: '843994148290',
+    projectId: 'sarhny-a0ce9',
+    storageBucket: 'sarhny-a0ce9.firebasestorage.app',
+  );
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBq9WZvHZRT2t7CKxVYkG6IVqmaVVOKljM',
     appId: '1:843994148290:android:54ecb229460dba926f3a5b',

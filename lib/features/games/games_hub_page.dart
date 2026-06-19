@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,25 +10,89 @@ import '../../app/router.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/haptics/game_haptics.dart';
 import 'carrom/application/carrom_controllers.dart';
+import 'carrom/data/admob_service.dart';
 
-/// الساحة — Games hub, redesigned 2026-06 for a calm, modern look.
+/// "الساحة" — the games entry surface.
 ///
-/// Design intent: a clean, low-noise list of games. Compact cards (≤140h),
-/// no full-bleed pulsing gradients, no shimmer overlays, no live board
-/// preview painters. Single accent per row, generous whitespace, one clear
-/// CTA per card. Wallet sits as a small chip in the header instead of a
-/// huge hero block.
-class GamesHubPage extends ConsumerWidget {
+/// Scope (intentionally narrow after a hard re-scope on 2026-06-20):
+///   * RPS (تحدّى) — existing online matchmaking, winner asks a question
+///     and the loser answers
+///   * XO (إكس-أو) — same flow, 3×3 board instead of best-of-5 rounds
+///   * One prominent "watch ad → +1 point" tile so users who don't want
+///     to play can still grow their wallet
+///
+/// Carrom and Ludo deliberately do NOT surface here — those flows still
+/// exist at their routes for back-compat, but the entry points are
+/// removed until they reach a quality bar worth showing.
+class GamesHubPage extends ConsumerStatefulWidget {
   const GamesHubPage({super.key});
+  @override
+  ConsumerState<GamesHubPage> createState() => _GamesHubPageState();
+}
+
+class _GamesHubPageState extends ConsumerState<GamesHubPage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _shimmer = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 6),
+  )..repeat();
+
+  AdMobRewardService? _adService;
+  bool _watchingAd = false;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void dispose() {
+    _shimmer.dispose();
+    _adService?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _watchAdForPoint() async {
+    if (_watchingAd) return;
+    setState(() => _watchingAd = true);
+    GameHaptics.uiPop();
+    final svc = _adService ??= AdMobRewardService(ref.read(carromApiProvider));
+    try {
+      final grant = await svc.showRewardedAd();
+      if (!mounted) return;
+      if (grant == null) {
+        Fluttertoast.showToast(msg: 'الإعلان لم يكتمل');
+      } else {
+        ref.invalidate(carromWalletProvider);
+        Fluttertoast.showToast(
+          msg: 'حصلت على ${grant.credited} نقطة · رصيدك ${grant.balance}',
+        );
+      }
+    } on AdRewardException catch (e) {
+      Fluttertoast.showToast(msg: _adErr(e.code));
+    } catch (_) {
+      Fluttertoast.showToast(msg: 'تعذّر تشغيل الإعلان');
+    } finally {
+      if (mounted) setState(() => _watchingAd = false);
+    }
+  }
+
+  String _adErr(String code) {
+    switch (code) {
+      case 'ads_unsupported_platform':
+        return 'الإعلانات غير متاحة هنا';
+      case 'ad_unavailable':
+        return 'لا يوجد إعلان متاح حالياً';
+      case 'daily_cap_reached':
+        return 'وصلت الحد اليومي للإعلانات';
+      case 'already_granted':
+        return 'تم احتساب الإعلان مسبقاً';
+      default:
+        return 'تعذّر الحصول على المكافأة';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
     final walletAsync = ref.watch(carromWalletProvider);
-    final balance = walletAsync.maybeWhen(
-      data: (w) => w.points,
-      orElse: () => null,
-    );
+    final balance =
+        walletAsync.maybeWhen(data: (w) => w.points, orElse: () => null);
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -35,6 +102,7 @@ class GamesHubPage extends ConsumerWidget {
         scrolledUnderElevation: 0,
         centerTitle: false,
         leading: IconButton(
+          tooltip: 'رجوع',
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: colors.textPrimary, size: 20),
           onPressed: () {
@@ -50,371 +118,139 @@ class GamesHubPage extends ConsumerWidget {
           'الساحة',
           style: TextStyle(
             color: colors.textPrimary,
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
+            fontWeight: FontWeight.w900,
+            fontSize: 22,
           ),
         ),
         actions: [
-          _WalletChip(balance: balance, colors: colors),
+          _WalletPill(balance: balance, colors: colors),
           const Gap(12),
         ],
       ),
       body: SafeArea(
         top: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
           children: [
-            const Gap(8),
-            _SectionLabel(text: 'الألعاب', colors: colors),
-            const Gap(12),
-            _GameCard(
-              title: 'كيرم',
-              subtitle: '١ ضد ١ — منافسة مباشرة',
-              icon: Icons.album_rounded,
+            const Gap(6),
+            _IntroLine(colors: colors),
+            const Gap(18),
+            _SectionLabel(text: 'العب الآن', colors: colors),
+            const Gap(10),
+            _GameTile(
+              title: 'تحدّى',
+              subtitle: 'حجرة · ورقة · مقص — الفائز يطرح السؤال',
+              icon: Icons.compare_arrows_rounded,
+              tag: 'أونلاين',
               accent: colors.moment,
               colors: colors,
-              onTap: () {
-                GameHaptics.uiPop();
-                context.push(AppRoutes.carromLobby);
-              },
-            ),
-            const Gap(10),
-            _GameCard(
-              title: 'كيرم — تدريب محلي',
-              subtitle: 'فيزياء Box2D — تدرّب بدون إنترنت',
-              icon: Icons.science_outlined,
-              accent: colors.crystal,
-              colors: colors,
-              onTap: () {
-                GameHaptics.uiPop();
-                context.push(AppRoutes.carromPracticeV2);
-              },
-            ),
-            const Gap(10),
-            _GameCard(
-              title: 'كيرم — أونلاين',
-              subtitle: 'تحدّ منافساً حقيقياً بـ Box2D',
-              icon: Icons.public_rounded,
-              accent: colors.face,
-              colors: colors,
-              onTap: () {
-                GameHaptics.uiPop();
-                context.push(AppRoutes.carromV2Matchmaking);
-              },
-            ),
-            const Gap(10),
-            _GameCard(
-              title: 'لودو',
-              subtitle: '٢ أو ٤ لاعبين — كلاسيكية',
-              icon: Icons.casino_rounded,
-              accent: colors.mind,
-              colors: colors,
-              onTap: () {
-                GameHaptics.uiPop();
-                context.push(AppRoutes.ludoLobby);
-              },
-            ),
-            const Gap(10),
-            _GameCard(
-              title: 'لودو محلي — مع الأصدقاء',
-              subtitle: 'العبوا على نفس الجهاز بدون إنترنت',
-              icon: Icons.groups_rounded,
-              accent: colors.face,
-              colors: colors,
-              onTap: () {
-                GameHaptics.uiPop();
-                _showLudoLocalSheet(context, colors);
-              },
-            ),
-            const Gap(10),
-            _GameCard(
-              title: 'تحدّى',
-              subtitle: 'حجرة. ورقة. مقص — سؤال للفائز',
-              icon: Icons.compare_arrows_rounded,
-              accent: colors.face,
-              colors: colors,
+              shimmer: _shimmer,
+              decoration: _GameTileDecoration.shapes,
               onTap: () {
                 GameHaptics.uiPop();
                 context.push(AppRoutes.gameLobby);
               },
             ),
-            const Gap(28),
-            _SectionLabel(text: 'المزيد', colors: colors),
             const Gap(12),
-            Row(
-              children: [
-                Expanded(
-                  child: _MiniTile(
-                    icon: Icons.palette_outlined,
-                    label: 'تخصيص الطاولة',
-                    accent: colors.moment,
-                    colors: colors,
-                    onTap: () {
-                      GameHaptics.tap();
-                      context.push(AppRoutes.carromCosmetics);
-                    },
-                  ),
-                ),
-                const Gap(10),
-                Expanded(
-                  child: _MiniTile(
-                    icon: Icons.auto_awesome_outlined,
-                    label: 'كيف تربح نقاطاً',
-                    accent: colors.crystal,
-                    colors: colors,
-                    onTap: () {
-                      GameHaptics.tap();
-                      _showEarnSheet(context, colors);
-                    },
-                  ),
-                ),
-              ],
+            _GameTile(
+              title: 'إكس-أو',
+              subtitle: 'ثلاثة على التوالي — الفائز يطرح السؤال',
+              icon: Icons.grid_3x3_rounded,
+              tag: 'جديد',
+              accent: colors.face,
+              colors: colors,
+              shimmer: _shimmer,
+              decoration: _GameTileDecoration.grid,
+              onTap: () {
+                GameHaptics.uiPop();
+                context.push(AppRoutes.xoLobby);
+              },
             ),
+            const Gap(22),
+            _SectionLabel(text: 'اربح نقاطاً بدون لعب', colors: colors),
+            const Gap(10),
+            _AdEarnTile(
+              colors: colors,
+              busy: _watchingAd,
+              onTap: _watchAdForPoint,
+            ),
+            const Gap(10),
+            _HintRow(colors: colors),
           ],
         ),
       ),
     );
   }
+}
 
-  void _showLudoLocalSheet(BuildContext context, SarhnyColors colors) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: colors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        Widget choice(int n, String label, IconData icon) => InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () {
-                GameHaptics.uiPop();
-                Navigator.of(ctx).pop();
-                context.push('${AppRoutes.ludoLocalV2}?players=$n');
-              },
-              child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 5),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: colors.border.withValues(alpha: 0.6),
-                    width: 0.8,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: colors.face.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(icon, color: colors.face, size: 20),
-                    ),
-                    const Gap(12),
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          color: colors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    Icon(Icons.arrow_back_ios_new_rounded,
-                        color: colors.face, size: 14),
-                  ],
-                ),
-              ),
-            );
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 18),
-                  decoration: BoxDecoration(
-                    color: colors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Text(
-                'كم لاعب؟',
-                style: TextStyle(
-                  color: colors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const Gap(4),
-              Text(
-                'تبادل الجهاز بينكم لكل دور',
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-              const Gap(12),
-              choice(2, 'لاعبان', Icons.person_outline),
-              choice(3, 'ثلاثة لاعبين', Icons.people_outline),
-              choice(4, 'أربعة لاعبين', Icons.groups_outlined),
-            ],
-          ),
-        );
-      },
-    );
-  }
+// ─────────────────────────────────────────────────────────────────────
+// Intro — a single subtle line under the AppBar
+// ─────────────────────────────────────────────────────────────────────
 
-  void _showEarnSheet(BuildContext context, SarhnyColors colors) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: colors.surface,
-      isScrollControlled: false,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+class _IntroLine extends StatelessWidget {
+  const _IntroLine({required this.colors});
+  final SarhnyColors colors;
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'لعبتان · سؤال صريح للخاسر · نقاط من الإعلانات.',
+      style: TextStyle(
+        color: colors.textSecondary,
+        fontSize: 13,
+        height: 1.55,
+        fontWeight: FontWeight.w600,
       ),
-      builder: (ctx) {
-        Widget row(IconData icon, String title, String delta, Color tint) =>
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: tint.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(icon, size: 18, color: tint),
-                  ),
-                  const Gap(12),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    delta,
-                    style: TextStyle(
-                      color: colors.crystal,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            );
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 18),
-                  decoration: BoxDecoration(
-                    color: colors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Text(
-                'كيف تربح النقاط',
-                style: TextStyle(
-                  color: colors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const Gap(8),
-              row(Icons.card_giftcard_rounded, 'هدية التسجيل', '+300',
-                  colors.moment),
-              row(Icons.emoji_events_rounded, 'فوز في مباراة', '+600',
-                  colors.crystal),
-              row(Icons.mark_email_unread_rounded,
-                  'استلمت رسالة صراحة', '+2', colors.face),
-              row(Icons.play_circle_outline_rounded,
-                  'مشاهدة إعلان (يومياً ١٠)', '+1', colors.mind),
-              const Gap(12),
-              Text(
-                'النقاط رصيدك في الألعاب — لا تنزل عن ٣٠٠ مهما خسرت.',
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 12,
-                  height: 1.6,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────
-//  Section label
+// Section label
 // ─────────────────────────────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel({required this.text, required this.colors});
   final String text;
   final SarhnyColors colors;
-
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(
-        color: colors.textSecondary,
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.1,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: colors.textSecondary,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.2,
+        ),
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────
-//  Wallet chip (AppBar action)
+// Wallet pill (AppBar action)
 // ─────────────────────────────────────────────────────────────────────
 
-class _WalletChip extends StatelessWidget {
-  const _WalletChip({required this.balance, required this.colors});
+class _WalletPill extends StatelessWidget {
+  const _WalletPill({required this.balance, required this.colors});
   final int? balance;
   final SarhnyColors colors;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 32,
+      height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: colors.crystal.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(16),
+        color: colors.crystal.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: colors.crystal.withValues(alpha: 0.35),
+          color: colors.crystal.withValues(alpha: 0.40),
           width: 0.8,
         ),
       ),
-      alignment: Alignment.center,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -425,7 +261,7 @@ class _WalletChip extends StatelessWidget {
             style: TextStyle(
               color: colors.crystal,
               fontSize: 13,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w900,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
@@ -436,137 +272,419 @@ class _WalletChip extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-//  Game card — primary list item, 96h compact
+// Game tile — the premium hero cards
 // ─────────────────────────────────────────────────────────────────────
 
-class _GameCard extends StatefulWidget {
-  const _GameCard({
+enum _GameTileDecoration { shapes, grid }
+
+class _GameTile extends StatefulWidget {
+  const _GameTile({
     required this.title,
     required this.subtitle,
     required this.icon,
+    required this.tag,
     required this.accent,
     required this.colors,
+    required this.shimmer,
+    required this.decoration,
     required this.onTap,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
+  final String tag;
   final Color accent;
   final SarhnyColors colors;
+  final Animation<double> shimmer;
+  final _GameTileDecoration decoration;
   final VoidCallback onTap;
 
   @override
-  State<_GameCard> createState() => _GameCardState();
+  State<_GameTile> createState() => _GameTileState();
 }
 
-class _GameCardState extends State<_GameCard> {
+class _GameTileState extends State<_GameTile> {
   bool _pressed = false;
 
-  void _setPressed(bool v) {
+  void _press(bool v) {
     if (_pressed == v) return;
     setState(() => _pressed = v);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surface = widget.colors.surface;
-    final accent = widget.accent;
     return GestureDetector(
-      onTapDown: (_) => _setPressed(true),
-      onTapCancel: () => _setPressed(false),
-      onTapUp: (_) => _setPressed(false),
+      onTapDown: (_) => _press(true),
+      onTapUp: (_) => _press(false),
+      onTapCancel: () => _press(false),
       onTap: widget.onTap,
       child: AnimatedScale(
-        scale: _pressed ? 0.985 : 1.0,
-        duration: const Duration(milliseconds: 120),
+        scale: _pressed ? 0.985 : 1,
+        duration: const Duration(milliseconds: 130),
         curve: Curves.easeOut,
-        child: Container(
-          height: 96,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: widget.colors.border.withValues(alpha: 0.5),
-              width: 0.8,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
+        child: AnimatedBuilder(
+          animation: widget.shimmer,
+          builder: (context, _) => Container(
+            height: 132,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              color: widget.colors.surface,
+              border: Border.all(
+                color: widget.accent.withValues(alpha: 0.50),
+                width: 0.9,
               ),
-            ],
+              boxShadow: [
+                BoxShadow(
+                  color: widget.accent.withValues(alpha: 0.15),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _TileBackgroundPainter(
+                        accent: widget.accent,
+                        shimmer: widget.shimmer.value,
+                        decoration: widget.decoration,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(18),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                widget.accent.withValues(alpha: 0.32),
+                                widget.accent.withValues(alpha: 0.12),
+                              ],
+                            ),
+                            border: Border.all(
+                              color: widget.accent.withValues(alpha: 0.55),
+                              width: 0.8,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(widget.icon,
+                              color: widget.accent, size: 30),
+                        ),
+                        const Gap(14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    widget.title,
+                                    style: TextStyle(
+                                      color: widget.colors.textPrimary,
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const Gap(8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: widget.accent
+                                          .withValues(alpha: 0.20),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      widget.tag,
+                                      style: TextStyle(
+                                        color: widget.accent,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Gap(4),
+                              Text(
+                                widget.subtitle,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: widget.colors.textSecondary,
+                                  fontSize: 12.5,
+                                  height: 1.45,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Gap(10),
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: widget.accent.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            color: widget.accent,
+                            size: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Subtle motif behind each game tile — rotating shapes for RPS, a
+/// floating grid for XO. Adds depth without screaming.
+class _TileBackgroundPainter extends CustomPainter {
+  _TileBackgroundPainter({
+    required this.accent,
+    required this.shimmer,
+    required this.decoration,
+  });
+
+  final Color accent;
+  final double shimmer;
+  final _GameTileDecoration decoration;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fadeColor = accent.withValues(alpha: 0.08);
+    final lineColor = accent.withValues(alpha: 0.15);
+    final glowColor = accent.withValues(alpha: 0.10 + 0.05 * shimmer);
+
+    // Soft glow disc on the right side.
+    canvas.drawCircle(
+      Offset(size.width - 30, size.height / 2),
+      90 + 10 * shimmer,
+      Paint()
+        ..color = glowColor
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 28),
+    );
+
+    if (decoration == _GameTileDecoration.grid) {
+      // Light 3-line grid floating right side.
+      final stroke = Paint()
+        ..color = lineColor
+        ..strokeWidth = 1.2
+        ..strokeCap = StrokeCap.round;
+      const slot = 26.0;
+      final cx = size.width - 50;
+      final cy = size.height / 2;
+      for (var i = 1; i <= 2; i++) {
+        canvas.drawLine(
+          Offset(cx - 1.5 * slot, cy - 1.5 * slot + i * slot),
+          Offset(cx + 1.5 * slot, cy - 1.5 * slot + i * slot),
+          stroke,
+        );
+        canvas.drawLine(
+          Offset(cx - 1.5 * slot + i * slot, cy - 1.5 * slot),
+          Offset(cx - 1.5 * slot + i * slot, cy + 1.5 * slot),
+          stroke,
+        );
+      }
+      // A subtle X mark in one cell.
+      final pad = slot * 0.30;
+      final cellCx = cx + slot / 2;
+      final cellCy = cy - slot / 2;
+      final xPaint = Paint()
+        ..color = accent.withValues(alpha: 0.45)
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(
+        Offset(cellCx - slot / 2 + pad, cellCy - slot / 2 + pad),
+        Offset(cellCx + slot / 2 - pad, cellCy + slot / 2 - pad),
+        xPaint,
+      );
+      canvas.drawLine(
+        Offset(cellCx + slot / 2 - pad, cellCy - slot / 2 + pad),
+        Offset(cellCx - slot / 2 + pad, cellCy + slot / 2 - pad),
+        xPaint,
+      );
+    } else {
+      // Rotating triangle (RPS = three choices) motif.
+      final cx = size.width - 50;
+      final cy = size.height / 2;
+      final r = 36.0;
+      final t = shimmer * 2 * math.pi;
+      final path = Path();
+      for (var i = 0; i < 3; i++) {
+        final a = t + i * (2 * math.pi / 3);
+        final p = Offset(cx + r * math.cos(a), cy + r * math.sin(a));
+        if (i == 0) {
+          path.moveTo(p.dx, p.dy);
+        } else {
+          path.lineTo(p.dx, p.dy);
+        }
+      }
+      path.close();
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4
+          ..color = lineColor,
+      );
+      canvas.drawPath(path, Paint()..color = fadeColor);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TileBackgroundPainter old) =>
+      old.shimmer != shimmer ||
+      old.accent != accent ||
+      old.decoration != decoration;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Watch-ad-for-point tile — primary visible CTA per the new product brief
+// ─────────────────────────────────────────────────────────────────────
+
+class _AdEarnTile extends StatelessWidget {
+  const _AdEarnTile({
+    required this.colors,
+    required this.busy,
+    required this.onTap,
+  });
+  final SarhnyColors colors;
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: busy ? null : onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                colors.crystal.withValues(alpha: 0.20),
+                colors.crystal.withValues(alpha: 0.08),
+              ],
+            ),
+            border: Border.all(
+              color: colors.crystal.withValues(alpha: 0.55),
+              width: 0.9,
+            ),
           ),
           child: Row(
             children: [
               Container(
-                width: 56,
-                height: 56,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
+                  color: colors.crystal.withValues(alpha: 0.22),
                   borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      accent.withValues(alpha: 0.22),
-                      accent.withValues(alpha: 0.10),
-                    ],
-                  ),
-                  border: Border.all(
-                    color: accent.withValues(alpha: 0.30),
-                    width: 0.8,
-                  ),
                 ),
                 alignment: Alignment.center,
-                child: Icon(widget.icon, color: accent, size: 26),
+                child: Icon(
+                  Icons.play_circle_fill_rounded,
+                  color: colors.crystal,
+                  size: 30,
+                ),
               ),
               const Gap(14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      widget.title,
-                      style: TextStyle(
-                        color: widget.colors.textPrimary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          'شاهد إعلاناً قصيراً',
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const Gap(8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: colors.crystal.withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '+1 نقطة',
+                            style: TextStyle(
+                              color: colors.crystal,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const Gap(2),
+                    const Gap(4),
                     Text(
-                      widget.subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      'حد يومي 10 — جميع النقاط تُضاف لمحفظتك فوراً.',
                       style: TextStyle(
-                        color: widget.colors.textSecondary,
-                        fontSize: 12.5,
+                        color: colors.textSecondary,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        height: 1.3,
+                        height: 1.4,
                       ),
                     ),
                   ],
                 ),
               ),
               const Gap(8),
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(12),
+              if (busy)
+                const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.4),
+                )
+              else
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: colors.crystal.withValues(alpha: 0.20),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: colors.crystal,
+                    size: 13,
+                  ),
                 ),
-                alignment: Alignment.center,
-                child: Icon(
-                  Icons.arrow_back_ios_new_rounded, // RTL: visually = play forward in Arabic
-                  color: accent,
-                  size: 14,
-                ),
-              ),
             ],
           ),
         ),
@@ -575,74 +693,28 @@ class _GameCardState extends State<_GameCard> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-//  Mini tile — secondary footer actions
-// ─────────────────────────────────────────────────────────────────────
-
-class _MiniTile extends StatelessWidget {
-  const _MiniTile({
-    required this.icon,
-    required this.label,
-    required this.accent,
-    required this.colors,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color accent;
+class _HintRow extends StatelessWidget {
+  const _HintRow({required this.colors});
   final SarhnyColors colors;
-  final VoidCallback onTap;
-
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          height: 68,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: colors.border.withValues(alpha: 0.5),
-              width: 0.8,
+    return Row(
+      children: [
+        Icon(Icons.lightbulb_outline_rounded,
+            color: colors.textSecondary, size: 14),
+        const Gap(6),
+        Expanded(
+          child: Text(
+            'تستطيع أيضاً الامتناع عن الجواب خلال اللعبة بمشاهدة إعلان.',
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              height: 1.5,
             ),
           ),
-          alignment: Alignment.center,
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                alignment: Alignment.center,
-                child: Icon(icon, color: accent, size: 18),
-              ),
-              const Gap(10),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: colors.textPrimary,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    height: 1.25,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
-      ),
+      ],
     );
   }
 }

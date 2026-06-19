@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -23,7 +23,7 @@ import 'firebase_options.dart';
 /// annotated with @pragma so tree-shaking doesn't eat it.
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
-  // We don't need to do much here — iOS displays the system banner from the
+  // We don't need to do much here â€” iOS displays the system banner from the
   // notification payload and Android does the same via the default channel
   // we register at runtime. The handler exists mainly to keep the isolate
   // alive long enough for FCM to deliver the payload.
@@ -35,9 +35,11 @@ Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await SystemChrome.setPreferredOrientations(const [
-    DeviceOrientation.portraitUp,
-  ]);
+  if (!kIsWeb) {
+    await SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+    ]);
+  }
 
   // Initialize Firebase from baked-in options. We skip the platform plugin
   // auto-discovery (which would otherwise look for GoogleService-Info.plist
@@ -46,13 +48,17 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+    if (!kIsWeb) {
+      FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+    }
   } catch (e) {
     if (kDebugMode) debugPrint('Firebase init skipped: $e');
   }
 
-  // AdMob — fire-and-forget; we don't block UI on the SDK init.
-  unawaited(MobileAds.instance.initialize());
+  // AdMob is mobile-only; web preview should boot without the native plugin.
+  if (!kIsWeb) {
+    unawaited(MobileAds.instance.initialize());
+  }
 
   try {
     await dotenv.load(fileName: '.env');
@@ -64,7 +70,7 @@ Future<void> main() async {
   final cache = await CacheStorage.init();
   final secure = SecureStorage();
 
-  // DioClient is async — it provisions a PersistCookieJar against the
+  // DioClient is async â€” it provisions a PersistCookieJar against the
   // application support directory so the HttpOnly refresh cookie survives
   // app restarts (mirrors the browser cookie store on web).
   late final ProviderContainer container;

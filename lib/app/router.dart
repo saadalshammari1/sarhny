@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,7 +25,10 @@ import '../features/search/presentation/pages/search_page.dart';
 import '../features/article/presentation/pages/my_article_page.dart';
 import '../features/game/presentation/pages/game_lobby_page.dart';
 import '../features/game/presentation/pages/game_play_page.dart';
+import '../features/xo/presentation/pages/xo_lobby_page.dart';
+import '../features/xo/presentation/pages/xo_play_page.dart';
 import '../features/games/games_hub_page.dart';
+import '../features/games/codex/codex_games_page.dart';
 import '../features/games/carrom/application/carrom_match_state.dart';
 import '../features/games/carrom/presentation/pages/carrom_cosmetics_page.dart';
 import '../features/games/carrom/presentation/pages/carrom_game_over_page.dart';
@@ -73,15 +77,20 @@ class AppRoutes {
   static const String myArticle = '/me/article';
   static const String gameLobby = '/game';
   static String gamePlay(String id) => '/game/play/$id';
+  // Tic-Tac-Toe (XO) — sibling to RPS, same winner→question→answer flow.
+  static const String xoLobby = '/xo';
+  static String xoPlay(String id) => '/xo/play/$id';
 
   // Games hub + Carrom
   static const String gamesHub = '/games';
+  static const String codexLudo = '/games/codex/ludo';
+  static const String codexCarrom = '/games/codex/carrom';
   static const String carromLobby = '/games/carrom';
   static const String carromCosmetics = '/games/carrom/cosmetics';
   static const String carromMatchmaking = '/games/carrom/matchmaking';
   static String carromMatch(String roomId) => '/games/carrom/match/$roomId';
-  static String carromGameOver(String roomId) =>
-      '/games/carrom/over/$roomId';
+  static String carromGameOver(String roomId) => '/games/carrom/over/$roomId';
+
   /// Carrom v2 — local Box2D practice mode. New physics + new UI; runs
   /// independently of the WS matchmaking flow above.
   static const String carromPracticeV2 = '/games/carrom/practice-v2';
@@ -95,8 +104,10 @@ class AppRoutes {
   static const String ludoMatchmaking = '/games/ludo/matchmaking';
   static String ludoMatch(String roomId) => '/games/ludo/match/$roomId';
   static String ludoGameOver(String roomId) => '/games/ludo/over/$roomId';
+
   /// Ludo v2 — local pass-and-play (2/3/4 players on the same device).
-  /// Query string supports ?players=2|3|4 (default 4).
+  /// Query string supports ?players=2|3|4 (default 4) and
+  /// ?variant=normal|magic.
   static const String ludoLocalV2 = '/games/ludo/local-v2';
 }
 
@@ -111,7 +122,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         error: (_, __) => null,
         data: (s) {
           final loc = state.matchedLocation;
-          final isPublic = loc.startsWith('/u/') ||
+          final isGamesPreviewRoute = kIsWeb && loc.startsWith('/games');
+          final isPublic = isGamesPreviewRoute ||
+              loc.startsWith('/u/') ||
               loc.startsWith('/post/') ||
               loc.startsWith('/mirror/');
           final isAuthRoute = loc == AppRoutes.login ||
@@ -119,6 +132,9 @@ final routerProvider = Provider<GoRouter>((ref) {
               loc == AppRoutes.splash ||
               loc == AppRoutes.forgotPassword ||
               loc.startsWith('/reset');
+          if (kIsWeb && loc == AppRoutes.splash) {
+            return AppRoutes.gamesHub;
+          }
           if (s.status == AuthStatus.unauthenticated &&
               !isAuthRoute &&
               !isPublic) {
@@ -153,7 +169,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.feed, builder: (_, __) => const FeedPage()),
       GoRoute(path: AppRoutes.profile, builder: (_, __) => const ProfilePage()),
       GoRoute(path: AppRoutes.inbox, builder: (_, __) => const InboxPage()),
-      GoRoute(path: AppRoutes.mirrors, builder: (_, __) => const MyMirrorPage()),
+      GoRoute(
+          path: AppRoutes.mirrors, builder: (_, __) => const MyMirrorPage()),
       GoRoute(
           path: AppRoutes.settings, builder: (_, __) => const SettingsPage()),
       // Placeholder destinations until later milestones land.
@@ -202,14 +219,36 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(path: AppRoutes.search, builder: (_, __) => const SearchPage()),
-      GoRoute(path: AppRoutes.myArticle, builder: (_, __) => const MyArticlePage()),
-      GoRoute(path: AppRoutes.gameLobby, builder: (_, __) => const GameLobbyPage()),
+      GoRoute(
+          path: AppRoutes.myArticle, builder: (_, __) => const MyArticlePage()),
+      GoRoute(
+          path: AppRoutes.gameLobby, builder: (_, __) => const GameLobbyPage()),
       GoRoute(
         path: '/game/play/:id',
-        builder: (_, state) => GamePlayPage(gameId: state.pathParameters['id'] ?? ''),
+        builder: (_, state) =>
+            GamePlayPage(gameId: state.pathParameters['id'] ?? ''),
+      ),
+      // ────────── XO (Tic-Tac-Toe) ──────────
+      GoRoute(
+        path: AppRoutes.xoLobby,
+        builder: (_, __) => const XoLobbyPage(),
+      ),
+      GoRoute(
+        path: '/xo/play/:id',
+        builder: (_, state) =>
+            XoPlayPage(gameId: state.pathParameters['id'] ?? ''),
       ),
       // ────────── Games Hub + Carrom ──────────
-      GoRoute(path: AppRoutes.gamesHub, builder: (_, __) => const GamesHubPage()),
+      GoRoute(
+          path: AppRoutes.gamesHub, builder: (_, __) => const GamesHubPage()),
+      GoRoute(
+        path: AppRoutes.codexLudo,
+        builder: (_, __) => const CodexLudoPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.codexCarrom,
+        builder: (_, __) => const CodexCarromPage(),
+      ),
       GoRoute(
         path: AppRoutes.carromLobby,
         builder: (_, __) => const CarromLobbyPage(),
@@ -276,7 +315,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           final raw = state.uri.queryParameters['players'] ?? '4';
           final n = int.tryParse(raw) ?? 4;
           final players = (n == 2 || n == 3 || n == 4) ? n : 4;
-          return LudoV2MatchPage(playerCount: players);
+          final variant = LudoV2VariantX.parse(
+            state.uri.queryParameters['variant'],
+          );
+          return LudoV2MatchPage(playerCount: players, variant: variant);
         },
       ),
       GoRoute(

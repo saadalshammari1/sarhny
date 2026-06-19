@@ -43,10 +43,10 @@ class ShotOutcome {
 /// Phase machine for the world. The page UI keys off this to enable/disable
 /// the aim overlay and the action buttons.
 enum WorldPhase {
-  loading,    // initial bodies still being created
-  aiming,     // shooter's turn, striker placement + drag is allowed
-  shooting,   // shot fired, physics is running
-  settling,   // motion has stopped, computing outcome
+  loading, // initial bodies still being created
+  aiming, // shooter's turn, striker placement + drag is allowed
+  shooting, // shot fired, physics is running
+  settling, // motion has stopped, computing outcome
   remoteTurn, // opponent's turn — no input, replay-only
 }
 
@@ -143,7 +143,8 @@ class CarromWorld extends Forge2DGame {
     if (phase != WorldPhase.aiming) return;
     final s = striker;
     if (s == null) return;
-    final clamped = worldX.clamp(-BoardDims.strikerXRange, BoardDims.strikerXRange);
+    final clamped =
+        worldX.clamp(-BoardDims.strikerXRange, BoardDims.strikerXRange);
     s.placeAt(clamped);
   }
 
@@ -187,6 +188,36 @@ class CarromWorld extends Forge2DGame {
     }
     s.placeAt(atX);
     phase = nextShooter == mySeat ? WorldPhase.aiming : WorldPhase.remoteTurn;
+  }
+
+  /// Restore a fresh practice break without rebuilding the Flutter page.
+  void resetPracticeBreak() {
+    _pocketedThisShot.clear();
+    _strikerPocketedThisShot = false;
+    _firstPieceHitThisShot = -1;
+    _shotElapsed = 0;
+    _shotCompleter = null;
+
+    for (final p in pieces.values) {
+      p
+        ..pocketed = false
+        ..sinkScale = 1.0;
+      p.body
+        ..setTransform(p.spawnPosition.clone(), 0)
+        ..linearVelocity = Vector2.zero()
+        ..angularVelocity = 0;
+    }
+
+    final s = striker;
+    if (s != null) {
+      s
+        ..pocketed = false
+        ..sinkScale = 1.0
+        ..placementLocked = true;
+      s.body.setType(BodyType.kinematic);
+      s.placeAt(0);
+    }
+    phase = WorldPhase.aiming;
   }
 
   /// Apply an opponent's shot outcome to our local world. Called when the

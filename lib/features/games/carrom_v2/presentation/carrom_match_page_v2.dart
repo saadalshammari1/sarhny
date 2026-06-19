@@ -32,6 +32,7 @@ class _CarromMatchPageV2State extends State<CarromMatchPageV2> {
   final int _opponentScore = 0;
   String? _lastFoulReason; // null = no foul
   bool _matchOver = false;
+  Future<ShotOutcome>? _boundShotFuture;
 
   @override
   void initState() {
@@ -160,9 +161,21 @@ class _CarromMatchPageV2State extends State<CarromMatchPageV2> {
   void _bindShotListener() {
     final f = _world.currentShotFuture;
     if (f == null) return;
+    if (identical(f, _boundShotFuture)) return;
+    _boundShotFuture = f;
     f.then((out) {
       if (mounted) _onShotSettled(out);
     });
+  }
+
+  void _restartPractice() {
+    setState(() {
+      _myScore = 0;
+      _lastFoulReason = null;
+      _matchOver = false;
+      _boundShotFuture = null;
+    });
+    _world.resetPracticeBreak();
   }
 
   @override
@@ -203,7 +216,8 @@ class _CarromMatchPageV2State extends State<CarromMatchPageV2> {
           actions: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: _ScoreChip(label: 'أنت', value: _myScore, accent: colors.moment),
+              child: _ScoreChip(
+                  label: 'أنت', value: _myScore, accent: colors.moment),
             ),
           ],
         ),
@@ -251,18 +265,33 @@ class _CarromMatchPageV2State extends State<CarromMatchPageV2> {
               const Gap(8),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: Row(
+                child: Column(
                   children: [
-                    Expanded(
-                      child: _StatusPill(
-                        text: _matchOver
-                            ? 'انتهت المباراة'
-                            : _world.phase == WorldPhase.shooting
-                                ? 'في الهواء…'
-                                : 'دورك — صوّب',
-                        accent: colors.crystal,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatusPill(
+                            text: _matchOver
+                                ? 'انتهت المباراة'
+                                : _world.phase == WorldPhase.shooting
+                                    ? 'القطع تتحرك…'
+                                    : 'اسحب من المضرب وحدد القوة والزاوية',
+                            accent: colors.crystal,
+                          ),
+                        ),
+                      ],
                     ),
+                    if (_matchOver) ...[
+                      const Gap(10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _restartPractice,
+                          icon: const Icon(Icons.restart_alt_rounded, size: 18),
+                          label: const Text('تدريب جديد'),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -287,7 +316,8 @@ class _CarromMatchPageV2State extends State<CarromMatchPageV2> {
 // ─────────────────────────────────────────────────────────────────────
 
 class _ScoreChip extends StatelessWidget {
-  const _ScoreChip({required this.label, required this.value, required this.accent});
+  const _ScoreChip(
+      {required this.label, required this.value, required this.accent});
   final String label;
   final int value;
   final Color accent;

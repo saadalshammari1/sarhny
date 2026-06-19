@@ -27,13 +27,75 @@ import '../result/result_painter.dart';
 import '../state/collision_details.dart';
 import '../util/ludo_v2_colors.dart';
 
+enum LudoV2Variant { normal, magic }
+
+extension LudoV2VariantX on LudoV2Variant {
+  static LudoV2Variant parse(String? raw) {
+    return raw == 'magic' ? LudoV2Variant.magic : LudoV2Variant.normal;
+  }
+
+  String get wire => this == LudoV2Variant.magic ? 'magic' : 'normal';
+  String get arabicLabel =>
+      this == LudoV2Variant.magic ? 'لودو سحرية' : 'لودو عادية';
+}
+
+enum _MagicTileKind { rocket, freeze, door, tornado }
+
+class _MagicTile {
+  const _MagicTile(this.kind, this.step);
+  final _MagicTileKind kind;
+  final int step;
+
+  String get glyph {
+    switch (kind) {
+      case _MagicTileKind.rocket:
+        return 'ص';
+      case _MagicTileKind.freeze:
+        return 'ج';
+      case _MagicTileKind.door:
+        return 'ب';
+      case _MagicTileKind.tornado:
+        return 'ع';
+    }
+  }
+
+  Color get color {
+    switch (kind) {
+      case _MagicTileKind.rocket:
+        return const Color(0xFFFF7A1A);
+      case _MagicTileKind.freeze:
+        return const Color(0xFF38BDF8);
+      case _MagicTileKind.door:
+        return const Color(0xFF9B5CF6);
+      case _MagicTileKind.tornado:
+        return const Color(0xFF14B8A6);
+    }
+  }
+}
+
+const Map<int, _MagicTile> _magicTiles = {
+  7: _MagicTile(_MagicTileKind.door, 7),
+  10: _MagicTile(_MagicTileKind.rocket, 10),
+  16: _MagicTile(_MagicTileKind.freeze, 16),
+  23: _MagicTile(_MagicTileKind.tornado, 23),
+  31: _MagicTile(_MagicTileKind.door, 31),
+  36: _MagicTile(_MagicTileKind.freeze, 36),
+  44: _MagicTile(_MagicTileKind.rocket, 44),
+  49: _MagicTile(_MagicTileKind.tornado, 49),
+};
+
 /// Local pass-and-play Ludo, ported from fludo with our scaffold + theming.
 ///
 /// `playerCount` valid values: 2, 3, 4. For 2 players the active seats
 /// are 0 + 2 (diagonal), for 3 it's 0 + 1 + 2, for 4 it's all seats.
 class LudoV2MatchPage extends StatefulWidget {
-  const LudoV2MatchPage({super.key, this.playerCount = 4});
+  const LudoV2MatchPage({
+    super.key,
+    this.playerCount = 4,
+    this.variant = LudoV2Variant.normal,
+  });
   final int playerCount;
+  final LudoV2Variant variant;
 
   @override
   State<LudoV2MatchPage> createState() => _LudoV2MatchPageState();
@@ -67,12 +129,17 @@ class _LudoV2MatchPageState extends State<LudoV2MatchPage>
 
   bool _tracksReady = false;
   bool _gameOver = false;
+  bool _suppressPawnCompletion = false;
   final List<int> _ranks = List.filled(4, 0); // 1 = 1st, 2 = 2nd, etc.
   int _finishedCount = 0;
   int _nextRank = 1;
+  final List<int> _frozenTurns = List.filled(4, 0);
+  String? _magicMessage;
 
   /// Seat indices that are actually played (others get auto-ranked at start).
   late final List<int> _activeSeats;
+
+  bool get _magicEnabled => widget.variant == LudoV2Variant.magic;
 
   @override
   void initState() {
@@ -142,6 +209,7 @@ class _LudoV2MatchPageState extends State<LudoV2MatchPage>
           vsync: this,
         )..addStatusListener((status) {
             if (status == AnimationStatus.completed) {
+              if (_suppressPawnCompletion) return;
               if (!_collisionDetails.isReverse) _stepCounter++;
               _movePawn();
             }
@@ -217,10 +285,15 @@ class _LudoV2MatchPageState extends State<LudoV2MatchPage>
 
   void _rollDice() {
     if (!_diceHighlightAnimCont.isAnimating) return;
+    if (_magicEnabled && _frozenTurns[_currentTurn] > 0) {
+      _consumeFrozenTurn();
+      return;
+    }
     _playerHighlightAnimCont.reset();
     _diceHighlightAnimCont.reset();
     setState(() {
       _diceOutput = 1 + Random().nextInt(6);
+      _magicMessage = null;
     });
     if (_diceOutput == 6) _straightSixesCounter += 1;
     GameHaptics.diceRoll();
@@ -281,8 +354,7 @@ class _LudoV2MatchPageState extends State<LudoV2MatchPage>
     if (_collisionDetails.isReverse) {
       if (currentStepIndex > 0) {
         _playerAnimList[_collisionDetails.targetPlayerIndex]
-                [_collisionDetails.pawnIndex] =
-            Tween(
+            [_collisionDetails.pawnIndex] = Tween(
           begin: currentStepInfo.value.center,
           end: _playerTracks[_collisionDetails.targetPlayerIndex]
                   [_collisionDetails.pawnIndex][currentStepIndex - 1]
@@ -314,21 +386,132 @@ class _LudoV2MatchPageState extends State<LudoV2MatchPage>
       if (_checkCollision(currentStepInfo)) {
         _movePawn(considerCurrentStep: true);
       } else {
-        if (currentStepIndex == _maxTrackIndex) {
-          _winnerPawnList[_currentTurn].add(_selectedPawnIndex);
-          if (_winnerPawnList[_currentTurn].length < 4) {
-            _provideFreeTurn = true;
-          } else {
-            _finishedCount += 1;
-            _ranks[_currentTurn] = _nextRank;
-            _nextRank += 1;
-            _provideFreeTurn = false;
-            _checkGameOver();
-          }
+        if (_magicEnabled && currentStepIndex != _maxTrackIndex) {
+          _applyMagicTile(currentStepIndex);
+        }
+        final landedStep =
+            _pawnCurrentStepInfo[_currentTurn][_selectedPawnIndex].key;
+        if (landedStep == _maxTrackIndex) {
+          _finishPawnIfNeeded(_currentTurn, _selectedPawnIndex);
         }
         _changeTurn();
       }
     }
+  }
+
+  void _consumeFrozenTurn() {
+    final remaining = _frozenTurns[_currentTurn] - 1;
+    setState(() {
+      _frozenTurns[_currentTurn] = remaining;
+      _magicMessage = remaining == 0
+          ? 'انتهى تجميد ${_seatName(_currentTurn)}'
+          : '${_seatName(_currentTurn)} مجمّد — بقي $remaining';
+    });
+    GameHaptics.capture();
+    _provideFreeTurn = false;
+    _changeTurn();
+  }
+
+  void _applyMagicTile(int step) {
+    final tile = _magicTiles[step];
+    if (tile == null) return;
+
+    switch (tile.kind) {
+      case _MagicTileKind.rocket:
+        final boost = 1 + Random().nextInt(6);
+        final target = min(_maxTrackIndex, step + boost);
+        _teleportPawn(_currentTurn, _selectedPawnIndex, target);
+        setState(() {
+          _magicMessage = target == _maxTrackIndex
+              ? 'صاروخ +$boost أوصلك للبيت'
+              : 'صاروخ دفعك $boost خطوات';
+        });
+        GameHaptics.uiPop();
+        break;
+      case _MagicTileKind.freeze:
+        final targetSeat = _nextEnemySeat();
+        if (targetSeat != null) {
+          _frozenTurns[targetSeat] = 3;
+          setState(() {
+            _magicMessage = 'تجميد ${_seatName(targetSeat)} لمدة 3 رميات';
+          });
+          GameHaptics.capture();
+        }
+        break;
+      case _MagicTileKind.door:
+        final target = step == 7 ? 31 : 7;
+        _teleportPawn(_currentTurn, _selectedPawnIndex, target);
+        setState(() {
+          _magicMessage =
+              step == 7 ? 'دخلت الباب وخرجت للأمام' : 'الباب أعادك للخلف';
+        });
+        GameHaptics.uiPop();
+        break;
+      case _MagicTileKind.tornado:
+        final occupied = <int>{
+          for (final info in _pawnCurrentStepInfo.expand((x) => x))
+            if (info.key > 0 && info.key < _maxTrackIndex) info.key,
+        };
+        var target = 1 + Random().nextInt(_maxTrackIndex - 2);
+        for (var attempts = 0;
+            attempts < 18 && occupied.contains(target);
+            attempts++) {
+          target = 1 + Random().nextInt(_maxTrackIndex - 2);
+        }
+        _teleportPawn(_currentTurn, _selectedPawnIndex, target);
+        setState(() {
+          _magicMessage = 'الإعصار نقل الحجر إلى موقع غير متوقع';
+        });
+        GameHaptics.capture();
+        break;
+    }
+  }
+
+  void _teleportPawn(int playerIndex, int pawnIndex, int targetStep) {
+    final clamped = targetStep.clamp(0, _maxTrackIndex);
+    final targetRect = _playerTracks[playerIndex][pawnIndex][clamped];
+    _pawnCurrentStepInfo[playerIndex][pawnIndex] =
+        MapEntry(clamped, targetRect);
+    final current = _playerAnimList[playerIndex][pawnIndex].value;
+    _playerAnimList[playerIndex][pawnIndex] = Tween(
+      begin: current,
+      end: targetRect.center,
+    ).animate(
+      CurvedAnimation(
+        parent: _playerAnimContList[playerIndex][pawnIndex],
+        curve: Curves.easeOutBack,
+      ),
+    );
+    _suppressPawnCompletion = true;
+    _playerAnimContList[playerIndex][pawnIndex]
+        .forward(from: 0)
+        .whenComplete(() {
+      _suppressPawnCompletion = false;
+    });
+  }
+
+  int? _nextEnemySeat() {
+    if (_activeSeats.length <= 1) return null;
+    final currentIdx = _activeSeats.indexOf(_currentTurn);
+    for (var i = 1; i <= _activeSeats.length; i++) {
+      final seat = _activeSeats[(currentIdx + i) % _activeSeats.length];
+      if (seat != _currentTurn && _ranks[seat] == 0) return seat;
+    }
+    return null;
+  }
+
+  void _finishPawnIfNeeded(int playerIndex, int pawnIndex) {
+    if (_winnerPawnList[playerIndex].contains(pawnIndex)) return;
+    _winnerPawnList[playerIndex].add(pawnIndex);
+    if (_winnerPawnList[playerIndex].length < 4) {
+      _provideFreeTurn = true;
+      return;
+    }
+    _finishedCount += 1;
+    _ranks[playerIndex] = _nextRank;
+    _nextRank += 1;
+    _provideFreeTurn = false;
+    _checkGameOver();
   }
 
   bool _checkCollision(MapEntry<int, Rect> currentStepInfo) {
@@ -363,8 +546,7 @@ class _LudoV2MatchPageState extends State<LudoV2MatchPage>
             ..targetPlayerIndex = first.targetPlayerIndex
             ..isReverse = true;
           _playerAnimContList[first.targetPlayerIndex][first.pawnIndex]
-              .duration =
-              Duration(milliseconds: _reverseStepAnimTimeInMillis);
+              .duration = Duration(milliseconds: _reverseStepAnimTimeInMillis);
         }
       } else {
         _collisionDetails.isReverse = false;
@@ -407,6 +589,19 @@ class _LudoV2MatchPageState extends State<LudoV2MatchPage>
     if (!_playerHighlightAnimCont.isAnimating) _highlightCurrentPlayer();
     _provideFreeTurn = false;
     setState(() {});
+  }
+
+  String _seatName(int seat) {
+    switch (seat) {
+      case 0:
+        return 'اللاعب 1';
+      case 1:
+        return 'اللاعب 2';
+      case 2:
+        return 'اللاعب 3';
+      default:
+        return 'اللاعب 4';
+    }
   }
 
   void _checkGameOver() {
@@ -532,7 +727,7 @@ class _LudoV2MatchPageState extends State<LudoV2MatchPage>
             },
           ),
           title: Text(
-            'لودو — ${widget.playerCount} لاعبين',
+            '${widget.variant.arabicLabel} — ${widget.playerCount} لاعبين',
             style: TextStyle(
               color: colors.textPrimary,
               fontWeight: FontWeight.w800,
@@ -551,9 +746,24 @@ class _LudoV2MatchPageState extends State<LudoV2MatchPage>
                   currentTurn: _currentTurn,
                   activeSeats: _activeSeats,
                   ranks: _ranks,
+                  frozenTurns: _frozenTurns,
                   gameOver: _gameOver,
                 ),
               ),
+              if (_magicEnabled) ...[
+                const Gap(8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: _MagicPowerRail(colors: colors),
+                ),
+              ],
+              if (_magicMessage != null) ...[
+                const Gap(8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _MagicEventBanner(message: _magicMessage!),
+                ),
+              ],
               const Gap(8),
               Expanded(
                 child: Center(
@@ -582,6 +792,15 @@ class _LudoV2MatchPageState extends State<LudoV2MatchPage>
                                 ),
                               ),
                             ),
+                            if (_magicEnabled && _tracksReady)
+                              SizedBox.expand(
+                                child: CustomPaint(
+                                  painter: _MagicTilesPainter(
+                                    tracks: _playerTracks,
+                                    activeSeats: _activeSeats,
+                                  ),
+                                ),
+                              ),
                             if (_tracksReady)
                               SizedBox.expand(
                                 child: AnimatedBuilder(
@@ -610,6 +829,11 @@ class _LudoV2MatchPageState extends State<LudoV2MatchPage>
                   ),
                 ),
               ),
+              if (_magicEnabled)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: _MagicLegend(),
+                ),
               const Gap(8),
               GestureDetector(
                 onTap: _rollDice,
@@ -641,9 +865,11 @@ class _LudoV2MatchPageState extends State<LudoV2MatchPage>
                 child: Text(
                   _gameOver
                       ? 'انتهت المباراة'
-                      : (_diceHighlightAnimCont.isAnimating
-                          ? 'اضغط على النرد للرمي'
-                          : 'اختر القطعة لتحريكها'),
+                      : (_magicEnabled && _frozenTurns[_currentTurn] > 0
+                          ? '${_seatName(_currentTurn)} مجمّد — اضغط النرد لاستهلاك رمية'
+                          : (_diceHighlightAnimCont.isAnimating
+                              ? 'اضغط على النرد للرمي'
+                              : 'اختر القطعة لتحريكها')),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: colors.textSecondary,
@@ -716,11 +942,13 @@ class _TurnBanner extends StatelessWidget {
     required this.currentTurn,
     required this.activeSeats,
     required this.ranks,
+    required this.frozenTurns,
     required this.gameOver,
   });
   final int currentTurn;
   final List<int> activeSeats;
   final List<int> ranks;
+  final List<int> frozenTurns;
   final bool gameOver;
 
   Color _seatColor(int seat) {
@@ -781,10 +1009,14 @@ class _TurnBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  rank == 0 ? (isCurrent ? 'دوره' : '—') : '#$rank',
+                  rank == 0
+                      ? (frozenTurns[seat] > 0
+                          ? 'مجمّد ${frozenTurns[seat]}'
+                          : (isCurrent ? 'دوره' : '—'))
+                      : '#$rank',
                   style: TextStyle(
                     color: color,
-                    fontSize: 12,
+                    fontSize: frozenTurns[seat] > 0 ? 10.5 : 12,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -793,6 +1025,287 @@ class _TurnBanner extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+class _MagicEventBanner extends StatelessWidget {
+  const _MagicEventBanner({required this.message});
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.sarhnyColors;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colors.mind.withValues(alpha: 0.18),
+            colors.crystal.withValues(alpha: 0.14),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colors.mind.withValues(alpha: 0.35),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.auto_awesome_rounded, color: colors.mind, size: 18),
+          const Gap(8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MagicLegend extends StatelessWidget {
+  const _MagicLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.sarhnyColors;
+    const items = [
+      (_MagicTileKind.rocket, 'صاروخ'),
+      (_MagicTileKind.freeze, 'تجميد'),
+      (_MagicTileKind.door, 'باب'),
+      (_MagicTileKind.tornado, 'إعصار'),
+    ];
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 7,
+      runSpacing: 6,
+      children: items.map((item) {
+        final tile = _MagicTile(item.$1, 0);
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          decoration: BoxDecoration(
+            color: tile.color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: tile.color.withValues(alpha: 0.35),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                tile.glyph,
+                style: TextStyle(
+                  color: tile.color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const Gap(4),
+              Text(
+                item.$2,
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _MagicTilesPainter extends CustomPainter {
+  const _MagicTilesPainter({
+    required this.tracks,
+    required this.activeSeats,
+  });
+
+  final List<List<List<Rect>>> tracks;
+  final List<int> activeSeats;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final textPainter = TextPainter(
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    );
+    final seen = <String>{};
+    for (final seat in activeSeats) {
+      if (seat >= tracks.length || tracks[seat].isEmpty) continue;
+      final track = tracks[seat][0];
+      for (final entry in _magicTiles.entries) {
+        if (entry.key >= track.length) continue;
+        final rect = track[entry.key].deflate(2);
+        final key =
+            '${rect.center.dx.toStringAsFixed(1)}:${rect.center.dy.toStringAsFixed(1)}';
+        if (!seen.add(key)) continue;
+        final tile = entry.value;
+        final paint = Paint()
+          ..shader = RadialGradient(
+            colors: [
+              tile.color.withValues(alpha: 0.85),
+              tile.color.withValues(alpha: 0.25),
+            ],
+          ).createShader(rect);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(rect, const Radius.circular(5)),
+          paint,
+        );
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(rect, const Radius.circular(5)),
+          Paint()
+            ..color = Colors.white.withValues(alpha: 0.82)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.1,
+        );
+        textPainter.text = TextSpan(
+          text: tile.glyph,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: rect.height * 0.52,
+            fontWeight: FontWeight.w900,
+          ),
+        );
+        textPainter.layout(maxWidth: rect.width);
+        textPainter.paint(
+          canvas,
+          rect.center - Offset(textPainter.width / 2, textPainter.height / 2),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MagicTilesPainter oldDelegate) {
+    return oldDelegate.tracks != tracks ||
+        oldDelegate.activeSeats != activeSeats;
+  }
+}
+
+class _MagicPowerRail extends StatelessWidget {
+  const _MagicPowerRail({required this.colors});
+  final SarhnyColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.border.withValues(alpha: 0.55)),
+      ),
+      child: Row(
+        children: const [
+          Expanded(
+            child: _MagicPowerChip(
+              label: 'صاروخ',
+              detail: '+1 إلى +6',
+              icon: Icons.rocket_launch_rounded,
+              color: Color(0xFFFF7A1A),
+            ),
+          ),
+          Gap(7),
+          Expanded(
+            child: _MagicPowerChip(
+              label: 'تجميد',
+              detail: '3 رميات',
+              icon: Icons.ac_unit_rounded,
+              color: Color(0xFF38BDF8),
+            ),
+          ),
+          Gap(7),
+          Expanded(
+            child: _MagicPowerChip(
+              label: 'أبواب',
+              detail: 'انتقال',
+              icon: Icons.door_front_door_rounded,
+              color: Color(0xFF9B5CF6),
+            ),
+          ),
+          Gap(7),
+          Expanded(
+            child: _MagicPowerChip(
+              label: 'إعصار',
+              detail: 'عشوائي',
+              icon: Icons.cyclone_rounded,
+              color: Color(0xFF14B8A6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MagicPowerChip extends StatelessWidget {
+  const _MagicPowerChip({
+    required this.label,
+    required this.detail,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final String detail;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.32)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const Gap(3),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w900,
+                fontSize: 11.5,
+              ),
+            ),
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              detail,
+              maxLines: 1,
+              style: TextStyle(
+                color: color.withValues(alpha: 0.82),
+                fontWeight: FontWeight.w700,
+                fontSize: 9.5,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

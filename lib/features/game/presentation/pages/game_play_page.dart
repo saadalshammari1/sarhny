@@ -7,6 +7,8 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../games/carrom/application/carrom_controllers.dart';
+import '../../../games/carrom/data/admob_service.dart';
 import '../../data/game_repository.dart';
 import '../providers/game_providers.dart';
 
@@ -24,18 +26,69 @@ class _GamePlayPageState extends ConsumerState<GamePlayPage> {
   Timer? _poll;
   GameSnapshot? _snap;
   bool _busy = false;
+  AdMobRewardService? _adService;
 
   @override
   void initState() {
     super.initState();
     _refresh();
     _poll = Timer.periodic(const Duration(seconds: 2), (_) => _refresh());
+    // Pre-load an ad so the "امتنع" button is instant when tapped.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _adService = AdMobRewardService(ref.read(carromApiProvider));
+      _adService?.loadRewardedAd().catchError((_) {});
+    });
   }
 
   @override
   void dispose() {
     _poll?.cancel();
+    _adService?.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleAbstain() async {
+    final svc = _adService ??= AdMobRewardService(ref.read(carromApiProvider));
+    final gameId = widget.gameId;
+    Fluttertoast.showToast(msg: 'جاري تحميل الإعلان...');
+    try {
+      final grant = await svc.showRewardedAd();
+      if (!mounted) return;
+      if (grant == null) {
+        Fluttertoast.showToast(msg: 'الإعلان لم يكتمل');
+        return;
+      }
+      final token = grant.adToken;
+      if (token == null || token.isEmpty) {
+        Fluttertoast.showToast(msg: 'لم نتحقق من الإعلان');
+        return;
+      }
+      await _wrap(
+        () => ref.read(gameRepositoryProvider).abstain(gameId, token),
+      );
+      if (!mounted) return;
+      Fluttertoast.showToast(msg: 'حصلت على نقطة. تم الامتناع.');
+    } on AdRewardException catch (e) {
+      Fluttertoast.showToast(msg: _adErr(e.code));
+    } catch (_) {
+      Fluttertoast.showToast(msg: 'تعذّر تشغيل الإعلان');
+    }
+  }
+
+  String _adErr(String code) {
+    switch (code) {
+      case 'ads_unsupported_platform':
+        return 'الإعلانات غير متاحة هنا';
+      case 'ad_unavailable':
+        return 'لا يوجد إعلان متاح حالياً';
+      case 'daily_cap_reached':
+        return 'وصلت الحد اليومي للإعلانات';
+      case 'already_granted':
+        return 'تم احتساب الإعلان مسبقاً';
+      default:
+        return 'تعذّر الحصول على المكافأة';
+    }
   }
 
   Future<void> _refresh() async {
@@ -186,6 +239,7 @@ class _GamePlayPageState extends ConsumerState<GamePlayPage> {
               : () => _wrap(
                     () => ref.read(gameRepositoryProvider).skip(s.gameId),
                   ),
+          onAbstain: _handleAbstain,
         );
       }
       // Winner waiting on the loser's answer — show a calm waiting state
@@ -741,12 +795,16 @@ class _LoserFinalView extends StatefulWidget {
     required this.colors,
     required this.onAnswer,
     required this.onSkip,
+    this.onAbstain,
   });
   final GameSnapshot snap;
   final bool busy;
   final SarhnyColors colors;
   final Future<void> Function(String text) onAnswer;
   final VoidCallback? onSkip;
+  /// Optional — when wired, shows an "امتنع · إعلان +1" button that
+  /// triggers the ad-then-abstain flow.
+  final VoidCallback? onAbstain;
   @override
   State<_LoserFinalView> createState() => _LoserFinalViewState();
 }
@@ -852,7 +910,7 @@ class _LoserFinalViewState extends State<_LoserFinalView> {
               OutlinedButton.icon(
                 onPressed: widget.busy ? null : widget.onSkip,
                 icon: const Icon(Icons.swap_horiz, size: 18),
-                label: const Text('بطاقة تبديل السؤال'),
+                label: const Text('بدّل السؤال'),
               ),
             const Spacer(),
             FilledButton.icon(
@@ -863,6 +921,27 @@ class _LoserFinalViewState extends State<_LoserFinalView> {
               label: const Text('أرسل إجابتي'),
             ),
           ]),
+          if (widget.onAbstain != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: widget.busy ? null : widget.onAbstain,
+                icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
+                label: const Text('امتنع · شاهد إعلاناً (+1 نقطة)'),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'الامتناع ينهي المباراة بدون إجابة ويضيف نقطة لرصيدك.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: c.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ],
       ),
     );

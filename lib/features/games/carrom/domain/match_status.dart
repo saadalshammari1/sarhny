@@ -143,10 +143,14 @@ class AdGrantResult {
     required this.credited,
     required this.balance,
     required this.remainingToday,
+    this.adToken,
   });
   final int credited;
   final int balance;
   final int remainingToday;
+  /// AdMob transaction_id of the grant — passed back so downstream
+  /// endpoints (e.g. /xo/{id}/abstain) can attest the ad happened.
+  final String? adToken;
 }
 
 /// Outcome of GET /api/v1/games/ad/quota.

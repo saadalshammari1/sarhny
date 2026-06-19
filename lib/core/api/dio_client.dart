@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
@@ -19,14 +19,14 @@ typedef OnUnauthorized = Future<void> Function();
 /// - Bearer access token from SecureStorage on every request.
 /// - HttpOnly refresh cookie persisted via PersistCookieJar (matches the
 ///   web flow where browsers do this automatically).
-/// - Single-flight refresh on 401 → retry once → fail to onUnauthorized.
+/// - Single-flight refresh on 401 â†’ retry once â†’ fail to onUnauthorized.
 /// - Standard envelope `{success, data, error}` parsing.
 class DioClient {
   DioClient._({
     required this.secureStorage,
     required this.onUnauthorized,
     required Dio dio,
-    required PersistCookieJar cookieJar,
+    required CookieJar cookieJar,
   })  : _dio = dio,
         _cookieJar = cookieJar;
 
@@ -42,13 +42,19 @@ class DioClient {
         envUrl.contains('127.0.0.1') ||
         envUrl.contains('localhost');
     final baseUrl = (kDebugMode && isLocalUrl) ? envUrl : _defaultBaseUrl();
-    // Cookie jar dir — using a non-hidden folder name avoids iOS sandbox quirks
-    // with dot-prefixed paths under Application Support.
-    final cookieDir = await getApplicationSupportDirectory();
-    final cookieJar = PersistCookieJar(
-      storage: FileStorage('${cookieDir.path}/sarhny_cookies/'),
-      ignoreExpires: false,
-    );
+    // Web keeps cookies in the browser store; mobile persists them on disk.
+    final CookieJar cookieJar;
+    if (kIsWeb) {
+      cookieJar = CookieJar();
+    } else {
+      // Cookie jar dir — using a non-hidden folder name avoids iOS sandbox quirks
+      // with dot-prefixed paths under Application Support.
+      final cookieDir = await getApplicationSupportDirectory();
+      cookieJar = PersistCookieJar(
+        storage: FileStorage('${cookieDir.path}/sarhny_cookies/'),
+        ignoreExpires: false,
+      );
+    }
 
     final dio = Dio(
       BaseOptions(
@@ -90,18 +96,18 @@ class DioClient {
   }
 
   static String _defaultBaseUrl() {
-    // Production: sarhny.com is the live backend (served via Nginx → uvicorn).
+    // Production: sarhny.com is the live backend (served via Nginx â†’ uvicorn).
     // For local development override via `.env`:  API_BASE_URL=http://10.0.2.2:8030
     return 'https://sarhny.com';
   }
 
   final Dio _dio;
-  final PersistCookieJar _cookieJar;
+  final CookieJar _cookieJar;
   final SecureStorage secureStorage;
   final OnUnauthorized onUnauthorized;
 
   Dio get raw => _dio;
-  PersistCookieJar get cookies => _cookieJar;
+  CookieJar get cookies => _cookieJar;
 
   bool _refreshing = false;
   final List<Completer<void>> _waiters = [];
@@ -143,7 +149,8 @@ class DioClient {
       path.startsWith('/api/v1/auth/register') ||
       path.startsWith('/api/v1/auth/logout');
 
-  Future<Response<dynamic>?> _tryRefreshAndRetry(RequestOptions original) async {
+  Future<Response<dynamic>?> _tryRefreshAndRetry(
+      RequestOptions original) async {
     if (_refreshing) {
       final c = Completer<void>();
       _waiters.add(c);
@@ -177,7 +184,8 @@ class DioClient {
         final data = (resp.data as Map)['data'];
         final access = data is Map ? data['access_token']?.toString() : null;
         if (access != null) {
-          await secureStorage.writeTokens(accessToken: access, refreshToken: '');
+          await secureStorage.writeTokens(
+              accessToken: access, refreshToken: '');
           return true;
         }
       }
@@ -193,16 +201,18 @@ class DioClient {
     try {
       final resp = await send();
       final body = resp.data;
-      if (body is! Map) throw const UnknownApiException('Invalid response body');
+      if (body is! Map) {
+        throw const UnknownApiException('Invalid response body');
+      }
       final code = resp.statusCode ?? 0;
       if (body['success'] == true && code >= 200 && code < 300) {
         return parser(body['data']);
       }
       final rawErr = body['error'];
       final errorMsg = switch (rawErr) {
-        Map() => rawErr['message']?.toString() ??
-            rawErr.values.first.toString(),
-        _ => rawErr?.toString() ?? 'حدث خطأ غير معروف',
+        Map() =>
+          rawErr['message']?.toString() ?? rawErr.values.first.toString(),
+        _ => rawErr?.toString() ?? 'ط­ط¯ط« ط®ط·ط£ ط؛ظٹط± ظ…ط¹ط±ظˆظپ',
       };
       throw switch (code) {
         401 => UnauthorizedException(errorMsg),
@@ -218,11 +228,11 @@ class DioClient {
         DioExceptionType.connectionTimeout ||
         DioExceptionType.sendTimeout ||
         DioExceptionType.receiveTimeout =>
-          const TimeoutException('انقطع الاتصال'),
+          const TimeoutException('ط§ظ†ظ‚ط·ط¹ ط§ظ„ط§طھطµط§ظ„'),
         DioExceptionType.connectionError ||
         DioExceptionType.unknown =>
-          NetworkException(e.message ?? 'لا اتصال بالخادم'),
-        _ => UnknownApiException(e.message ?? 'خطأ غير معروف'),
+          NetworkException(e.message ?? 'ظ„ط§ ط§طھطµط§ظ„ ط¨ط§ظ„ط®ط§ط¯ظ…'),
+        _ => UnknownApiException(e.message ?? 'ط®ط·ط£ ط؛ظٹط± ظ…ط¹ط±ظˆظپ'),
       };
     }
   }
@@ -231,9 +241,8 @@ class DioClient {
     if (error is! Map) return null;
     final out = <String, List<String>>{};
     error.forEach((k, v) {
-      out[k.toString()] = v is List
-          ? v.map((e) => e.toString()).toList()
-          : [v.toString()];
+      out[k.toString()] =
+          v is List ? v.map((e) => e.toString()).toList() : [v.toString()];
     });
     return out.isEmpty ? null : out;
   }

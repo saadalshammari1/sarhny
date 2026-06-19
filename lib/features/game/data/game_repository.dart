@@ -194,6 +194,19 @@ class GameRepository {
     return GameSnapshot.fromJson(state.cast<String, dynamic>());
   }
 
+  /// Loser opts out of answering by attesting a previously-granted ad.
+  /// `adToken` is the `ad_token` field returned by /games/ad/grant.
+  Future<GameSnapshot> abstain(String gameId, String adToken) async {
+    final r = await _client.raw.post<dynamic>(
+      '/api/v1/game/$gameId/abstain',
+      data: {'ad_token': adToken},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    _ensureSuccess(r);
+    final state = ((r.data as Map)['data'] as Map)['state'] as Map;
+    return GameSnapshot.fromJson(state.cast<String, dynamic>());
+  }
+
   Future<void> leave(String gameId) async {
     await _client.raw.post<dynamic>(
       '/api/v1/game/$gameId/leave',

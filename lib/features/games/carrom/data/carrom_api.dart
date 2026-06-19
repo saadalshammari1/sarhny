@@ -256,6 +256,7 @@ class CarromApi {
       credited: (d['credited'] as num?)?.toInt() ?? 0,
       balance: (d['balance'] as num?)?.toInt() ?? 0,
       remainingToday: (d['remaining_today'] as num?)?.toInt() ?? 0,
+      adToken: d['ad_token']?.toString(),
     );
   }
 

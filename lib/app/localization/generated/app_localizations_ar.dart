@@ -363,4 +363,33 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get carromWalletEarn3 => 'الفوز في مباراة كيرم';
+
+  @override
+  String get carromCosmeticsTitle => 'خصّص لعبتك';
+
+  @override
+  String get carromCosmeticsTabBoard => 'الطاولة';
+
+  @override
+  String get carromCosmeticsTabPieces => 'القطع';
+
+  @override
+  String get carromCosmeticsTabStriker => 'المضرب';
+
+  @override
+  String get carromCosmeticsLockedHint => 'اربح نقاطاً لفتح هذا الشكل';
+
+  @override
+  String carromCosmeticsSaved(Object name) {
+    return 'تم اختيار $name';
+  }
+
+  @override
+  String get carromCosmeticsSaveFailed => 'تعذّر الحفظ، حاول مرة أخرى';
+
+  @override
+  String get carromLobbyCustomize => 'تخصيص لعبتك';
+
+  @override
+  String get carromLobbyCustomizeSub => 'اختر طاولتك ولون أحجارك ومضربك';
 }

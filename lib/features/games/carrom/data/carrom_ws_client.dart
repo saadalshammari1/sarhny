@@ -86,11 +86,19 @@ class CarromConnectionUp extends CarromEvent {
   const CarromConnectionUp();
 }
 
-/// WebSocket client مع auto-reconnect + heartbeat.
+/// Fired whenever the WS asks for a fresh state — controller may use this
+/// as a signal to also try a REST fallback if the server doesn't echo a
+/// `state` event back within a short window.
+class CarromResyncRequested extends CarromEvent {
+  const CarromResyncRequested();
+}
+
+/// WebSocket client مع auto-reconnect + heartbeat + liveness watchdog.
 ///
 /// - يفتح الاتصال بـ `wss://<host>/api/v1/carrom/ws/{room_id}`.
 /// - أول رسالة: `{type: hello, token: <jwt>}`.
 /// - ping كل 20 ثانية.
+/// - Watchdog كل 10s — لو ما وصلت رسالة من السيرفر خلال 60s نقطع ونعيد.
 /// - Exponential backoff: 1, 2, 4, 8, 16, 30s (cap).
 class CarromWsClient {
   CarromWsClient({
@@ -109,6 +117,10 @@ class CarromWsClient {
     return httpUrl;
   }
 
+  /// كم ثانية بدون أي رسالة من السيرفر قبل ما نعتبر الاتصال ميت.
+  static const Duration livenessTimeout = Duration(seconds: 60);
+  static const Duration _livenessTickEvery = Duration(seconds: 10);
+
   final String _wsBaseUrl;
   final String roomId;
   final SecureStorage secureStorage;
@@ -117,12 +129,30 @@ class CarromWsClient {
   StreamSubscription<dynamic>? _sub;
   Timer? _heartbeat;
   Timer? _reconnectTimer;
+  Timer? _livenessTimer;
   int _retry = 0;
   bool _disposed = false;
   bool _connecting = false;
+  bool _hasConnectedOnce = false;
+  DateTime? _lastInboundAt;
 
   final _controller = StreamController<CarromEvent>.broadcast();
   Stream<CarromEvent> get events => _controller.stream;
+
+  /// Live counter — increments on every scheduled reconnect attempt and
+  /// resets to 0 on a successful (connection-up) handshake.
+  final _retryController = StreamController<int>.broadcast();
+
+  /// Broadcasts the current retry attempt (1, 2, 3 …) so the UI can show
+  /// "محاولة #N" banners.
+  Stream<int> get reconnectAttempts => _retryController.stream;
+
+  /// Public getter — useful for the controller's lifecycle decisions.
+  int get retryCount => _retry;
+
+  /// آخر وقت وصلت فيه رسالة من السيرفر — exposed للـ controller حتى
+  /// يقرر هل يطلب resync بعد ما يرجع الـ app من الخلفية.
+  DateTime? get lastInboundAt => _lastInboundAt;
 
   bool get isConnected => _channel != null;
 
@@ -142,7 +172,18 @@ class CarromWsClient {
       );
       // hello أولاً — السيرفر يقطع الاتصال لو ما وصلته خلال 5s.
       ch.sink.add(jsonEncode({'type': 'hello', 'token': token ?? ''}));
+      // لو كان هذا reconnect (ليست أول مرة) — اطلب فوراً snapshot كامل
+      // حتى نلحق أي events ضاعت أثناء الانقطاع (خصوصاً game_over).
+      if (_hasConnectedOnce) {
+        _sendRawSafe(jsonEncode({'type': 'resync'}));
+        if (!_controller.isClosed) {
+          _controller.add(const CarromResyncRequested());
+        }
+      }
+      _hasConnectedOnce = true;
+      _lastInboundAt = DateTime.now();
       _startHeartbeat();
+      _startLivenessWatchdog();
       _retry = 0;
       if (!_controller.isClosed) {
         _controller.add(const CarromConnectionUp());
@@ -158,12 +199,48 @@ class CarromWsClient {
   void _startHeartbeat() {
     _heartbeat?.cancel();
     _heartbeat = Timer.periodic(const Duration(seconds: 20), (_) {
-      try {
-        _channel?.sink.add(jsonEncode({'type': 'ping'}));
-      } catch (_) {
-        // sink قد يكون مغلق — onDone سيتولّى reconnect
-      }
+      _sendRawSafe(jsonEncode({'type': 'ping'}));
     });
+  }
+
+  void _startLivenessWatchdog() {
+    _livenessTimer?.cancel();
+    _livenessTimer = Timer.periodic(_livenessTickEvery, (_) => _checkLiveness());
+  }
+
+  void _checkLiveness() {
+    if (_disposed) return;
+    final last = _lastInboundAt;
+    if (last == null) return;
+    if (_channel == null) return; // already disconnected — reconnect path handles it
+    final silence = DateTime.now().difference(last);
+    if (silence >= livenessTimeout) {
+      if (kDebugMode) {
+        debugPrint('Carrom WS liveness watchdog — ${silence.inSeconds}s of silence, forcing reconnect');
+      }
+      // Drop and reschedule. _scheduleReconnect emits ConnectionDown.
+      _scheduleReconnect();
+    }
+  }
+
+  void _sendRawSafe(String payload) {
+    final ch = _channel;
+    if (ch == null) return;
+    try {
+      ch.sink.add(payload);
+    } catch (_) {
+      // sink قد يكون مغلق — onDone سيتولّى reconnect
+    }
+  }
+
+  /// Public API — اطلب من السيرفر يرسل state snapshot كامل.
+  /// آمن لاستدعائه من الـ controller حتى لو ما كان متصل (no-op وقتها،
+  /// والـ reconnect-resync path سيتكفّل بالأمر).
+  void requestResync() {
+    _sendRawSafe(jsonEncode({'type': 'resync'}));
+    if (!_controller.isClosed) {
+      _controller.add(const CarromResyncRequested());
+    }
   }
 
   void _scheduleReconnect() {
@@ -174,11 +251,15 @@ class CarromWsClient {
     }
     final delaySec = [1, 2, 4, 8, 16, 30][_retry.clamp(0, 5)];
     _retry++;
+    if (!_retryController.isClosed) {
+      _retryController.add(_retry);
+    }
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(Duration(seconds: delaySec), connect);
   }
 
   void _onRaw(dynamic raw) {
+    _lastInboundAt = DateTime.now();
     try {
       final Map<String, dynamic> msg;
       if (raw is String) {
@@ -237,7 +318,7 @@ class CarromWsClient {
           break;
         case 'pong':
         case 'hello_ack':
-          // benign
+          // benign — `_lastInboundAt` is already refreshed.
           break;
       }
     } catch (e) {
@@ -260,34 +341,24 @@ class CarromWsClient {
 
   /// إرسال تصويب.
   void sendShoot(CarromShotInput input) {
-    final ch = _channel;
-    if (ch == null) return;
-    try {
-      ch.sink.add(jsonEncode(input.toJson()));
-    } catch (_) {}
+    _sendRawSafe(jsonEncode(input.toJson()));
   }
 
   /// إرسال chat preset.
   void sendChat(String presetKey) {
-    final ch = _channel;
-    if (ch == null) return;
-    try {
-      ch.sink.add(jsonEncode({'type': 'chat', 'preset_key': presetKey}));
-    } catch (_) {}
+    _sendRawSafe(jsonEncode({'type': 'chat', 'preset_key': presetKey}));
   }
 
   /// انسحاب من المباراة.
   void sendConcede() {
-    final ch = _channel;
-    if (ch == null) return;
-    try {
-      ch.sink.add(jsonEncode({'type': 'concede'}));
-    } catch (_) {}
+    _sendRawSafe(jsonEncode({'type': 'concede'}));
   }
 
   void _cleanup() {
     _heartbeat?.cancel();
     _heartbeat = null;
+    _livenessTimer?.cancel();
+    _livenessTimer = null;
     _sub?.cancel();
     _sub = null;
     try {
@@ -299,7 +370,9 @@ class CarromWsClient {
   Future<void> dispose() async {
     _disposed = true;
     _reconnectTimer?.cancel();
+    _reconnectTimer = null;
     _cleanup();
     await _controller.close();
+    await _retryController.close();
   }
 }

@@ -27,6 +27,8 @@ class CarromShotResult {
     required this.bScore,
     required this.queenCovered,
     required this.foul,
+    this.foulReason,
+    this.queenPending = false,
   });
 
   final List<CarromFrame> frames;
@@ -37,6 +39,12 @@ class CarromShotResult {
   final int bScore;
   final bool queenCovered;
   final bool foul;
+  /// Server-stamped foul classification. One of: striker_pocketed,
+  /// no_piece_hit, wrong_color, queen_uncovered, opponent_color_pocketed,
+  /// queen_pocketed_without_cover. null when foul == false.
+  final String? foulReason;
+  /// Queen is pocketed but not yet covered — UI shows a warning.
+  final bool queenPending;
 
   factory CarromShotResult.fromJson(Map<String, dynamic> j) {
     final framesRaw = (j['frames'] as List?) ?? const [];
@@ -57,6 +65,8 @@ class CarromShotResult {
       bScore: (j['b_score'] as num?)?.toInt() ?? 0,
       queenCovered: j['queen_covered'] == true,
       foul: j['foul'] == true,
+      foulReason: j['foul_reason']?.toString(),
+      queenPending: j['queen_pending'] == true,
     );
   }
 }

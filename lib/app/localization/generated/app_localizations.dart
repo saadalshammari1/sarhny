@@ -799,6 +799,60 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'الفوز في مباراة كيرم'**
   String get carromWalletEarn3;
+
+  /// No description provided for @carromCosmeticsTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'خصّص لعبتك'**
+  String get carromCosmeticsTitle;
+
+  /// No description provided for @carromCosmeticsTabBoard.
+  ///
+  /// In ar, this message translates to:
+  /// **'الطاولة'**
+  String get carromCosmeticsTabBoard;
+
+  /// No description provided for @carromCosmeticsTabPieces.
+  ///
+  /// In ar, this message translates to:
+  /// **'القطع'**
+  String get carromCosmeticsTabPieces;
+
+  /// No description provided for @carromCosmeticsTabStriker.
+  ///
+  /// In ar, this message translates to:
+  /// **'المضرب'**
+  String get carromCosmeticsTabStriker;
+
+  /// No description provided for @carromCosmeticsLockedHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'اربح نقاطاً لفتح هذا الشكل'**
+  String get carromCosmeticsLockedHint;
+
+  /// No description provided for @carromCosmeticsSaved.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم اختيار {name}'**
+  String carromCosmeticsSaved(Object name);
+
+  /// No description provided for @carromCosmeticsSaveFailed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر الحفظ، حاول مرة أخرى'**
+  String get carromCosmeticsSaveFailed;
+
+  /// No description provided for @carromLobbyCustomize.
+  ///
+  /// In ar, this message translates to:
+  /// **'تخصيص لعبتك'**
+  String get carromLobbyCustomize;
+
+  /// No description provided for @carromLobbyCustomizeSub.
+  ///
+  /// In ar, this message translates to:
+  /// **'اختر طاولتك ولون أحجارك ومضربك'**
+  String get carromLobbyCustomizeSub;
 }
 
 class _AppLocalizationsDelegate

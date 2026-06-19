@@ -365,4 +365,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get carromWalletEarn3 => 'Win a Carrom match';
+
+  @override
+  String get carromCosmeticsTitle => 'Customize your game';
+
+  @override
+  String get carromCosmeticsTabBoard => 'Board';
+
+  @override
+  String get carromCosmeticsTabPieces => 'Pieces';
+
+  @override
+  String get carromCosmeticsTabStriker => 'Striker';
+
+  @override
+  String get carromCosmeticsLockedHint => 'Earn points to unlock this skin';
+
+  @override
+  String carromCosmeticsSaved(Object name) {
+    return 'Selected $name';
+  }
+
+  @override
+  String get carromCosmeticsSaveFailed => 'Couldn\'t save, please try again';
+
+  @override
+  String get carromLobbyCustomize => 'Customize your game';
+
+  @override
+  String get carromLobbyCustomizeSub =>
+      'Pick your board, piece colors, and striker';
 }

@@ -14,6 +14,16 @@ import '../../data/admob_service.dart';
 import '../../data/carrom_api.dart';
 
 /// شاشة post-game — كشف هوية + إعادة تحدّي + إرسال صراحة للخصم.
+///
+/// Layout hierarchy (top → bottom):
+///   1. HEADER — hero banner (winner/loser/concede states), pot display,
+///      optional confetti for winners.
+///   2. PRIMARY ACTIONS — two stacked full-width FilledButtons:
+///        a) العودة للوبي (brand `moment` color, FilledButton)
+///        b) البحث عن منافس آخر (FilledButton.tonal)
+///   3. SECONDARY — rematch-with-same-opponent panel (de-emphasized).
+///   4. TERTIARY — reveal/hide/sarhny/ad cards (winners + revealOffer only).
+///   5. LOSER CLOSURE — "ماذا حدث؟" expandable + "أرسل صراحة" mini-card.
 class CarromGameOverPage extends ConsumerStatefulWidget {
   const CarromGameOverPage({
     super.key,
@@ -36,6 +46,7 @@ class _CarromGameOverPageState extends ConsumerState<CarromGameOverPage>
   );
 
   bool _revealing = false;
+  bool _whatHappenedExpanded = false;
   // Rematch flow state — drives the bottom-of-screen panel.
   // Phases: none | waiting | matched | declined | timeout
   String _rematchPhase = 'none';
@@ -52,6 +63,8 @@ class _CarromGameOverPageState extends ConsumerState<CarromGameOverPage>
       // it should be ready, eliminating the loading spinner.
       ref.read(admobRewardServiceProvider).loadRewardedAd();
     });
+    // We honour reduce-motion at paint time (see build); animating the
+    // controller cheaply is fine because the painter early-outs.
     _confettiCtrl.forward();
   }
 
@@ -149,6 +162,14 @@ class _CarromGameOverPageState extends ConsumerState<CarromGameOverPage>
   void _goToNewRoom(String roomId) {
     if (!mounted) return;
     context.go(AppRoutes.carromMatch(roomId));
+  }
+
+  /// System back / programmatic pop → always return to the carrom lobby.
+  /// We bypass the default navigator pop because the previous route is the
+  /// stale match page, which would re-render a dead WebSocket session.
+  void _handleSystemBack() {
+    if (!mounted) return;
+    context.go(AppRoutes.carromLobby);
   }
 
   Future<void> _doReveal(
@@ -329,157 +350,332 @@ class _CarromGameOverPageState extends ConsumerState<CarromGameOverPage>
     final myUserId = ref.watch(authStateProvider).value?.userId;
     final won = myUserId != null && widget.outcome.winnerId == myUserId;
     final pot = widget.outcome.pot;
-    return Scaffold(
-      backgroundColor: colors.background,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            if (won)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: AnimatedBuilder(
-                    animation: _confettiCtrl,
-                    builder: (_, __) => CustomPaint(
-                      painter: _ConfettiPainter(_confettiCtrl.value),
+    final byConcede = widget.outcome.byConcede;
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final showConfetti = won && !reduceMotion;
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleSystemBack();
+      },
+      child: Scaffold(
+        backgroundColor: colors.background,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              if (showConfetti)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: AnimatedBuilder(
+                      animation: _confettiCtrl,
+                      builder: (_, __) => CustomPaint(
+                        painter: _ConfettiPainter(_confettiCtrl.value),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  Text(
-                    won ? 'فزت! 🎉' : 'حظ أوفر',
-                    style: TextStyle(
-                      color: won ? colors.success : colors.textPrimary,
-                      fontSize: 36,
-                      fontWeight: FontWeight.w900,
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // ── 1. HEADER — hero banner + pot.
+                    _Header(
+                      won: won,
+                      pot: pot,
+                      byConcede: byConcede,
+                      colors: colors,
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    won
-                        ? 'أنت بطل هذه المباراة'
-                        : 'كل مباراة فرصة جديدة',
-                    style: TextStyle(
-                      color: colors.textSecondary,
-                      fontSize: 14,
+                    const SizedBox(height: 12),
+
+                    // ── 2. PRIMARY ACTIONS — promoted to top of fold.
+                    _PrimaryActions(
+                      colors: colors,
+                      onLobby: _handleSystemBack,
+                      onSearchOther: _searchOther,
                     ),
-                  ),
-                  if (widget.outcome.byConcede)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        'بانسحاب الخصم',
-                        style: TextStyle(
-                          color: colors.textSecondary,
-                          fontSize: 11,
-                          fontStyle: FontStyle.italic,
-                        ),
+                    const SizedBox(height: 12),
+
+                    // ── 3. SECONDARY — rematch with same opponent.
+                    _RematchPanel(
+                      phase: _rematchPhase,
+                      secondsLeft: _rematchSecondsLeft,
+                      colors: colors,
+                      onAccept: _acceptRematch,
+                      onSearchOther: _searchOther,
+                    ),
+
+                    // ── 4. TERTIARY — viral / monetization cards.
+                    // Winners always see these; losers only if revealOffer.
+                    if (widget.outcome.revealOffer || won) ...[
+                      const SizedBox(height: 12),
+                      _OptionCard(
+                        title: 'اكشف هويتك للخصم',
+                        subtitle: 'تتبادلون الكشف — مجاناً',
+                        icon: Icons.visibility_outlined,
+                        onTap: _revealing
+                            ? null
+                            : () => _doReveal(context, ref, 'reveal'),
+                        colors: colors,
+                        accent: colors.face,
                       ),
-                    ),
-                  const SizedBox(height: 32),
-                  // Pot banner
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: colors.crystal.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: colors.crystal.withValues(alpha: 0.5),
+                      const SizedBox(height: 8),
+                      _OptionCard(
+                        title: 'أخفِ هويتي',
+                        subtitle: 'تبقى مجهولاً — يخصم 10 نقاط',
+                        icon: Icons.shield_outlined,
+                        onTap: _revealing
+                            ? null
+                            : () => _doReveal(context, ref, 'hide'),
+                        colors: colors,
+                        accent: colors.mind,
                       ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('✦',
-                            style: TextStyle(
-                              color: colors.crystal,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                            )),
-                        const SizedBox(width: 6),
-                        Text(
-                          won ? '+$pot' : '−${pot ~/ 2}',
-                          style: TextStyle(
-                            color: won ? colors.success : colors.danger,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          won ? 'نقطة' : 'نقطة',
-                          style: TextStyle(
-                            color: colors.textSecondary,
-                            fontSize: 13,
-                          ),
+                      const SizedBox(height: 8),
+                      _OptionCard(
+                        title: 'أرسل رسالة صراحة',
+                        subtitle: 'إلى inbox الخصم — مع سياق المباراة',
+                        icon: Icons.mail_outline_rounded,
+                        onTap: () => _openSarhnyComposer(context, ref),
+                        colors: colors,
+                        accent: colors.moment,
+                      ),
+                      const SizedBox(height: 8),
+                      _OptionCard(
+                        title: 'شاهد إعلان لـ +1 نقطة',
+                        subtitle: 'حدّ أقصى 10 إعلانات يومياً',
+                        icon: Icons.ondemand_video_outlined,
+                        onTap: () => _watchRewardedAd(context, ref),
+                        colors: colors,
+                        accent: colors.crystal,
+                      ),
+                    ],
+
+                    // ── 5. LOSER CLOSURE — "what happened?" + sarhny mini.
+                    // Always shown for losers (not just on revealOffer)
+                    // to give them an emotional landing pad.
+                    if (!won) ...[
+                      const SizedBox(height: 12),
+                      _WhatHappenedCard(
+                        colors: colors,
+                        expanded: _whatHappenedExpanded,
+                        onToggle: () => setState(() =>
+                            _whatHappenedExpanded = !_whatHappenedExpanded),
+                      ),
+                      // Avoid duplicating the sarhny card if the user is
+                      // already seeing the full TERTIARY block above.
+                      if (!widget.outcome.revealOffer) ...[
+                        const SizedBox(height: 8),
+                        _OptionCard(
+                          title: 'أرسل صراحة',
+                          subtitle: 'أرسل رسالة لخصمك — بدون كشف هويتك',
+                          icon: Icons.mail_outline_rounded,
+                          onTap: () => _openSarhnyComposer(context, ref),
+                          colors: colors,
+                          accent: colors.moment,
                         ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  // 3 viral options
-                  if (widget.outcome.revealOffer || won) ...[
-                    _OptionCard(
-                      title: 'اكشف هويتك للخصم',
-                      subtitle: 'تتبادلون الكشف — مجاناً',
-                      icon: Icons.visibility_outlined,
-                      onTap: _revealing
-                          ? null
-                          : () => _doReveal(context, ref, 'reveal'),
-                      colors: colors,
-                      accent: colors.face,
-                    ),
-                    const SizedBox(height: 10),
-                    _OptionCard(
-                      title: 'أخفِ هويتي',
-                      subtitle: 'تبقى مجهولاً — يخصم 10 نقاط',
-                      icon: Icons.shield_outlined,
-                      onTap: _revealing
-                          ? null
-                          : () => _doReveal(context, ref, 'hide'),
-                      colors: colors,
-                      accent: colors.mind,
-                    ),
-                    const SizedBox(height: 10),
-                    _OptionCard(
-                      title: 'أرسل رسالة صراحة',
-                      subtitle: 'إلى inbox الخصم — مع سياق المباراة',
-                      icon: Icons.mail_outline_rounded,
-                      onTap: () => _openSarhnyComposer(context, ref),
-                      colors: colors,
-                      accent: colors.moment,
-                    ),
-                    const SizedBox(height: 10),
-                    _OptionCard(
-                      title: 'شاهد إعلان لـ +1 نقطة',
-                      subtitle: 'حدّ أقصى 10 إعلانات يومياً',
-                      icon: Icons.ondemand_video_outlined,
-                      onTap: () => _watchRewardedAd(context, ref),
-                      colors: colors,
-                      accent: colors.crystal,
-                    ),
+                    ],
+
+                    const SizedBox(height: 8),
                   ],
-                  const Spacer(),
-                  // ── Rematch flow — same opponent OR search a new one.
-                  _RematchPanel(
-                    phase: _rematchPhase,
-                    secondsLeft: _rematchSecondsLeft,
-                    colors: colors,
-                    onAccept: _acceptRematch,
-                    onSearchOther: _searchOther,
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: () => context.go(AppRoutes.carromLobby),
-                    icon: const Icon(Icons.home_rounded),
-                    label: const Text('اللوبي'),
-                  ),
-                ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  HEADER
+// ════════════════════════════════════════════════════════════════════
+
+/// Hero block — handles 4 distinct emotional states:
+///   * winner-by-concede   → gold "🏳️ خصمك انسحب" banner.
+///   * winner-normal       → green "فزت! 🎉" banner.
+///   * loser-by-concede    → neutral "انسحبت من هذه المباراة" banner.
+///   * loser-normal        → muted "حظ أوفر" banner.
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.won,
+    required this.pot,
+    required this.byConcede,
+    required this.colors,
+  });
+  final bool won;
+  final int pot;
+  final bool byConcede;
+  final SarhnyColors colors;
+
+  // Hard-coded gold gradient — the theme doesn't expose a dedicated
+  // "gold" token, and `crystal` reads more silvery on dark mode.
+  static const _goldA = Color(0xFFE7C26B);
+  static const _goldB = Color(0xFFC9963A);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const SizedBox(height: 4),
+        if (byConcede && won)
+          _ConcedeBanner(
+            icon: '🏳️',
+            title: 'خصمك انسحب',
+            subtitle: 'اللقب لك. مباراة جديدة؟',
+            gradient: const LinearGradient(
+              colors: [_goldA, _goldB],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            titleColor: Colors.white,
+            subtitleColor: Colors.white.withValues(alpha: 0.92),
+            borderColor: _goldB,
+          )
+        else if (byConcede && !won)
+          _ConcedeBanner(
+            icon: null,
+            title: 'انسحبت من هذه المباراة',
+            subtitle: 'كل مباراة درس. حاول مرة أخرى متى أردت.',
+            gradient: LinearGradient(
+              colors: [
+                colors.surface,
+                colors.surface.withValues(alpha: 0.7),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            titleColor: colors.textPrimary,
+            subtitleColor: colors.textSecondary,
+            borderColor: colors.border,
+          )
+        else
+          Column(
+            children: [
+              const SizedBox(height: 8),
+              Text(
+                won ? 'فزت! 🎉' : 'حظ أوفر',
+                style: TextStyle(
+                  color: won ? colors.success : colors.textPrimary,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                won ? 'أنت بطل هذه المباراة' : 'كل مباراة فرصة جديدة',
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        const SizedBox(height: 16),
+        // Pot banner — unchanged styling, kept inside header block.
+        Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          decoration: BoxDecoration(
+            color: colors.crystal.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: colors.crystal.withValues(alpha: 0.5),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '✦',
+                style: TextStyle(
+                  color: colors.crystal,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                won ? '+$pot' : '−${pot ~/ 2}',
+                style: TextStyle(
+                  color: won ? colors.success : colors.danger,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'نقطة',
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Banner used for the two concede outcomes — a flat title + subtitle
+/// over a gradient with an optional emoji glyph.
+class _ConcedeBanner extends StatelessWidget {
+  const _ConcedeBanner({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.gradient,
+    required this.titleColor,
+    required this.subtitleColor,
+    required this.borderColor,
+  });
+  final String? icon;
+  final String title;
+  final String subtitle;
+  final Gradient gradient;
+  final Color titleColor;
+  final Color subtitleColor;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: '$title. $subtitle',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor.withValues(alpha: 0.6)),
+        ),
+        child: Column(
+          children: [
+            if (icon != null)
+              Text(icon!, style: const TextStyle(fontSize: 32)),
+            if (icon != null) const SizedBox(height: 6),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: titleColor,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: subtitleColor,
+                fontSize: 13,
               ),
             ),
           ],
@@ -489,18 +685,101 @@ class _CarromGameOverPageState extends ConsumerState<CarromGameOverPage>
   }
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  PRIMARY ACTIONS
+// ════════════════════════════════════════════════════════════════════
+
+/// Two stacked full-width FilledButtons. "Back to lobby" gets the loudest
+/// `moment` brand fill because it's the action we want most users to take
+/// after the (frequent) loss; matchmaking sits one tier below in `tonal`.
+class _PrimaryActions extends StatelessWidget {
+  const _PrimaryActions({
+    required this.colors,
+    required this.onLobby,
+    required this.onSearchOther,
+  });
+  final SarhnyColors colors;
+  final VoidCallback onLobby;
+  final VoidCallback onSearchOther;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Semantics(
+          button: true,
+          label: 'العودة للوبي',
+          child: SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: Tooltip(
+              message: 'العودة للوبي',
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: colors.moment,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                onPressed: onLobby,
+                icon: const Icon(Icons.home_rounded),
+                label: const Text('العودة للوبي'),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Semantics(
+          button: true,
+          label: 'البحث عن منافس آخر',
+          child: SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: Tooltip(
+              message: 'البحث عن منافس آخر',
+              child: FilledButton.tonalIcon(
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                onPressed: onSearchOther,
+                icon: const Icon(Icons.search_rounded),
+                label: const Text('البحث عن منافس آخر'),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  REMATCH PANEL (secondary — de-emphasized)
+// ════════════════════════════════════════════════════════════════════
+
 /// Bottom-of-screen rematch decision panel.
 ///
 /// Phases:
-///   * none     → two primary buttons (accept rematch / search other)
+///   * none     → de-emphasized "أو أعد مع نفس الخصم" mini button.
 ///   * waiting  → overlay with countdown showing we sent accept and are
-///                waiting on the opponent
-///   * declined → "opponent declined" + a single "search other" button
-///   * timeout  → "window elapsed" + "search other" button
+///                waiting on the opponent.
+///   * declined → "opponent declined" + a single "search other" button.
+///   * timeout  → "window elapsed" + "search other" button.
 ///
-/// We deliberately disable the buttons during `waiting` so double-clicks
-/// don't fire two accepts (the server's Redis SET is idempotent, but the
-/// UI feedback matters).
+/// In `waiting` we deliberately freeze the buttons so a double-tap doesn't
+/// fire two accepts (server is idempotent via Redis SET; the UI feedback
+/// is what we're protecting).
 class _RematchPanel extends StatelessWidget {
   const _RematchPanel({
     required this.phase,
@@ -520,24 +799,26 @@ class _RematchPanel extends StatelessWidget {
     final c = colors;
     if (phase == 'waiting') {
       return Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
         decoration: BoxDecoration(
           color: c.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: c.crystal.withValues(alpha: 0.5)),
         ),
         child: Column(
           children: [
             const SizedBox(
-              width: 32, height: 32,
+              width: 28,
+              height: 28,
               child: CircularProgressIndicator(strokeWidth: 3),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               'بانتظار قبول الخصم… ($secondsLeft ث)',
               style: TextStyle(
                 color: c.textPrimary,
                 fontWeight: FontWeight.w700,
+                fontSize: 13,
               ),
             ),
             const SizedBox(height: 4),
@@ -550,79 +831,195 @@ class _RematchPanel extends StatelessWidget {
       );
     }
     if (phase == 'declined' || phase == 'timeout') {
-      return Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-            decoration: BoxDecoration(
-              color: c.danger.withValues(alpha: 0.10),
-              border: Border.all(color: c.danger.withValues(alpha: 0.4)),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              phase == 'declined'
-                  ? 'الخصم لم يقبل الإعادة'
-                  : 'انتهى الوقت — الخصم غير متاح',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: c.textPrimary, fontWeight: FontWeight.w700),
-            ),
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: c.danger.withValues(alpha: 0.08),
+          border: Border.all(color: c.danger.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          phase == 'declined'
+              ? 'الخصم لم يقبل الإعادة'
+              : 'انتهى الوقت — الخصم غير متاح',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: c.textSecondary,
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
           ),
-          const SizedBox(height: 10),
-          FilledButton.icon(
-            onPressed: onSearchOther,
-            icon: const Icon(Icons.search_rounded),
-            label: const Text('البحث عن منافس آخر'),
-          ),
-        ],
+        ),
       );
     }
+    // Default `none` — de-emphasized "أو أعد مع نفس الخصم" pill.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            gradient: LinearGradient(
-              colors: [
-                c.crystal,
-                c.crystal.withValues(alpha: 0.78),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              elevation: 0,
-            ),
-            onPressed: onAccept,
-            icon: const Icon(Icons.replay_rounded),
-            label: const Text(
-              '🔄 إعادة مع نفس الخصم',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-            ),
+        Text(
+          'أو أعد مع نفس الخصم',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: c.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 10),
-        OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
+        const SizedBox(height: 8),
+        Semantics(
+          button: true,
+          label: 'إعادة مع نفس الخصم',
+          child: SizedBox(
+            height: 44,
+            child: Tooltip(
+              message: 'إعادة مع نفس الخصم',
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: c.crystal,
+                  side: BorderSide(
+                    color: c.crystal.withValues(alpha: 0.6),
+                    width: 1.2,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                onPressed: onAccept,
+                icon: const Icon(Icons.replay_rounded, size: 18),
+                label: const Text('إعادة'),
+              ),
+            ),
           ),
-          onPressed: onSearchOther,
-          icon: const Icon(Icons.search_rounded),
-          label: const Text('🔍 البحث عن منافس آخر'),
         ),
       ],
     );
   }
 }
+
+// ════════════════════════════════════════════════════════════════════
+//  LOSER CLOSURE — "WHAT HAPPENED?" CARD
+// ════════════════════════════════════════════════════════════════════
+
+/// Collapsed-by-default upcoming-feature card. Tapping the header toggles
+/// the body. We mark it clearly as "قريباً" so users don't expect content
+/// that isn't there yet — the card exists to signal product investment in
+/// post-game review and to give losers a small interactive moment.
+class _WhatHappenedCard extends StatelessWidget {
+  const _WhatHappenedCard({
+    required this.colors,
+    required this.expanded,
+    required this.onToggle,
+  });
+  final SarhnyColors colors;
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = colors;
+    return Semantics(
+      button: true,
+      label: 'ماذا حدث في هذه المباراة',
+      child: Tooltip(
+        message: 'مراجعة المباراة (قريباً)',
+        child: Material(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onToggle,
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: c.border, width: 0.6),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.help_outline_rounded,
+                          color: c.textSecondary, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'ماذا حدث؟',
+                          style: TextStyle(
+                            color: c.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: c.crystal.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'قريباً',
+                          style: TextStyle(
+                            color: c.crystal,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      AnimatedRotation(
+                        turns: expanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 180),
+                        child: Icon(Icons.expand_more,
+                            color: c.textSecondary),
+                      ),
+                    ],
+                  ),
+                  AnimatedCrossFade(
+                    crossFadeState: expanded
+                        ? CrossFadeState.showSecond
+                        : CrossFadeState.showFirst,
+                    duration: const Duration(milliseconds: 180),
+                    firstChild: const SizedBox(width: double.infinity),
+                    secondChild: Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: c.background.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: c.border.withValues(alpha: 0.6),
+                          ),
+                        ),
+                        child: Text(
+                          'راجع آخر حركاتك (قريباً)',
+                          style: TextStyle(
+                            color: c.textSecondary,
+                            fontSize: 12,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  OPTION CARD (tertiary)
+// ════════════════════════════════════════════════════════════════════
 
 class _OptionCard extends StatelessWidget {
   const _OptionCard({
@@ -642,59 +1039,70 @@ class _OptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: colors.surface,
+    return Semantics(
+      button: true,
+      label: title,
+      child: Tooltip(
+        message: title,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.border, width: 0.6),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.center,
-              child: Icon(icon, color: accent),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: colors.border, width: 0.6),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: colors.textSecondary,
-                      fontSize: 12,
-                    ),
+                  alignment: Alignment.center,
+                  child: Icon(icon, color: accent),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                Icon(Icons.chevron_left, color: colors.textSecondary),
+              ],
             ),
-            Icon(Icons.chevron_left, color: colors.textSecondary),
-          ],
+          ),
         ),
       ),
     );
   }
 }
+
+// ════════════════════════════════════════════════════════════════════
+//  CONFETTI (winners only, skipped if reduce-motion)
+// ════════════════════════════════════════════════════════════════════
 
 /// confetti بسيط — 80 جسيم يسقط من الأعلى بألوان أساسية.
 class _ConfettiPainter extends CustomPainter {

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../../app/theme/app_theme.dart';
 
@@ -9,6 +10,8 @@ import '../../../../../app/theme/app_theme.dart';
 ///
 /// - استخدم controller لـ trigger الـ roll: `controller.rollTo(value)`.
 /// - يبيّن glow ring لو دوري.
+/// - يعطي haptic عند tap وعند snap للقيمة النهائية.
+/// - auto-roll بعد 3 ثوانٍ idle لو دوري.
 /// - حجم القاعدة 72×72.
 class LudoDice extends StatefulWidget {
   const LudoDice({
@@ -46,11 +49,22 @@ class _LudoDiceState extends State<LudoDice>
   int? _displayValue;
   late final AnimationController _rollCtrl;
   late final AnimationController _glowCtrl;
+  late final AnimationController _pipBurstCtrl;
+  late final AnimationController _pulseCtrl;
 
   // 0..1: how far through the roll
   double _spin = 0;
   // 1..6 changing per frame during the roll
   int _flashValue = 1;
+
+  // Auto-roll idle timer + pre-roll pulse warning.
+  Timer? _autoRollTimer;
+  Timer? _autoRollPulseTimer;
+  static const Duration _autoRollIdle = Duration(seconds: 3);
+  static const Duration _autoRollPulseLead = Duration(milliseconds: 500);
+
+  bool get _reduceMotion =>
+      MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
   @override
   void initState() {
@@ -65,6 +79,32 @@ class _LudoDiceState extends State<LudoDice>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
+    _pipBurstCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+      lowerBound: 0.0,
+      upperBound: 1.0,
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Honor reduce-motion by collapsing roll/pulse/burst durations.
+    if (_reduceMotion) {
+      _rollCtrl.duration = Duration.zero;
+      _pipBurstCtrl.duration = Duration.zero;
+      _pulseCtrl.duration = Duration.zero;
+    } else {
+      _rollCtrl.duration = const Duration(milliseconds: 950);
+      _pipBurstCtrl.duration = const Duration(milliseconds: 420);
+      _pulseCtrl.duration = const Duration(milliseconds: 400);
+    }
+    _syncAutoRollTimer();
   }
 
   @override
@@ -78,17 +118,80 @@ class _LudoDiceState extends State<LudoDice>
         widget.initialValue != null) {
       _displayValue = widget.initialValue;
     }
+    if (old.myTurn != widget.myTurn ||
+        old.initialValue != widget.initialValue) {
+      _syncAutoRollTimer();
+    }
   }
 
   @override
   void dispose() {
+    _cancelAutoRollTimer();
     widget.controller._state = null;
     _rollCtrl.dispose();
     _glowCtrl.dispose();
+    _pipBurstCtrl.dispose();
+    _pulseCtrl.dispose();
     super.dispose();
   }
 
+  // ---------- Auto-roll idle timer ----------
+
+  void _syncAutoRollTimer() {
+    final canAutoRoll =
+        widget.myTurn && widget.initialValue == null && _spin == 0;
+    if (canAutoRoll) {
+      _scheduleAutoRoll();
+    } else {
+      _cancelAutoRollTimer();
+    }
+  }
+
+  void _scheduleAutoRoll() {
+    _cancelAutoRollTimer();
+    final pulseDelay = _autoRollIdle - _autoRollPulseLead;
+    _autoRollPulseTimer = Timer(pulseDelay, _firePreRollPulse);
+    _autoRollTimer = Timer(_autoRollIdle, _fireAutoRoll);
+  }
+
+  void _cancelAutoRollTimer() {
+    _autoRollTimer?.cancel();
+    _autoRollTimer = null;
+    _autoRollPulseTimer?.cancel();
+    _autoRollPulseTimer = null;
+  }
+
+  void _firePreRollPulse() {
+    if (!mounted) return;
+    if (!widget.myTurn || widget.initialValue != null || _spin != 0) return;
+    HapticFeedback.lightImpact();
+    if (_reduceMotion) return;
+    _pulseCtrl.forward(from: 0).whenComplete(() {
+      if (mounted) _pulseCtrl.value = 0;
+    });
+  }
+
+  void _fireAutoRoll() {
+    if (!mounted) return;
+    if (!widget.myTurn || widget.initialValue != null || _spin != 0) return;
+    _handleTap(fromAuto: true);
+  }
+
+  // ---------- Tap handling ----------
+
+  void _handleTap({bool fromAuto = false}) {
+    if (!widget.myTurn) return;
+    _cancelAutoRollTimer();
+    if (!fromAuto) {
+      HapticFeedback.selectionClick();
+    }
+    widget.onTap();
+  }
+
+  // ---------- Roll animation ----------
+
   Future<void> _rollTo(int value) async {
+    _cancelAutoRollTimer();
     final rng = math.Random();
     final completer = Completer<void>();
     _rollCtrl.reset();
@@ -105,15 +208,22 @@ class _LudoDiceState extends State<LudoDice>
     }
 
     _rollCtrl.addListener(tick);
-    _rollCtrl.addStatusListener((s) {
+    void onStatus(AnimationStatus s) {
       if (s == AnimationStatus.completed) {
+        // Snap-to-final moment — haptic + pip glow burst.
+        HapticFeedback.mediumImpact();
+        if (!_reduceMotion) {
+          _pipBurstCtrl.forward(from: 0);
+        }
         setState(() {
           _displayValue = value;
           _spin = 0;
         });
         completer.complete();
       }
-    });
+    }
+
+    _rollCtrl.addStatusListener(onStatus);
     await _rollCtrl.forward();
     if (!completer.isCompleted) completer.complete();
   }
@@ -122,13 +232,18 @@ class _LudoDiceState extends State<LudoDice>
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
     return GestureDetector(
-      onTap: widget.myTurn ? widget.onTap : null,
+      onTap: widget.myTurn ? () => _handleTap() : null,
       child: AnimatedBuilder(
-        animation: _glowCtrl,
+        animation: Listenable.merge([_glowCtrl, _pipBurstCtrl, _pulseCtrl]),
         builder: (context, _) {
           final glowAlpha = widget.myTurn
               ? 0.35 + 0.25 * math.sin(_glowCtrl.value * math.pi * 2)
               : 0.0;
+          // Pre-auto-roll pulse: 1.0 → 1.05 → 1.0 over the curve.
+          final pulse = _pulseCtrl.value == 0
+              ? 1.0
+              : 1.0 + 0.05 * math.sin(_pulseCtrl.value * math.pi);
+          final burst = _pipBurstCtrl.value; // 0→1 once after snap
           return Container(
             width: 86,
             height: 86,
@@ -155,8 +270,9 @@ class _LudoDiceState extends State<LudoDice>
                   angle: _spin == 0 ? 0 : _spin * math.pi * 4,
                   child: Transform.scale(
                     scale: _spin == 0
-                        ? 1.0
-                        : 1.0 + 0.06 * math.sin(_spin * math.pi * 6),
+                        ? pulse
+                        : pulse +
+                            0.06 * math.sin(_spin * math.pi * 6),
                     child: CustomPaint(
                       size: const Size(72, 72),
                       painter: _DiceFacePainter(
@@ -165,6 +281,7 @@ class _LudoDiceState extends State<LudoDice>
                             : (_displayValue ?? 1),
                         idle: !widget.myTurn && _spin == 0,
                         dim: _displayValue == null && _spin == 0,
+                        burst: burst,
                       ),
                     ),
                   ),
@@ -179,10 +296,18 @@ class _LudoDiceState extends State<LudoDice>
 }
 
 class _DiceFacePainter extends CustomPainter {
-  _DiceFacePainter({required this.value, this.idle = false, this.dim = false});
+  _DiceFacePainter({
+    required this.value,
+    this.idle = false,
+    this.dim = false,
+    this.burst = 0.0,
+  });
   final int value;
   final bool idle;
   final bool dim;
+
+  /// 0..1 glow burst on the pips right after a roll snaps.
+  final double burst;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -265,6 +390,19 @@ class _DiceFacePainter extends CustomPainter {
         r * 0.35,
         Paint()..color = Colors.white.withValues(alpha: 0.55),
       );
+
+      // glow burst right after the snap — golden bloom that fades.
+      if (burst > 0) {
+        final burstAlpha = (1 - burst).clamp(0.0, 1.0) * 0.85;
+        canvas.drawCircle(
+          p,
+          r * (1.4 + burst * 1.6),
+          Paint()
+            ..color =
+                const Color(0xFFFFE082).withValues(alpha: burstAlpha)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0),
+        );
+      }
     }
   }
 
@@ -307,5 +445,8 @@ class _DiceFacePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _DiceFacePainter old) =>
-      old.value != value || old.idle != idle || old.dim != dim;
+      old.value != value ||
+      old.idle != idle ||
+      old.dim != dim ||
+      old.burst != burst;
 }

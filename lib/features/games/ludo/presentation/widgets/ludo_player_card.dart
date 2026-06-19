@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../../app/theme/app_theme.dart';
+import '../../../../../core/haptics/game_haptics.dart';
 import '../../domain/ludo_player.dart';
 import '../../domain/ludo_token.dart';
 import 'ludo_board_geometry.dart';
@@ -17,6 +18,7 @@ class LudoPlayerCard extends StatefulWidget {
     required this.isOnline,
     this.turnTimeLeft,
     this.turnTimeTotal,
+    this.onTap,
   });
   final LudoPlayer? player;
   final bool isYou;
@@ -24,6 +26,9 @@ class LudoPlayerCard extends StatefulWidget {
   final bool isOnline;
   final int? turnTimeLeft;
   final int? turnTimeTotal;
+
+  /// تابع اختياري عند الضغط على الكرت — يطلق [GameHaptics.uiPop].
+  final VoidCallback? onTap;
 
   @override
   State<LudoPlayerCard> createState() => _LudoPlayerCardState();
@@ -43,9 +48,25 @@ class _LudoPlayerCardState extends State<LudoPlayerCard>
   }
 
   @override
+  void didUpdateWidget(covariant LudoPlayerCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Haptic pulse عند بدء دور هذا اللاعب.
+    if (!oldWidget.isCurrentTurn && widget.isCurrentTurn) {
+      GameHaptics.tap();
+    }
+  }
+
+  @override
   void dispose() {
     _glow.dispose();
     super.dispose();
+  }
+
+  void _handleTap() {
+    final cb = widget.onTap;
+    if (cb == null) return;
+    GameHaptics.uiPop();
+    cb();
   }
 
   @override
@@ -62,7 +83,7 @@ class _LudoPlayerCardState extends State<LudoPlayerCard>
         final pulse = widget.isCurrentTurn
             ? 0.4 + 0.4 * math.sin(_glow.value * 2 * math.pi)
             : 0.0;
-        return Container(
+        final card = Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: colors.surface,
@@ -191,6 +212,9 @@ class _LudoPlayerCardState extends State<LudoPlayerCard>
                   valueColor: AlwaysStoppedAnimation(accent),
                 ),
               ),
+              const SizedBox(height: 6),
+              // Token-state summary: 4 small indicators (one per token).
+              _TokenStateRow(tokens: p.tokens, accent: accent),
               if (widget.isCurrentTurn &&
                   widget.turnTimeLeft != null &&
                   widget.turnTimeTotal != null &&
@@ -209,7 +233,151 @@ class _LudoPlayerCardState extends State<LudoPlayerCard>
             ],
           ),
         );
+        if (widget.onTap != null) {
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _handleTap,
+            child: card,
+          );
+        }
+        return card;
       },
+    );
+  }
+}
+
+/// صفّ من 4 indicators صغيرة (12×12) — يعرض حالة كل token.
+class _TokenStateRow extends StatelessWidget {
+  const _TokenStateRow({required this.tokens, required this.accent});
+  final List<LudoTokenPosition> tokens;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    // padded إلى 4 دائماً (في حال السيرفر أرسل أقل لأي سبب).
+    final list = List<LudoTokenPosition?>.from(tokens);
+    while (list.length < 4) {
+      list.add(null);
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < 4; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          _TokenStateDot(token: list[i], accent: accent),
+        ],
+      ],
+    );
+  }
+}
+
+class _TokenStateDot extends StatelessWidget {
+  const _TokenStateDot({required this.token, required this.accent});
+  final LudoTokenPosition? token;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final zone = token?.zone ?? LudoTokenZone.home;
+    const gold = Color(0xFFD4AF37);
+
+    Color fill;
+    Color border;
+    double borderWidth;
+    Widget? inner;
+
+    switch (zone) {
+      case LudoTokenZone.home:
+        fill = Colors.transparent;
+        border = accent;
+        borderWidth = 1.0;
+        break;
+      case LudoTokenZone.track:
+        fill = accent;
+        border = accent;
+        borderWidth = 1.0;
+        break;
+      case LudoTokenZone.homeStretch:
+        fill = accent;
+        border = accent;
+        borderWidth = 1.0;
+        inner = Container(
+          width: 4,
+          height: 4,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.7),
+            shape: BoxShape.circle,
+          ),
+        );
+        break;
+      case LudoTokenZone.finished:
+        fill = gold;
+        border = gold;
+        borderWidth = 1.0;
+        inner = const Icon(
+          Icons.check,
+          size: 9,
+          color: Colors.white,
+        );
+        break;
+    }
+
+    return _TokenStateDotAnimated(
+      fill: fill,
+      border: border,
+      borderWidth: borderWidth,
+      inner: inner,
+      onChanged: () => GameHaptics.tap(),
+      zoneKey: zone.index,
+    );
+  }
+}
+
+/// AnimatedContainer wrapper — يطلق [onChanged] عند تغيّر state.
+class _TokenStateDotAnimated extends StatefulWidget {
+  const _TokenStateDotAnimated({
+    required this.fill,
+    required this.border,
+    required this.borderWidth,
+    required this.inner,
+    required this.onChanged,
+    required this.zoneKey,
+  });
+  final Color fill;
+  final Color border;
+  final double borderWidth;
+  final Widget? inner;
+  final VoidCallback onChanged;
+  final int zoneKey;
+
+  @override
+  State<_TokenStateDotAnimated> createState() =>
+      _TokenStateDotAnimatedState();
+}
+
+class _TokenStateDotAnimatedState extends State<_TokenStateDotAnimated> {
+  @override
+  void didUpdateWidget(covariant _TokenStateDotAnimated oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.zoneKey != widget.zoneKey) {
+      widget.onChanged();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+      width: 12,
+      height: 12,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: widget.fill,
+        shape: BoxShape.circle,
+        border: Border.all(color: widget.border, width: widget.borderWidth),
+      ),
+      child: widget.inner,
     );
   }
 }

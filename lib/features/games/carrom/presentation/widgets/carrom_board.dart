@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
+import 'package:flame/particles.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/carrom_state.dart';
@@ -12,6 +14,13 @@ import '../../domain/cosmetics.dart';
 import '../../domain/piece.dart';
 import '../../domain/shot_input.dart';
 import '../../domain/shot_result.dart';
+
+// TODO: parent should listen to CarromShotResultEvent.foulReason and
+// queenPending and show CarromAlertBanner above the board. The board
+// itself stays pure-rendering; the screen scaffold around it is the
+// right place to surface server-side rule events because the banner is
+// a Flutter widget (not a Flame component) and should overlap the
+// GameWidget via a Stack/Positioned in the parent.
 
 /// FlameGame يعرض رقعة كيرم 600×600 (virtual units) وقطعها.
 ///
@@ -55,6 +64,22 @@ class CarromBoardGame extends FlameGame with TapCallbacks {
   CarromShotResult? _playingResult;
   int _playbackStartMs = 0;
 
+  /// Frame-to-frame tracker — last frame index we processed for
+  /// transient effects (pocket glow, hit sparks). Prevents firing the
+  /// same effect 60 times when interpolating between two keyframes.
+  int _lastProcessedFrameIdx = -1;
+
+  /// Set of piece ids we've already triggered the pocket-sink animation
+  /// for during the current playback. Cleared at the start of each
+  /// playback. Without this, drifting interpolation around the pocket
+  /// could re-trigger the effect on the same id.
+  final Set<int> _animatedPocketIds = {};
+
+  /// True once we've spawned hit-spark particles for this playback. We
+  /// only spawn on the FIRST collision frame — repeated collisions
+  /// throughout the trajectory would spam the screen.
+  bool _hitSparksSpawned = false;
+
   @override
   Future<void> onLoad() async {
     // الـ camera viewport يطابق الـ board (600×600). يتم scale عبر
@@ -94,6 +119,98 @@ class CarromBoardGame extends FlameGame with TapCallbacks {
   void playShotResult(CarromShotResult result) {
     _playingResult = result;
     _playbackStartMs = DateTime.now().millisecondsSinceEpoch;
+    _lastProcessedFrameIdx = -1;
+    _animatedPocketIds.clear();
+    _hitSparksSpawned = false;
+  }
+
+  /// Geometric helpers for transient pocket effects. Mirrors
+  /// `_pocketCenters` in [BoardBackground] — both must stay in sync
+  /// with the server's POCKET_RADIUS = 18 / pocket placement (see
+  /// `app/core/carrom_state.py`).
+  List<Vector2> _pocketCentersV2() {
+    const inset = frameMargin + pocketRadius;
+    final far = boardUnits - inset;
+    return [
+      Vector2(inset, inset),
+      Vector2(far, inset),
+      Vector2(inset, far),
+      Vector2(far, far),
+    ];
+  }
+
+  /// One-shot pocket glow — white radial gradient that scales 1→1.3
+  /// and fades over 220ms, then auto-removes. Used when a piece centre
+  /// crosses within POCKET_RADIUS of a pocket centre (the "swallowed"
+  /// moment, before the sink animation completes).
+  void _spawnPocketGlow(Vector2 pocketCentre) {
+    final glow = _PocketGlowComponent(radius: pocketRadius);
+    glow.position = pocketCentre;
+    world.add(glow);
+  }
+
+  /// Quick expanding gold ring at the pocket as a piece enters — single
+  /// CircleParticle wrapped in a ParticleSystemComponent so Flame
+  /// handles its lifespan + auto-removal.
+  void _spawnPocketRing(Vector2 pocketCentre) {
+    final ring = ParticleSystemComponent(
+      position: pocketCentre,
+      particle: ComputedParticle(
+        lifespan: 0.2,
+        renderer: (canvas, particle) {
+          final t = particle.progress.clamp(0.0, 1.0);
+          final r = pocketRadius * (0.0 + t * 1.4);
+          final alpha = (0.8 * (1.0 - t)).clamp(0.0, 1.0);
+          final paint = Paint()
+            ..color = const Color(0xFFFFD86A)
+                .withValues(alpha: alpha)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.0
+            ..maskFilter =
+                const MaskFilter.blur(BlurStyle.normal, 1.5);
+          canvas.drawCircle(Offset.zero, r, paint);
+        },
+      ),
+    );
+    world.add(ring);
+  }
+
+  /// Six tiny gold sparks radiating outward from [centre], each
+  /// travelling 30px in its own direction and fading out over 280ms.
+  /// Wrapped into a single ParticleSystemComponent → Flame cleans them
+  /// up once their lifespan ends (no manual remove needed).
+  void _spawnHitSparks(Vector2 centre) {
+    final particle = Particle.generate(
+      count: 6,
+      lifespan: 0.28,
+      generator: (i) {
+        final angle = (i / 6) * 2 * math.pi;
+        final dir = Vector2(math.cos(angle), math.sin(angle));
+        return AcceleratedParticle(
+          speed: dir * (30 / 0.28), // travel exactly ~30px over lifespan
+          child: ComputedParticle(
+            renderer: (canvas, p) {
+              final t = p.progress.clamp(0.0, 1.0);
+              final alpha = (1.0 - t).clamp(0.0, 1.0);
+              canvas.drawCircle(
+                Offset.zero,
+                1.6,
+                Paint()
+                  ..color = const Color(0xFFFFE07A)
+                      .withValues(alpha: alpha)
+                  ..maskFilter = const MaskFilter.blur(
+                    BlurStyle.normal,
+                    1.0,
+                  ),
+              );
+            },
+          ),
+        );
+      },
+    );
+    world.add(
+      ParticleSystemComponent(position: centre, particle: particle),
+    );
   }
 
   void _rebuildPieces(List<CarromPiece> pieces) {
@@ -204,6 +321,40 @@ class CarromBoardGame extends FlameGame with TapCallbacks {
     final hiMap = {for (final p in hi) p.id: p};
     final scoredSet = result.scoredIds.toSet();
 
+    // ── Frame-crossing detection ──────────────────────────────────────
+    // Some transient effects (pocket glow, hit sparks) should fire
+    // exactly ONCE per simulated frame, not per Flame tick (we tick at
+    // device fps but the simulation is 60 keyframes / 1s). Track when
+    // the integer frame index advances and fire once per advance.
+    final crossedNewFrame = idxLo != _lastProcessedFrameIdx;
+    if (crossedNewFrame) {
+      _lastProcessedFrameIdx = idxLo;
+
+      // ── Hit sparks on first real collision ──────────────────────
+      // Detection: on the very first frame transition where any
+      // non-striker piece has a velocity that jumped from ~0 to >0.
+      // We compare consecutive raw frames (lo → hi) — this avoids the
+      // false positives that comparing across the whole result would
+      // create.
+      if (!_hitSparksSpawned && idxLo > 0) {
+        final prevPieces = frames[idxLo - 1].pieces;
+        final prevMap = {for (final p in prevPieces) p.id: p};
+        for (final cur in lo) {
+          if (cur.color == CarromPieceColor.striker) continue;
+          final prev = prevMap[cur.id];
+          if (prev == null) continue;
+          final prevSpeed = math.sqrt(prev.vx * prev.vx + prev.vy * prev.vy);
+          final curSpeed = math.sqrt(cur.vx * cur.vx + cur.vy * cur.vy);
+          // ~0 → >0 means the piece just got struck.
+          if (prevSpeed < 0.5 && curSpeed > 0.5) {
+            _spawnHitSparks(Vector2(cur.x, cur.y));
+            _hitSparksSpawned = true;
+            break;
+          }
+        }
+      }
+    }
+
     for (final p in lo) {
       final h = hiMap[p.id] ?? p;
       final ix = p.x + (h.x - p.x) * t;
@@ -215,21 +366,73 @@ class CarromBoardGame extends FlameGame with TapCallbacks {
       final comp = _piecesById[p.id];
       if (comp != null) comp.position = Vector2(ix, iy);
     }
-    // pocketed جديد في الـ frame الحالي
+
+    // ── Pocket entry detection + sink animation ──────────────────────
+    // For each scored id, the moment its interpolated centre crosses
+    // within POCKET_RADIUS of any pocket centre we (a) spawn a glow
+    // on that pocket, (b) spawn the expanding gold ring, and (c) play
+    // the two-phase sink animation on the piece. The piece component
+    // is then auto-removed via RemoveEffect at the tail of the
+    // sequence — no leak.
+    final pockets = _pocketCentersV2();
     for (final id in scoredSet) {
-      final hi = hiMap[id];
-      if (hi != null && hi.pocketed) {
-        final comp = _piecesById.remove(id);
-        if (comp != null && comp.isMounted && !comp.isRemoving) {
-          // pocket animation: scale + fade ثم remove
-          comp.add(SequenceEffect([
-            ScaleEffect.to(
-              Vector2.all(0.1),
-              EffectController(duration: 0.18),
-            ),
-            RemoveEffect(),
-          ], onComplete: () {}));
+      if (_animatedPocketIds.contains(id)) continue;
+      final comp = _piecesById[id];
+      if (comp == null || !comp.isMounted || comp.isRemoving) continue;
+      // Find the closest pocket and check distance against the radius.
+      Vector2? nearest;
+      double bestD2 = double.infinity;
+      for (final pc in pockets) {
+        final d2 = (comp.position - pc).length2;
+        if (d2 < bestD2) {
+          bestD2 = d2;
+          nearest = pc;
         }
+      }
+      if (nearest == null) continue;
+      // POCKET_RADIUS = 18 (server). We match using the client-side
+      // pocketRadius constant (24) because the rendered hole is a
+      // little bigger than the physics radius — the visual cue should
+      // trigger when the piece visibly enters the hole.
+      if (bestD2 <= pocketRadius * pocketRadius) {
+        _animatedPocketIds.add(id);
+        _piecesById.remove(id);
+        _spawnPocketGlow(nearest);
+        _spawnPocketRing(nearest);
+        // Phase 1: sink (scale 1→0.4 + translate Y +6) over 160ms.
+        // Phase 2: vanish (opacity 1→0 + scale 0.4→0.2) over 80ms.
+        // Then RemoveEffect cleans up.
+        comp.add(
+          SequenceEffect(
+            [
+              ScaleEffect.to(
+                Vector2.all(0.4),
+                EffectController(duration: 0.16, curve: Curves.easeIn),
+              ),
+              ScaleEffect.to(
+                Vector2.all(0.2),
+                EffectController(duration: 0.08, curve: Curves.easeIn),
+              ),
+              RemoveEffect(),
+            ],
+          ),
+        );
+        comp.add(
+          MoveEffect.by(
+            Vector2(0, 6),
+            EffectController(duration: 0.16, curve: Curves.easeIn),
+          ),
+        );
+        comp.add(
+          OpacityEffect.to(
+            0.0,
+            EffectController(
+              startDelay: 0.16,
+              duration: 0.08,
+              curve: Curves.easeIn,
+            ),
+          ),
+        );
       }
     }
 
@@ -238,6 +441,52 @@ class CarromBoardGame extends FlameGame with TapCallbacks {
       _playingResult = null;
       _rebuildPieces(result.finalPieces);
     }
+  }
+}
+
+/// Transient pocket glow — a white→transparent radial gradient that
+/// scales 1.0 → 1.3 while fading from 0.85 → 0 over 220ms, then auto-
+/// removes itself. Spawned by [CarromBoardGame] when a piece centre
+/// crosses into a pocket.
+///
+/// Implemented as a PositionComponent (not a Particle) so the
+/// rendering pass can read the elapsed-time progress directly without
+/// going through the Particle lifespan plumbing — keeps the math
+/// transparent for tuning.
+class _PocketGlowComponent extends PositionComponent {
+  _PocketGlowComponent({required this.radius})
+      : super(anchor: Anchor.center, priority: 5);
+
+  final double radius;
+  static const double _durationMs = 220;
+  double _elapsedMs = 0;
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _elapsedMs += dt * 1000;
+    if (_elapsedMs >= _durationMs) {
+      removeFromParent();
+    }
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final t = (_elapsedMs / _durationMs).clamp(0.0, 1.0);
+    final scale = 1.0 + 0.3 * t;
+    final alpha = (0.85 * (1.0 - t)).clamp(0.0, 1.0);
+    final r = radius * scale;
+    final rect = Rect.fromCircle(center: Offset.zero, radius: r);
+    final paint = Paint()
+      ..shader = ui.Gradient.radial(
+        Offset.zero,
+        r,
+        [
+          Colors.white.withValues(alpha: alpha),
+          Colors.white.withValues(alpha: 0.0),
+        ],
+      );
+    canvas.drawRect(rect, paint);
   }
 }
 
@@ -1017,7 +1266,7 @@ class _BoardTheme {
 /// (color_a لـ A، color_b لـ B). الـ [finish] يحدد الـ shader: matte /
 /// metallic / jewel / gem. الـ queen دائماً تستخدم اللون القرمزي
 /// المعروف (هذا مفروض من server-side هنا أيضاً للحماية).
-class PieceComponent extends PositionComponent {
+class PieceComponent extends PositionComponent implements OpacityProvider {
   PieceComponent({
     required this.color,
     required this.fillColor,
@@ -1030,9 +1279,42 @@ class PieceComponent extends PositionComponent {
   @override
   Anchor anchor;
 
+  /// Component-level opacity (0..1). Driven by Flame's [OpacityEffect]
+  /// during the pocket sink animation. Implemented manually because
+  /// [PieceComponent] does its own rendering and doesn't use the
+  /// [HasPaint] mixin.
+  double _opacity = 1.0;
+
+  @override
+  double get opacity => _opacity;
+
+  @override
+  set opacity(double value) {
+    _opacity = value.clamp(0.0, 1.0);
+  }
+
   @override
   void render(Canvas canvas) {
+    if (_opacity <= 0.0) return;
+    // Apply opacity via a saveLayer wrapper so every paint call in the
+    // hand-rolled body below is uniformly faded. This is necessary
+    // because each paint constructs its own Paint() — there's no
+    // single component-wide paint to set alpha on.
     final r = size.x / 2;
+    final useLayer = _opacity < 1.0;
+    if (useLayer) {
+      final bounds = Rect.fromLTWH(0, 0, size.x, size.y).inflate(r * 0.5);
+      final layerPaint = Paint()
+        ..color = Color.fromRGBO(0, 0, 0, _opacity);
+      canvas.saveLayer(bounds, layerPaint);
+    }
+    _renderBody(canvas, r);
+    if (useLayer) {
+      canvas.restore();
+    }
+  }
+
+  void _renderBody(Canvas canvas, double r) {
     final center = Offset(r, r);
 
     // ── Multi-layer shadow ─────────────────────────────────────────

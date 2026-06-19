@@ -31,6 +31,7 @@ import '../features/games/carrom/presentation/pages/carrom_game_over_page.dart';
 import '../features/games/carrom/presentation/pages/carrom_lobby_page.dart';
 import '../features/games/carrom/presentation/pages/carrom_match_page.dart';
 import '../features/games/carrom/presentation/pages/carrom_matchmaking_page.dart';
+import '../features/games/carrom_v2/presentation/carrom_match_page_v2.dart';
 import '../features/games/ludo/application/ludo_match_state.dart';
 import '../features/games/ludo/domain/ludo_state.dart';
 import '../features/games/ludo/presentation/pages/ludo_game_over_page.dart';
@@ -77,6 +78,9 @@ class AppRoutes {
   static String carromMatch(String roomId) => '/games/carrom/match/$roomId';
   static String carromGameOver(String roomId) =>
       '/games/carrom/over/$roomId';
+  /// Carrom v2 — local Box2D practice mode. New physics + new UI; runs
+  /// independently of the WS matchmaking flow above.
+  static const String carromPracticeV2 = '/games/carrom/practice-v2';
 
   // Ludo
   static const String ludoLobby = '/games/ludo';
@@ -212,6 +216,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => CarromMatchPage(
           roomId: state.pathParameters['roomId'] ?? '',
         ),
+      ),
+      // Carrom v2 — local Box2D practice (no roomId, no WS).
+      GoRoute(
+        path: AppRoutes.carromPracticeV2,
+        builder: (_, __) => const CarromMatchPageV2(),
       ),
       GoRoute(
         path: '/games/carrom/over/:roomId',

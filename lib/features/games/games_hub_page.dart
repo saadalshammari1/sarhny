@@ -80,6 +80,18 @@ class GamesHubPage extends ConsumerWidget {
             ),
             const Gap(10),
             _GameCard(
+              title: 'كيرم — فيزياء جديدة',
+              subtitle: 'تجربة محلية بـ Box2D — تدرّب بدون منافس',
+              icon: Icons.science_outlined,
+              accent: colors.crystal,
+              colors: colors,
+              onTap: () {
+                GameHaptics.uiPop();
+                context.push(AppRoutes.carromPracticeV2);
+              },
+            ),
+            const Gap(10),
+            _GameCard(
               title: 'لودو',
               subtitle: '٢ أو ٤ لاعبين — كلاسيكية',
               icon: Icons.casino_rounded,

@@ -1,7 +1,7 @@
 name: sarhny
 description: "صارحني — تطبيق التعبير الأصيل"
 publish_to: 'none'
-version: 3.8.0+12
+version: 3.9.0+13
 
 environment:
   sdk: ^3.6.0
@@ -97,12 +97,14 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
-  # Carrom game (1v1) — Flame for rendering server-authoritative replay,
-  # WebSocket channel for real-time match state. Forge2D is bundled for
-  # collision/projection visuals (server simulates authoritative physics;
-  # the client only renders frames).
-  flame: ^1.18.0
+  # Carrom v2 — flame_forge2d (Box2D) is the physics engine for client-side
+  # prediction; backend remains authoritative on rules + outcomes. Bumped
+  # flame from 1.18 → 1.37 to satisfy flame_forge2d's lower bound.
+  flame: ^1.37.0
+  flame_forge2d: ^0.19.2+6
   web_socket_channel: ^3.0.0
+  # Low-latency SFX for game events (piece strike, dice roll, pocket).
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:

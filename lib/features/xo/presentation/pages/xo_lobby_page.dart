@@ -123,8 +123,21 @@ class _XoLobbyPageState extends ConsumerState<XoLobbyPage> {
               _SectionLabel('ابدأ المباراة', colors),
               const Gap(10),
               _PrimaryAction(
+                label: 'ضد الذكاء',
+                sublabel: 'تدريب فوري بدون انتظار',
+                icon: Icons.psychology_rounded,
+                accent: colors.crystal,
+                colors: colors,
+                busy: false,
+                onTap: () {
+                  GameHaptics.uiPop();
+                  context.push(AppRoutes.xoLocal);
+                },
+              ),
+              const Gap(10),
+              _PrimaryAction(
                 label: 'منافس عشوائي',
-                sublabel: 'ابحث عن لاعب الآن',
+                sublabel: 'ابحث عن لاعب أونلاين',
                 icon: Icons.public_rounded,
                 accent: colors.moment,
                 colors: colors,

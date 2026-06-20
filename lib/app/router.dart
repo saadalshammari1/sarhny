@@ -26,6 +26,7 @@ import '../features/article/presentation/pages/my_article_page.dart';
 import '../features/game/presentation/pages/game_lobby_page.dart';
 import '../features/game/presentation/pages/game_play_page.dart';
 import '../features/xo/presentation/pages/xo_lobby_page.dart';
+import '../features/xo/presentation/pages/xo_local_play_page.dart';
 import '../features/xo/presentation/pages/xo_play_page.dart';
 import '../features/games/games_hub_page.dart';
 import '../features/games/codex/codex_games_page.dart';
@@ -80,6 +81,8 @@ class AppRoutes {
   // Tic-Tac-Toe (XO) — sibling to RPS, same winner→question→answer flow.
   static const String xoLobby = '/xo';
   static String xoPlay(String id) => '/xo/play/$id';
+  /// Local vs-AI XO — single-device, no backend, instant play.
+  static const String xoLocal = '/xo/local';
 
   // Games hub + Carrom
   static const String gamesHub = '/games';
@@ -232,6 +235,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.xoLobby,
         builder: (_, __) => const XoLobbyPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.xoLocal,
+        builder: (_, __) => const XoLocalPlayPage(),
       ),
       GoRoute(
         path: '/xo/play/:id',

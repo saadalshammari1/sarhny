@@ -15,7 +15,7 @@ import '../../../games/carrom/data/admob_service.dart';
 import '../../application/xo_controller.dart';
 import '../../data/xo_repository.dart';
 import '../../domain/xo_state.dart';
-import '../widgets/xo_board.dart';
+import '../widgets/xo_board_v3.dart';
 
 /// XO match page — owns the board + the post-game question/answer flow.
 ///
@@ -452,31 +452,35 @@ class _PlayingView extends ConsumerWidget {
         const Gap(16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: XoBoard(
-            snapshot: snapshot,
-            myAccent: colors.moment,
-            oppAccent: colors.face,
-            onTapCell: (r, c) {
-              if (busy) return;
+          child: XoBoardV3(
+            cells: snapshot.cells,
+            winningLine: snapshot.winningLine,
+            interactive:
+                snapshot.isPlaying && snapshot.myTurn && !busy,
+            xColor: snapshot.myMark == 'X' ? colors.moment : colors.face,
+            oColor: snapshot.myMark == 'O' ? colors.moment : colors.face,
+            surfaceColor: colors.surface,
+            borderColor: colors.border,
+            winColor: colors.crystal,
+            onTap: (r, c) {
               GameHaptics.tap();
               ref
                   .read(xoMatchControllerProvider(snapshot.gameId).notifier)
                   .move(r, c);
             },
-            onCellRejected: (reason) {
-              // The board fired but our local snapshot said the move
-              // wouldn't fly. Toast the precise reason instead of
-              // silently swallowing — the most common case is "the
-              // opponent's move arrived between polls and the cell is
-              // now filled" — that needs a visible explanation.
+            onRejectedTap: (r, c, reason) {
+              // The cell rejected the tap locally. Most common cause:
+              // "opponent's move arrived between polls and the cell
+              // we tapped is now filled". Surface the exact reason and
+              // force a snapshot refresh so the next tap sees current
+              // state.
               final msg = switch (reason) {
-                'cell_filled' => 'الخانة مشغولة الآن — اختر أخرى',
-                'not_your_turn' => 'ليس دورك بعد',
+                'filled' => 'الخانة مشغولة — اختر أخرى',
+                'inert' => 'ليس دورك بعد',
                 _ => '',
               };
               if (msg.isEmpty) return;
               Fluttertoast.showToast(msg: msg);
-              // Force a refresh so the user sees the current state.
               ref
                   .read(xoMatchControllerProvider(snapshot.gameId).notifier)
                   .refresh();
@@ -652,13 +656,18 @@ class _PostGameView extends ConsumerWidget {
           // Mini final board (read-only) — shows the winning line glow.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 30),
-            child: AbsorbPointer(
-              child: XoBoard(
-                snapshot: snapshot,
-                myAccent: colors.moment,
-                oppAccent: colors.face,
-                onTapCell: (_, __) {},
-              ),
+            child: XoBoardV3(
+              cells: snapshot.cells,
+              winningLine: snapshot.winningLine,
+              interactive: false,
+              xColor: snapshot.myMark == 'X' ? colors.moment : colors.face,
+              oColor: snapshot.myMark == 'O' ? colors.moment : colors.face,
+              surfaceColor: colors.surface,
+              borderColor: colors.border,
+              winColor: colors.crystal,
+              highlightHints: false,
+              onTap: (_, __) {},
+              onRejectedTap: (_, __, ___) {},
             ),
           ),
           const Gap(20),

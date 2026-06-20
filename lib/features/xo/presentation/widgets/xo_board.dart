@@ -2,10 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../../domain/xo_state.dart';
 
-/// Premium-feel 3×3 board: square aspect, soft shadow + brand gradient
-/// background, inset grid lines, neat X / O glyphs drawn as Paths (NOT
-/// emoji — emoji look childish on iOS), and a glowing winning-line
-/// stroke that pulses when the match ends.
+/// 3×3 XO board.
+///
+/// Layered design:
+///   * BACKGROUND: CustomPainter draws the panel + grid + glyphs +
+///     winning-line glow (visual only).
+///   * OVERLAY: 9 explicit cell GestureDetectors in a Stack with
+///     Positioned. Each cell knows its own (row, col) — no coordinate
+///     math, no RTL ambiguity, no off-by-one. If a tap reaches an
+///     occupied cell it fires `onCellRejected` so the parent can surface
+///     a quick "already filled" toast instead of swallowing silently.
 class XoBoard extends StatefulWidget {
   const XoBoard({
     super.key,
@@ -13,15 +19,17 @@ class XoBoard extends StatefulWidget {
     required this.onTapCell,
     required this.myAccent,
     required this.oppAccent,
+    this.onCellRejected,
   });
 
   final XoSnapshot snapshot;
-  /// Callback invoked with (row, col) when the player taps an EMPTY cell
-  /// during their own turn. Filled cells or other-player turns are no-ops.
+  /// Called with (row, col) when the player taps an EMPTY cell during
+  /// their turn. (0,0) is top-left.
   final void Function(int row, int col) onTapCell;
-  /// Brand color used for the local player's mark (X or O).
+  /// Optional — fires with a short reason string when a tap was dropped:
+  ///   "not_your_turn" | "cell_filled" | "not_playing".
+  final void Function(String reason)? onCellRejected;
   final Color myAccent;
-  /// Brand color for the opponent's mark.
   final Color oppAccent;
 
   @override
@@ -36,7 +44,7 @@ class _XoBoardState extends State<XoBoard> with SingleTickerProviderStateMixin {
     super.initState();
     _pulse = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
   }
 
@@ -44,6 +52,23 @@ class _XoBoardState extends State<XoBoard> with SingleTickerProviderStateMixin {
   void dispose() {
     _pulse.dispose();
     super.dispose();
+  }
+
+  void _handleCellTap(int row, int col) {
+    final s = widget.snapshot;
+    if (!s.isPlaying) {
+      widget.onCellRejected?.call('not_playing');
+      return;
+    }
+    if (!s.myTurn) {
+      widget.onCellRejected?.call('not_your_turn');
+      return;
+    }
+    if (s.cellAt(row, col).isNotEmpty) {
+      widget.onCellRejected?.call('cell_filled');
+      return;
+    }
+    widget.onTapCell(row, col);
   }
 
   @override
@@ -54,36 +79,54 @@ class _XoBoardState extends State<XoBoard> with SingleTickerProviderStateMixin {
         builder: (context, c) {
           final size = c.maxWidth;
           final cell = size / 3.0;
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapUp: (details) {
-              if (!widget.snapshot.isPlaying || !widget.snapshot.myTurn) return;
-              final x = details.localPosition.dx.clamp(0.0, size - 0.001);
-              final y = details.localPosition.dy.clamp(0.0, size - 0.001);
-              final col = (x / cell).floor().clamp(0, 2);
-              final row = (y / cell).floor().clamp(0, 2);
-              if (widget.snapshot.cellAt(row, col).isEmpty) {
-                widget.onTapCell(row, col);
-              }
-            },
-            child: AnimatedBuilder(
-              animation: _pulse,
-              builder: (context, _) => CustomPaint(
-                painter: _BoardPainter(
-                  snapshot: widget.snapshot,
-                  myAccent: widget.myAccent,
-                  oppAccent: widget.oppAccent,
-                  pulse: _pulse.value,
+          return Stack(
+            children: [
+              // ── Visual layer (paint only — pointer events pass through) ──
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedBuilder(
+                    animation: _pulse,
+                    builder: (context, _) => CustomPaint(
+                      painter: _BoardPainter(
+                        snapshot: widget.snapshot,
+                        myAccent: widget.myAccent,
+                        oppAccent: widget.oppAccent,
+                        pulse: _pulse.value,
+                      ),
+                      size: Size.square(size),
+                    ),
+                  ),
                 ),
-                size: Size.square(size),
               ),
-            ),
+              // ── Tap layer — 9 explicit cells ─────────────────────────────
+              for (var r = 0; r < 3; r++)
+                for (var c0 = 0; c0 < 3; c0++)
+                  Positioned(
+                    left: cell * c0,
+                    top: cell * r,
+                    width: cell,
+                    height: cell,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _handleCellTap(r, c0),
+                        splashColor: widget.myAccent.withValues(alpha: 0.18),
+                        highlightColor: widget.myAccent.withValues(alpha: 0.08),
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                  ),
+            ],
           );
         },
       ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Visual painter — same look as before; tap detection lives elsewhere.
+// ─────────────────────────────────────────────────────────────────────
 
 class _BoardPainter extends CustomPainter {
   _BoardPainter({
@@ -104,7 +147,6 @@ class _BoardPainter extends CustomPainter {
     final cell = w / 3.0;
     final radius = w * 0.06;
 
-    // ── Background: warm panel + soft inner light ──────────────────
     final bgRect = Rect.fromLTWH(0, 0, w, w);
     final bgRrect = RRect.fromRectAndRadius(bgRect, Radius.circular(radius));
     final bgPaint = Paint()
@@ -115,7 +157,6 @@ class _BoardPainter extends CustomPainter {
       ).createShader(bgRect);
     canvas.drawRRect(bgRrect, bgPaint);
 
-    // Subtle inner border.
     canvas.drawRRect(
       bgRrect,
       Paint()
@@ -124,30 +165,25 @@ class _BoardPainter extends CustomPainter {
         ..color = const Color(0x55D4A85F),
     );
 
-    // ── Grid lines (inset from the rounded panel edge) ─────────────
     final gridPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = w * 0.012
       ..strokeCap = StrokeCap.round
       ..color = const Color(0x66D4A85F);
     final inset = w * 0.06;
-    // Two verticals.
     for (var i = 1; i <= 2; i++) {
       final x = cell * i;
       canvas.drawLine(Offset(x, inset), Offset(x, w - inset), gridPaint);
     }
-    // Two horizontals.
     for (var i = 1; i <= 2; i++) {
       final y = cell * i;
       canvas.drawLine(Offset(inset, y), Offset(w - inset, y), gridPaint);
     }
 
-    // ── Cell glyphs (X / O) ────────────────────────────────────────
     for (var r = 0; r < 3; r++) {
       for (var c = 0; c < 3; c++) {
         final mark = snapshot.cellAt(r, c);
         if (mark.isEmpty) {
-          // Subtle dot hint for empty cells when it's my turn.
           if (snapshot.isPlaying && snapshot.myTurn) {
             canvas.drawCircle(
               Offset(cell * c + cell / 2, cell * r + cell / 2),
@@ -168,7 +204,6 @@ class _BoardPainter extends CustomPainter {
       }
     }
 
-    // ── Winning line (pulses) ──────────────────────────────────────
     if (snapshot.winningLine.length == 3) {
       final start = snapshot.winningLine.first;
       final end = snapshot.winningLine.last;
@@ -176,7 +211,6 @@ class _BoardPainter extends CustomPainter {
       final b = Offset(cell * end[1] + cell / 2, cell * end[0] + cell / 2);
       final winColor = (snapshot.isWinner ?? false) ? myAccent : oppAccent;
       final lineGlow = 0.45 + 0.45 * pulse;
-      // Outer glow.
       canvas.drawLine(
         a,
         b,
@@ -186,7 +220,6 @@ class _BoardPainter extends CustomPainter {
           ..strokeCap = StrokeCap.round
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
       );
-      // Crisp inner line.
       canvas.drawLine(
         a,
         b,

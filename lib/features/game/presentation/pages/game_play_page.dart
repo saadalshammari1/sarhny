@@ -7,6 +7,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/ads/interstitial_service.dart';
 import '../../../games/carrom/application/carrom_controllers.dart';
 import '../../../games/carrom/data/admob_service.dart';
 import '../../data/game_repository.dart';
@@ -27,17 +28,34 @@ class _GamePlayPageState extends ConsumerState<GamePlayPage> {
   GameSnapshot? _snap;
   bool _busy = false;
   AdMobRewardService? _adService;
+  /// Once the match enters a terminal status we fire the every-3-matches
+  /// interstitial bookkeeping exactly once.
+  bool _interstitialFiredForThisMatch = false;
 
   @override
   void initState() {
     super.initState();
     _refresh();
     _poll = Timer.periodic(const Duration(seconds: 2), (_) => _refresh());
-    // Pre-load an ad so the "امتنع" button is instant when tapped.
+    // Pre-load both ad types so the "امتنع" rewarded ad AND the every-
+    // 3-matches interstitial fire instantly when the conditions hit.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _adService = AdMobRewardService(ref.read(carromApiProvider));
       _adService?.loadRewardedAd().catchError((_) {});
+      ref.read(interstitialAdServiceProvider).preload().catchError((_) {});
+    });
+  }
+
+  void _maybeFireInterstitial(GameSnapshot? newSnap) {
+    if (_interstitialFiredForThisMatch) return;
+    final terminal =
+        newSnap?.status == 'answered' || newSnap?.status == 'abandoned';
+    if (!terminal) return;
+    _interstitialFiredForThisMatch = true;
+    Future<void>.delayed(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      ref.read(interstitialAdServiceProvider).onMatchCompleted();
     });
   }
 
@@ -96,6 +114,7 @@ class _GamePlayPageState extends ConsumerState<GamePlayPage> {
       final next = await ref.read(gameRepositoryProvider).state(widget.gameId);
       if (!mounted) return;
       setState(() => _snap = next);
+      _maybeFireInterstitial(next);
     } catch (_) {
       // ignore — next tick will try again
     }
@@ -333,7 +352,31 @@ class _WaitingView extends StatelessWidget {
   }
 }
 
-// ── Playing (Rock-Paper-Scissors + guess) ──────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// Playing view — full redesign 2026-06-20. Built around three pillars:
+//   1. A premium HEADER: animated win-progress dots + my-vs-opponent
+//      hand previews + clear "round X" label.
+//   2. A LARGE CENTRAL stage: huge animated hand glyphs that lift +
+//      pulse when picked. The choice + guess flow lives below it.
+//   3. A bold LOCK-IN button that pulses gold once both picks are in.
+//
+// After both players lock the round resolves and a reveal banner shows
+// what the opponent picked alongside my picks, with a points delta
+// animation. This view is the entry point for new RPS players, so the
+// design leans confident + readable over clever.
+// ─────────────────────────────────────────────────────────────────────
+
+const Map<String, String> _kRpsGlyph = {
+  'rock': '✊',
+  'paper': '✋',
+  'scissors': '✌️',
+};
+
+const Map<String, String> _kRpsLabel = {
+  'rock': 'حجر',
+  'paper': 'ورقة',
+  'scissors': 'مقص',
+};
 
 class _PlayingView extends StatefulWidget {
   const _PlayingView({
@@ -350,9 +393,26 @@ class _PlayingView extends StatefulWidget {
   State<_PlayingView> createState() => _PlayingViewState();
 }
 
-class _PlayingViewState extends State<_PlayingView> {
+class _PlayingViewState extends State<_PlayingView>
+    with TickerProviderStateMixin {
   String? _choice;
   String? _guess;
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
 
   @override
   void didUpdateWidget(covariant _PlayingView old) {
@@ -368,125 +428,279 @@ class _PlayingViewState extends State<_PlayingView> {
   Widget build(BuildContext context) {
     final c = widget.colors;
     final s = widget.snap;
-    final canLock = !widget.busy && _choice != null && _guess != null && !s.meLocked;
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _ScoreBar(snap: s, colors: c),
-          const SizedBox(height: 18),
-          Text(
-            'اختياري',
-            style: TextStyle(color: c.textSecondary, fontWeight: FontWeight.w700, fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          _ChoiceRow(
-            selected: _choice ?? s.currentMyChoice,
-            disabled: widget.busy || s.meLocked,
-            onTap: (v) => setState(() => _choice = v),
-            colors: c,
-          ),
-          const SizedBox(height: 18),
-          Text(
-            'تخميني لاختيار خصمي',
-            style: TextStyle(color: c.textSecondary, fontWeight: FontWeight.w700, fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          _ChoiceRow(
-            selected: _guess ?? s.currentMyGuess,
-            disabled: widget.busy || s.meLocked,
-            onTap: (v) => setState(() => _guess = v),
-            colors: c,
-          ),
-          const Spacer(),
-          if (s.meLocked && !s.oppLocked)
-            _Waiting(text: 'بانتظار خصمك...', colors: c)
-          else if (s.lastRoundRevealed && !s.meLocked)
-            _Waiting(text: 'الجولة التالية تبدأ الآن', colors: c)
-          else
-            FilledButton.icon(
-              onPressed: canLock
-                  ? () => widget.onLock(_choice!, _guess!)
-                  : null,
-              icon: const Icon(Icons.lock_outline),
-              label: const Text('تثبيت اختياري'),
+    final canLock =
+        !widget.busy && _choice != null && _guess != null && !s.meLocked;
+    final liveChoice = _choice ?? s.currentMyChoice;
+    final liveGuess = _guess ?? s.currentMyGuess;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 6, 18, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _RpsHeaderBar(snap: s, colors: c),
+            const SizedBox(height: 14),
+            _RpsStage(
+              snap: s,
+              colors: c,
+              myChoice: liveChoice,
+              pulse: _pulse,
             ),
-          if (s.lastRoundRevealed) ...[
-            const SizedBox(height: 16),
-            _RevealCard(snap: s, colors: c),
+            const SizedBox(height: 12),
+            if (s.lastRoundRevealed) _RpsRevealStrip(snap: s, colors: c),
+            const SizedBox(height: 10),
+            // Section: my choice
+            _SectionLabel(text: 'اختر يدك', colors: c),
+            const SizedBox(height: 8),
+            _RpsPickRow(
+              selected: liveChoice,
+              disabled: widget.busy || s.meLocked,
+              accent: c.moment,
+              colors: c,
+              onTap: (v) => setState(() => _choice = v),
+            ),
+            const SizedBox(height: 14),
+            // Section: my guess of opponent
+            _SectionLabel(text: 'خمّن يد الخصم', colors: c),
+            const SizedBox(height: 8),
+            _RpsPickRow(
+              selected: liveGuess,
+              disabled: widget.busy || s.meLocked,
+              accent: c.face,
+              colors: c,
+              onTap: (v) => setState(() => _guess = v),
+            ),
+            const SizedBox(height: 14),
+            _RpsLockButton(
+              canLock: canLock,
+              meLocked: s.meLocked,
+              oppLocked: s.oppLocked,
+              waitingNextRound: s.lastRoundRevealed && !s.meLocked,
+              pulse: _pulse,
+              colors: c,
+              onLock: () => widget.onLock(_choice!, _guess!),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Tiny shared section label.
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.text, required this.colors});
+  final String text;
+  final SarhnyColors colors;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: colors.textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Header bar — round indicator + per-player score dots.
+class _RpsHeaderBar extends StatelessWidget {
+  const _RpsHeaderBar({required this.snap, required this.colors});
+  final GameSnapshot snap;
+  final SarhnyColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: colors.surface,
+        border: Border.all(color: colors.border.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _RpsScoreSide(
+              label: 'أنت',
+              score: snap.scoreMe,
+              winScore: snap.winScore,
+              accent: colors.moment,
+              alignEnd: false,
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: colors.crystal.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'جولة ${snap.roundIndex + 1}',
+              style: TextStyle(
+                color: colors.crystal,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          Expanded(
+            child: _RpsScoreSide(
+              label: 'الخصم',
+              score: snap.scoreOpp,
+              winScore: snap.winScore,
+              accent: colors.face,
+              alignEnd: true,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _ScoreBar extends StatelessWidget {
-  const _ScoreBar({required this.snap, required this.colors});
-  final GameSnapshot snap;
-  final SarhnyColors colors;
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _ScoreBox(
-              label: 'أنت',
-              score: snap.scoreMe,
-              winScore: snap.winScore,
-              colors: colors,
-              isMe: true),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _ScoreBox(
-              label: 'الخصم',
-              score: snap.scoreOpp,
-              winScore: snap.winScore,
-              colors: colors,
-              isMe: false),
-        ),
-      ],
-    );
-  }
-}
-
-class _ScoreBox extends StatelessWidget {
-  const _ScoreBox({
+class _RpsScoreSide extends StatelessWidget {
+  const _RpsScoreSide({
     required this.label,
     required this.score,
     required this.winScore,
-    required this.colors,
-    required this.isMe,
+    required this.accent,
+    required this.alignEnd,
   });
   final String label;
   final int score;
   final int winScore;
-  final SarhnyColors colors;
-  final bool isMe;
+  final Color accent;
+  final bool alignEnd;
+
   @override
   Widget build(BuildContext context) {
+    final dots = List.generate(winScore, (i) {
+      final filled = i < score;
+      return Container(
+        width: 9,
+        height: 9,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: filled ? accent : accent.withValues(alpha: 0.18),
+        ),
+      );
+    });
+    return Column(
+      crossAxisAlignment:
+          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment:
+              alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: accent,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '$score',
+              style: TextStyle(
+                color: accent,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment:
+              alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: dots,
+        ),
+      ],
+    );
+  }
+}
+
+// ── Central stage — animated glyphs that react to picks + reveal.
+class _RpsStage extends StatelessWidget {
+  const _RpsStage({
+    required this.snap,
+    required this.colors,
+    required this.myChoice,
+    required this.pulse,
+  });
+  final GameSnapshot snap;
+  final SarhnyColors colors;
+  final String? myChoice;
+  final Animation<double> pulse;
+
+  @override
+  Widget build(BuildContext context) {
+    // During reveal we show BOTH hands (mine + opponent's actual pick).
+    // Otherwise we show mine (or a placeholder) on the left and a hidden
+    // silhouette for the opponent on the right.
+    final revealed = snap.lastRoundRevealed;
+    final oppRevealed = revealed ? snap.currentOppChoice : null;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      height: 132,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: isMe ? colors.moment.withValues(alpha: 0.10) : colors.elevated,
-        border: Border.all(color: isMe ? colors.moment : colors.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(22),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colors.moment.withValues(alpha: 0.15),
+            colors.face.withValues(alpha: 0.10),
+          ],
+        ),
+        border: Border.all(color: colors.border.withValues(alpha: 0.55)),
       ),
       child: Row(
         children: [
-          Text(
-            label,
-            style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700, fontSize: 14),
+          Expanded(
+            child: _RpsHandSlot(
+              glyph: myChoice != null ? _kRpsGlyph[myChoice] : null,
+              accent: colors.moment,
+              label: 'أنا',
+              filled: myChoice != null,
+              pulse: pulse,
+              flipped: false,
+            ),
           ),
-          const Spacer(),
-          Text(
-            '$score / $winScore',
-            style: TextStyle(
-              color: isMe ? colors.moment : colors.textPrimary,
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              'VS',
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          Expanded(
+            child: _RpsHandSlot(
+              glyph: oppRevealed != null ? _kRpsGlyph[oppRevealed] : null,
+              accent: colors.face,
+              label: 'الخصم',
+              filled: oppRevealed != null,
+              pulse: pulse,
+              // Visually mirror the opponent's hand toward the player.
+              flipped: true,
             ),
           ),
         ],
@@ -495,78 +709,254 @@ class _ScoreBox extends StatelessWidget {
   }
 }
 
-class _ChoiceRow extends StatelessWidget {
-  const _ChoiceRow({
+class _RpsHandSlot extends StatelessWidget {
+  const _RpsHandSlot({
+    required this.glyph,
+    required this.accent,
+    required this.label,
+    required this.filled,
+    required this.pulse,
+    required this.flipped,
+  });
+  final String? glyph;
+  final Color accent;
+  final String label;
+  final bool filled;
+  final Animation<double> pulse;
+  final bool flipped;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: pulse,
+      builder: (context, _) {
+        final lift = filled ? -3 - 3 * pulse.value : 0.0;
+        final scale = filled ? 1.0 + 0.04 * pulse.value : 0.92;
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Transform.translate(
+              offset: Offset(0, lift),
+              child: Transform.scale(
+                scale: scale,
+                child: Transform.scale(
+                  scaleX: flipped ? -1 : 1,
+                  child: Text(
+                    glyph ?? '✋',
+                    style: TextStyle(
+                      fontSize: 56,
+                      color: filled ? null : accent.withValues(alpha: 0.30),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: accent,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ── Reveal strip — appears on round resolve, fades within ~3s as the
+// next round's UI takes over.
+class _RpsRevealStrip extends StatelessWidget {
+  const _RpsRevealStrip({required this.snap, required this.colors});
+  final GameSnapshot snap;
+  final SarhnyColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final myPts = snap.role == 'a' ? snap.lastRoundAPoints : snap.lastRoundBPoints;
+    final oppPts = snap.role == 'a' ? snap.lastRoundBPoints : snap.lastRoundAPoints;
+    final myDelta = myPts > 0 ? '+$myPts' : '$myPts';
+    final oppDelta = oppPts > 0 ? '+$oppPts' : '$oppPts';
+    final iWonRound = myPts > oppPts;
+    final tied = myPts == oppPts;
+    final tag = tied ? 'تعادل' : (iWonRound ? 'ربحت الجولة' : 'الخصم كسب');
+    final tagColor = tied
+        ? colors.crystal
+        : (iWonRound ? colors.moment : colors.face);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        color: tagColor.withValues(alpha: 0.10),
+        border: Border.all(color: tagColor.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: tagColor.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              tag,
+              style: TextStyle(
+                color: tagColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const Spacer(),
+          Text(
+            'أنت $myDelta',
+            style: TextStyle(
+              color: colors.moment,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'الخصم $oppDelta',
+            style: TextStyle(
+              color: colors.face,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Choice / guess row — three large pick tiles.
+class _RpsPickRow extends StatelessWidget {
+  const _RpsPickRow({
     required this.selected,
     required this.disabled,
-    required this.onTap,
+    required this.accent,
     required this.colors,
+    required this.onTap,
   });
   final String? selected;
   final bool disabled;
-  final ValueChanged<String> onTap;
+  final Color accent;
   final SarhnyColors colors;
+  final ValueChanged<String> onTap;
+
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _ChoiceBtn(label: 'حجر', value: 'rock', emoji: '🪨', selected: selected, disabled: disabled, onTap: onTap, colors: colors),
-        const SizedBox(width: 8),
-        _ChoiceBtn(label: 'ورقة', value: 'paper', emoji: '📄', selected: selected, disabled: disabled, onTap: onTap, colors: colors),
-        const SizedBox(width: 8),
-        _ChoiceBtn(label: 'مقص', value: 'scissors', emoji: '✂️', selected: selected, disabled: disabled, onTap: onTap, colors: colors),
+        Expanded(
+          child: _RpsPickTile(
+            value: 'rock',
+            selected: selected,
+            disabled: disabled,
+            accent: accent,
+            colors: colors,
+            onTap: onTap,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _RpsPickTile(
+            value: 'paper',
+            selected: selected,
+            disabled: disabled,
+            accent: accent,
+            colors: colors,
+            onTap: onTap,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _RpsPickTile(
+            value: 'scissors',
+            selected: selected,
+            disabled: disabled,
+            accent: accent,
+            colors: colors,
+            onTap: onTap,
+          ),
+        ),
       ],
     );
   }
 }
 
-class _ChoiceBtn extends StatelessWidget {
-  const _ChoiceBtn({
-    required this.label,
+class _RpsPickTile extends StatelessWidget {
+  const _RpsPickTile({
     required this.value,
-    required this.emoji,
     required this.selected,
     required this.disabled,
-    required this.onTap,
+    required this.accent,
     required this.colors,
+    required this.onTap,
   });
-  final String label;
   final String value;
-  final String emoji;
   final String? selected;
   final bool disabled;
-  final ValueChanged<String> onTap;
+  final Color accent;
   final SarhnyColors colors;
+  final ValueChanged<String> onTap;
+
   @override
   Widget build(BuildContext context) {
     final isSelected = selected == value;
-    return Expanded(
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
         onTap: disabled ? null : () => onTap(value),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
+        splashColor: accent.withValues(alpha: 0.18),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 6),
           decoration: BoxDecoration(
             color: isSelected
-                ? colors.moment.withValues(alpha: 0.18)
-                : (disabled ? colors.elevated.withValues(alpha: 0.4) : colors.elevated),
+                ? accent.withValues(alpha: 0.20)
+                : colors.surface,
             border: Border.all(
-              color: isSelected ? colors.moment : colors.border,
-              width: isSelected ? 1.6 : 0.5,
+              color: isSelected
+                  ? accent.withValues(alpha: 0.85)
+                  : colors.border.withValues(alpha: 0.6),
+              width: isSelected ? 1.6 : 0.8,
             ),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.32),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
           ),
           child: Column(
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 28)),
+              Text(
+                _kRpsGlyph[value] ?? '✋',
+                style: TextStyle(
+                  fontSize: 30,
+                  color: disabled && !isSelected
+                      ? colors.textSecondary.withValues(alpha: 0.6)
+                      : null,
+                ),
+              ),
               const SizedBox(height: 4),
               Text(
-                label,
+                _kRpsLabel[value] ?? value,
                 style: TextStyle(
-                  color: colors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
+                  color: isSelected ? accent : colors.textPrimary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
@@ -577,65 +967,103 @@ class _ChoiceBtn extends StatelessWidget {
   }
 }
 
-class _Waiting extends StatelessWidget {
-  const _Waiting({required this.text, required this.colors});
-  final String text;
+// ── Lock button — pulses gold when both picks are made; switches to
+// "waiting for opponent" once we've locked.
+class _RpsLockButton extends StatelessWidget {
+  const _RpsLockButton({
+    required this.canLock,
+    required this.meLocked,
+    required this.oppLocked,
+    required this.waitingNextRound,
+    required this.pulse,
+    required this.colors,
+    required this.onLock,
+  });
+  final bool canLock;
+  final bool meLocked;
+  final bool oppLocked;
+  final bool waitingNextRound;
+  final Animation<double> pulse;
   final SarhnyColors colors;
+  final VoidCallback onLock;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(
-        color: colors.elevated,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(
-              width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-          const SizedBox(width: 10),
-          Text(text, style: TextStyle(color: colors.textSecondary)),
-        ],
+    if (waitingNextRound) {
+      return _StatusBar(
+        text: 'الجولة التالية تبدأ الآن…',
+        accent: colors.crystal,
+      );
+    }
+    if (meLocked && !oppLocked) {
+      return _StatusBar(
+        text: 'بانتظار الخصم…',
+        accent: colors.face,
+      );
+    }
+    if (meLocked && oppLocked) {
+      return _StatusBar(
+        text: 'يكشف الآن…',
+        accent: colors.moment,
+      );
+    }
+    return AnimatedBuilder(
+      animation: pulse,
+      builder: (context, _) => SizedBox(
+        height: 56,
+        child: FilledButton.icon(
+          onPressed: canLock ? onLock : null,
+          icon: const Icon(Icons.lock_outline_rounded, size: 18),
+          label: const Text(
+            'ثبّت اختياري',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+          ),
+          style: FilledButton.styleFrom(
+            backgroundColor: canLock
+                ? Color.lerp(colors.moment, colors.crystal, pulse.value * 0.4)
+                : null,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        ),
       ),
     );
   }
 }
 
-class _RevealCard extends StatelessWidget {
-  const _RevealCard({required this.snap, required this.colors});
-  final GameSnapshot snap;
-  final SarhnyColors colors;
+class _StatusBar extends StatelessWidget {
+  const _StatusBar({required this.text, required this.accent});
+  final String text;
+  final Color accent;
+
   @override
   Widget build(BuildContext context) {
-    final myPts = snap.role == 'a' ? snap.lastRoundAPoints : snap.lastRoundBPoints;
-    final oppPts = snap.role == 'a' ? snap.lastRoundBPoints : snap.lastRoundAPoints;
     return Container(
-      padding: const EdgeInsets.all(12),
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border.all(color: colors.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        color: accent.withValues(alpha: 0.12),
+        border: Border.all(color: accent.withValues(alpha: 0.40), width: 0.8),
       ),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            'الجولة السابقة',
-            style: TextStyle(color: colors.textSecondary, fontWeight: FontWeight.w700, fontSize: 12),
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation(accent),
+            ),
           ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Column(children: [
-                Text('أنت', style: TextStyle(color: colors.textSecondary, fontSize: 11)),
-                Text('$myPts نقطة', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700)),
-              ]),
-              Column(children: [
-                Text('الخصم', style: TextStyle(color: colors.textSecondary, fontSize: 11)),
-                Text('$oppPts نقطة', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700)),
-              ]),
-            ],
+          const SizedBox(width: 10),
+          Text(
+            text,
+            style: TextStyle(
+              color: accent,
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+            ),
           ),
         ],
       ),

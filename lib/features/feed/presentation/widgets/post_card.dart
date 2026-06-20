@@ -8,9 +8,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:share_plus/share_plus.dart';
 
+import 'package:fluttertoast/fluttertoast.dart';
+
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/dto.dart';
+import '../../../../core/providers/auth_providers.dart';
 import '../../../../core/utils/media.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/report_sheet.dart';
@@ -402,6 +405,12 @@ class _Footer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final inter = ref.watch(postInteractionProvider(post.id));
     final repo = ref.read(postRepositoryProvider);
+    // Author check — compared by username because legacy `userId` and
+    // V2 `author.id` live in different keyspaces. Username is unique
+    // and stable across both.
+    final myUsername = ref.watch(authStateProvider).valueOrNull?.username;
+    final isMine =
+        myUsername != null && post.author.username == myUsername;
     final heartColor = inter.liked
         ? const Color(0xFFE2685A)
         : colors.textSecondary;
@@ -451,23 +460,37 @@ class _Footer extends ConsumerWidget {
           onTap: () => _share(context, post),
         ),
         const SizedBox(width: 2),
-        _IconButton(
-          icon: Icons.flag_outlined,
-          color: colors.textSecondary,
-          tooltip: 'إبلاغ',
-          onTap: () => ReportSheet.show(
-            context,
-            target: ReportTarget.post,
-            targetId: post.id,
+        // Author-only delete. Lives next to Report so non-authors see
+        // Report there; authors see Delete instead — same slot, no
+        // shifting layout when ownership toggles.
+        if (isMine)
+          _IconButton(
+            icon: Icons.delete_outline_rounded,
+            color: const Color(0xFFD22F2F),
+            tooltip: 'حذف',
+            onTap: () => _confirmDelete(context, ref, post, repo),
+          )
+        else
+          _IconButton(
+            icon: Icons.flag_outlined,
+            color: colors.textSecondary,
+            tooltip: 'إبلاغ',
+            onTap: () => ReportSheet.show(
+              context,
+              target: ReportTarget.post,
+              targetId: post.id,
+            ),
           ),
-        ),
       ],
     );
   }
 
   Future<void> _share(BuildContext context, PostDto p) async {
     final box = context.findRenderObject() as RenderBox?;
-    final url = 'https://sarhny.com/post/${p.id}';
+    // Canonical web URL is locale-prefixed (next-intl middleware
+    // forces it). `/post/X` would 308 to `/ar/post/X` anyway — sending
+    // the canonical form skips a redirect hop.
+    final url = 'https://sarhny.com/ar/post/${p.id}';
     final body = p.body.length > 120 ? '${p.body.substring(0, 117)}…' : p.body;
     await Share.share(
       '$body\n\n— من صارحني\n$url',
@@ -475,6 +498,50 @@ class _Footer extends ConsumerWidget {
       sharePositionOrigin:
           box == null ? null : box.localToGlobal(Offset.zero) & box.size,
     );
+  }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    PostDto p,
+    dynamic repo,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف المنشور'),
+        content: const Text(
+          'سيُحذف منشورك نهائياً ولن يظهر للآخرين. هل أنت متأكد؟',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFD22F2F),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await repo.deletePost(p.id);
+      Fluttertoast.showToast(msg: 'تم حذف المنشور');
+      // If we were on the detail page, pop back to wherever brought us
+      // here so the now-deleted post doesn't linger on screen.
+      if (context.mounted) {
+        if (context.canPop()) {
+          context.pop();
+        }
+      }
+    } catch (_) {
+      Fluttertoast.showToast(msg: 'تعذّر الحذف');
+    }
   }
 }
 

@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/haptics/game_haptics.dart';
+import '../../../../core/ads/interstitial_service.dart';
 import '../../../games/carrom/application/carrom_controllers.dart';
 import '../../../games/carrom/data/admob_service.dart';
 import '../../application/xo_controller.dart';
@@ -37,17 +38,21 @@ class XoPlayPage extends ConsumerStatefulWidget {
 
 class _XoPlayPageState extends ConsumerState<XoPlayPage> {
   AdMobRewardService? _adService;
+  /// Once the match enters a terminal state we trigger the mandatory
+  /// interstitial bookkeeping exactly once.
+  bool _interstitialFiredForThisMatch = false;
 
   @override
   void initState() {
     super.initState();
-    // Pre-load an ad so the abstain button is instant when tapped.
-    // The AdMobRewardService wraps the carrom API only to talk to the
-    // shared /games/ad/grant endpoint — it is game-agnostic from there.
+    // Pre-load a rewarded ad (for the abstain button) AND the shared
+    // interstitial (for the every-3-matches rule) so both surfaces are
+    // ready when the user taps.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _adService = AdMobRewardService(ref.read(carromApiProvider));
       _adService?.loadRewardedAd().catchError((_) {});
+      ref.read(interstitialAdServiceProvider).preload().catchError((_) {});
     });
   }
 
@@ -55,6 +60,20 @@ class _XoPlayPageState extends ConsumerState<XoPlayPage> {
   void dispose() {
     _adService?.dispose();
     super.dispose();
+  }
+
+  /// Drives the every-3-matches interstitial. The service owns the
+  /// counter + the show-or-skip logic — we just notify it once per
+  /// completed match.
+  void _maybeFireInterstitial() {
+    if (_interstitialFiredForThisMatch) return;
+    _interstitialFiredForThisMatch = true;
+    // Brief delay so the result banner has a beat to land before the
+    // ad takes over the screen.
+    Future<void>.delayed(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      ref.read(interstitialAdServiceProvider).onMatchCompleted();
+    });
   }
 
   Future<bool> _confirmLeave(BuildContext context, SarhnyColors colors) async {
@@ -173,12 +192,19 @@ class _XoPlayPageState extends ConsumerState<XoPlayPage> {
     final colors = context.sarhnyColors;
     final mState = ref.watch(xoMatchControllerProvider(widget.gameId));
 
-    // Toast any new errors.
+    // Toast any new errors + drive the every-3-matches interstitial.
     ref.listen(xoMatchControllerProvider(widget.gameId),
         (prev, next) {
       if (next.error != null && prev?.error != next.error) {
         Fluttertoast.showToast(msg: next.error!);
         ref.read(xoMatchControllerProvider(widget.gameId).notifier).clearError();
+      }
+      final isDone = next.snapshot?.status == 'answered' ||
+          next.snapshot?.status == 'abandoned';
+      final wasDone = prev?.snapshot?.status == 'answered' ||
+          prev?.snapshot?.status == 'abandoned';
+      if (isDone && !wasDone) {
+        _maybeFireInterstitial();
       }
     });
 
@@ -436,6 +462,24 @@ class _PlayingView extends ConsumerWidget {
               ref
                   .read(xoMatchControllerProvider(snapshot.gameId).notifier)
                   .move(r, c);
+            },
+            onCellRejected: (reason) {
+              // The board fired but our local snapshot said the move
+              // wouldn't fly. Toast the precise reason instead of
+              // silently swallowing — the most common case is "the
+              // opponent's move arrived between polls and the cell is
+              // now filled" — that needs a visible explanation.
+              final msg = switch (reason) {
+                'cell_filled' => 'الخانة مشغولة الآن — اختر أخرى',
+                'not_your_turn' => 'ليس دورك بعد',
+                _ => '',
+              };
+              if (msg.isEmpty) return;
+              Fluttertoast.showToast(msg: msg);
+              // Force a refresh so the user sees the current state.
+              ref
+                  .read(xoMatchControllerProvider(snapshot.gameId).notifier)
+                  .refresh();
             },
           ),
         ),

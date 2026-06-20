@@ -124,6 +124,48 @@ class _ComposePageState extends ConsumerState<ComposePage> {
     }
   }
 
+  /// Tap on the close button. If the user has typed anything (or
+  /// attached an image) we warn before discarding — otherwise just pop.
+  /// This prevents the "I tapped close by mistake and lost my draft"
+  /// regret that the previous flow allowed.
+  Future<void> _handleDiscard() async {
+    final hasDraft = _layer1Ctrl.text.trim().isNotEmpty ||
+        _layer3Ctrl.text.trim().isNotEmpty ||
+        _images.isNotEmpty;
+    bool exit = !hasDraft;
+    if (hasDraft) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('تجاهل المسودة؟'),
+          content: const Text('ستفقد ما كتبته. هل تريد المتابعة؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('احتفاظ'),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFD22F2F),
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('تجاهل'),
+            ),
+          ],
+        ),
+      );
+      exit = ok == true;
+    }
+    if (!exit) return;
+    if (!mounted) return;
+    final nav = Navigator.of(context);
+    if (nav.canPop()) {
+      nav.pop();
+    } else {
+      context.go(AppRoutes.feed);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
@@ -134,16 +176,7 @@ class _ComposePageState extends ConsumerState<ComposePage> {
         leading: IconButton(
           icon: const Icon(Icons.close),
           tooltip: 'إغلاق',
-          onPressed: () {
-            // Pop if pushed; otherwise go to feed (safer fallback for the
-            // case where compose was reached via go() and the stack is empty).
-            final nav = Navigator.of(context);
-            if (nav.canPop()) {
-              nav.pop();
-            } else {
-              context.go(AppRoutes.feed);
-            }
-          },
+          onPressed: _handleDiscard,
         ),
         title: const Text('منشور جديد'),
         actions: [

@@ -387,6 +387,8 @@ class AnonReplyDto {
     this.isSenderHidden = true,
     this.sender,
     this.createdAt,
+    this.isMine = false,
+    this.canDelete = false,
   });
 
   factory AnonReplyDto.fromJson(Map<String, dynamic> json) => AnonReplyDto(
@@ -403,6 +405,8 @@ class AnonReplyDto {
                 (json['sender'] as Map).cast<String, dynamic>())
             : null,
         createdAt: json['created_at']?.toString(),
+        isMine: json['is_mine'] == true,
+        canDelete: json['can_delete'] == true,
       );
 
   final int id;
@@ -413,6 +417,13 @@ class AnonReplyDto {
   final bool isSenderHidden;
   final AuthorDto? sender;
   final String? createdAt;
+  /// True when the server matched the requester to this reply's author.
+  /// Anonymous replies still get true here for their author (the comparison
+  /// is by sender_user_id, not by exposed sender field).
+  final bool isMine;
+  /// True when the requester is allowed to hide/delete this reply —
+  /// either because they wrote it OR because they own the parent post.
+  final bool canDelete;
 }
 
 @immutable

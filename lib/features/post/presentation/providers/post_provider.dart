@@ -150,6 +150,17 @@ class AnonRepliesController
     final current = state.valueOrNull ?? const AnonRepliesState();
     state = AsyncData(current.copyWith(replies: [r, ...current.replies]));
   }
+
+  /// Optimistic local removal — strip the reply from the in-memory list
+  /// after the server-side soft-hide call succeeds. Cheaper than a full
+  /// list re-fetch and instantly visible to the user.
+  Future<void> remove(int replyId) async {
+    final current = state.valueOrNull;
+    if (current == null) return;
+    state = AsyncData(current.copyWith(
+      replies: current.replies.where((r) => r.id != replyId).toList(),
+    ));
+  }
 }
 
 final anonRepliesControllerProvider = AsyncNotifierProvider.family<

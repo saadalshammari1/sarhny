@@ -98,6 +98,25 @@ class PostRepository {
     );
   }
 
+  /// Permanently delete a post the caller owns. Backend enforces
+  /// ownership; non-owners get 403.
+  Future<void> deletePost(int postId) {
+    return _client.request<void>(
+      () => _client.raw.delete(ApiEndpoints.postById(postId)),
+      parser: (_) {},
+    );
+  }
+
+  /// Soft-hide a reply. Backend allows BOTH the reply author and the
+  /// post owner to call this — the client must check `reply.canDelete`
+  /// before showing the trigger.
+  Future<void> hideReply(int postId, int replyId) {
+    return _client.request<void>(
+      () => _client.raw.delete(ApiEndpoints.hideReply(postId, replyId)),
+      parser: (_) {},
+    );
+  }
+
   Future<void> like(int postId) {
     return _client.request<void>(
       () =>

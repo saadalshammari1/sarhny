@@ -60,7 +60,10 @@ class XoMatchController extends StateNotifier<XoMatchState> {
 
   void _startPolling() {
     _poller?.cancel();
-    _poller = Timer.periodic(const Duration(seconds: 2), (_) => refresh());
+    // 1s during active play — opponent moves arrive snappier and the
+    // "can I tap now?" lag disappears. The cost is small (≤1 req/sec
+    // per active game).
+    _poller = Timer.periodic(const Duration(seconds: 1), (_) => refresh());
   }
 
   Future<void> refresh() async {
@@ -101,13 +104,23 @@ class XoMatchController extends StateNotifier<XoMatchState> {
     } on XoApiException catch (e) {
       if (!mounted) return;
       state = state.copyWith(busy: false, error: e.message);
+      // The server rejected our action; the cause is often "you tapped
+      // before the next poll showed the opponent's move". Force a
+      // refresh so the UI re-syncs immediately.
+      unawaited(refresh());
     } catch (_) {
       if (!mounted) return;
       state = state.copyWith(busy: false, error: 'تعذّر إكمال العملية');
+      unawaited(refresh());
     }
   }
 
-  Future<void> move(int row, int col) => _wrap(() => _repo.move(gameId, row, col));
+  Future<void> move(int row, int col) async {
+    await _wrap(() => _repo.move(gameId, row, col));
+    // Immediately refresh after a successful move — the server-side
+    // win detection / turn flip can race with the 1s poll otherwise.
+    if (mounted) unawaited(refresh());
+  }
   Future<void> submitWinnerQuestion(String? text) =>
       _wrap(() => _repo.winnerQuestion(gameId, text));
   Future<void> submitAnswer(String text) => _wrap(() => _repo.answer(gameId, text));

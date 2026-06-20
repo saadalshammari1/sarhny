@@ -147,7 +147,11 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
               return Column(
                 children: [
                   for (final r in s.replies)
-                    _ReplyTile(reply: r, colors: colors),
+                    _ReplyTile(
+                      reply: r,
+                      postId: widget.postId,
+                      colors: colors,
+                    ),
                   if (!s.reachedEnd)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -224,13 +228,55 @@ class _HiddenChip extends StatelessWidget {
   }
 }
 
-class _ReplyTile extends StatelessWidget {
-  const _ReplyTile({required this.reply, required this.colors});
+class _ReplyTile extends ConsumerWidget {
+  const _ReplyTile({
+    required this.reply,
+    required this.postId,
+    required this.colors,
+  });
   final AnonReplyDto reply;
+  final int postId;
   final SarhnyColors colors;
 
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف الرد'),
+        content: Text(
+          reply.isMine
+              ? 'سيختفي ردّك. هل أنت متأكد؟'
+              : 'سيختفي هذا الرد من منشورك.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFD22F2F),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(postRepositoryProvider).hideReply(postId, reply.id);
+      await ref
+          .read(anonRepliesControllerProvider(postId).notifier)
+          .remove(reply.id);
+      Fluttertoast.showToast(msg: 'تم الحذف');
+    } catch (_) {
+      Fluttertoast.showToast(msg: 'تعذّر الحذف');
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final senderRevealed = !reply.isSenderHidden && reply.sender != null;
     return Container(
       margin: const EdgeInsets.only(top: 10),
@@ -269,15 +315,36 @@ class _ReplyTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  senderRevealed ? '@${reply.sender!.username}' : 'مجهول',
-                  style: TextStyle(
-                    color: senderRevealed
-                        ? colors.textPrimary
-                        : colors.moment,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        senderRevealed
+                            ? '@${reply.sender!.username}'
+                            : 'مجهول',
+                        style: TextStyle(
+                          color: senderRevealed
+                              ? colors.textPrimary
+                              : colors.moment,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (reply.canDelete)
+                      InkWell(
+                        onTap: () => _confirmDelete(context, ref),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.delete_outline_rounded,
+                            size: 16,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 if (reply.message != null && reply.message!.isNotEmpty) ...[
                   const SizedBox(height: 4),

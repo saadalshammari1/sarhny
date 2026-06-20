@@ -25,6 +25,7 @@ import '../features/search/presentation/pages/search_page.dart';
 import '../features/article/presentation/pages/my_article_page.dart';
 import '../features/game/presentation/pages/game_lobby_page.dart';
 import '../features/game/presentation/pages/game_play_page.dart';
+import '../features/game/presentation/pages/rps_local_play_page.dart';
 import '../features/xo/presentation/pages/xo_lobby_page.dart';
 import '../features/xo/presentation/pages/xo_local_play_page.dart';
 import '../features/xo/presentation/pages/xo_play_page.dart';
@@ -78,6 +79,8 @@ class AppRoutes {
   static const String myArticle = '/me/article';
   static const String gameLobby = '/game';
   static String gamePlay(String id) => '/game/play/$id';
+  /// Local vs-AI RPS — single-device, no backend, instant play.
+  static const String gameLocal = '/game/local';
   // Tic-Tac-Toe (XO) — sibling to RPS, same winner→question→answer flow.
   static const String xoLobby = '/xo';
   static String xoPlay(String id) => '/xo/play/$id';
@@ -226,6 +229,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: AppRoutes.myArticle, builder: (_, __) => const MyArticlePage()),
       GoRoute(
           path: AppRoutes.gameLobby, builder: (_, __) => const GameLobbyPage()),
+      GoRoute(
+        path: AppRoutes.gameLocal,
+        builder: (_, __) => const RpsLocalPlayPage(),
+      ),
       GoRoute(
         path: '/game/play/:id',
         builder: (_, state) =>

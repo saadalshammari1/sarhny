@@ -114,6 +114,18 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
               ),
               const SizedBox(height: 24),
 
+              // Local vs AI — tap-to-play, no waiting.
+              _PrimaryCta(
+                label: 'ضد الذكاء',
+                subtitle: 'تدريب فوري — الذكاء يطرح سؤالاً إذا فاز',
+                icon: Icons.psychology_rounded,
+                onTap: _busy
+                    ? null
+                    : () => context.push('/game/local'),
+                colors: colors,
+              ),
+              const SizedBox(height: 12),
+
               // Random match
               _PrimaryCta(
                 label: 'العب مع لاعب عشوائي',

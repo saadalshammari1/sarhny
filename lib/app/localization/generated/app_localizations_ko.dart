@@ -1014,4 +1014,73 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get hubTagFeatured => '추천';
+
+  @override
+  String get ludoPlayerYou => '나';
+
+  @override
+  String ludoOpponentN(Object n) {
+    return '상대 $n';
+  }
+
+  @override
+  String get ludoBotThinking => '생각 중…';
+
+  @override
+  String get ludoMmTitle => '상대 찾는 중';
+
+  @override
+  String get ludoMmSearching => '플레이어 검색 중…';
+
+  @override
+  String get ludoMmRealPlayers => '실제 플레이어를 찾고 있어요';
+
+  @override
+  String ludoMmCountdownHint(Object seconds) {
+    return '찾지 못하면 $seconds초 후 봇으로 채울게요';
+  }
+
+  @override
+  String get ludoMmFilledByBots => '숙련된 봇으로 채워졌어요';
+
+  @override
+  String get ludoMmMatchFound => '매치 성사!';
+
+  @override
+  String get ludoMmCancel => '검색 취소';
+
+  @override
+  String get ludoMmStarting => '매치 시작 중…';
+
+  @override
+  String ludoMmFoundCount(Object found, Object total) {
+    return '$found/$total명';
+  }
+
+  @override
+  String get ludoMode1v1 => '1v1 상대';
+
+  @override
+  String get ludoMode1v1Sub => '빠른 매치, 익명 신원';
+
+  @override
+  String get ludoMode4Party => '4인 파티';
+
+  @override
+  String get ludoMode4PartySub => '상대 3명 찾기 • 빈 자리는 봇이 채워요';
+
+  @override
+  String get ludoLobbyHowToPlay => '플레이 방법';
+
+  @override
+  String get ludoRule1 => '주사위를 굴려 6이 나오면 집을 나가고, 4개의 말을 중앙으로';
+
+  @override
+  String get ludoRule2 => '경로에 4가지 초능력: 🚀 ❄ 🌀 🌪';
+
+  @override
+  String get ludoRule3 => '상대를 잡으면 추가 턴을 얻어요';
+
+  @override
+  String get ludoRule4 => '별은 안전 칸 • 능력은 3번 굴릴 때마다 재배치';
 }

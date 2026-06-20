@@ -1028,4 +1028,75 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get hubTagFeatured => 'Öne çıkan';
+
+  @override
+  String get ludoPlayerYou => 'Sen';
+
+  @override
+  String ludoOpponentN(Object n) {
+    return 'Rakip $n';
+  }
+
+  @override
+  String get ludoBotThinking => 'Düşünüyor…';
+
+  @override
+  String get ludoMmTitle => 'Rakip aranıyor';
+
+  @override
+  String get ludoMmSearching => 'Oyuncular aranıyor…';
+
+  @override
+  String get ludoMmRealPlayers => 'Gerçek oyuncular aranıyor';
+
+  @override
+  String ludoMmCountdownHint(Object seconds) {
+    return 'Bulunamazsa $seconds sn sonra botlarla tamamlanacak';
+  }
+
+  @override
+  String get ludoMmFilledByBots => 'Yetenekli botlarla tamamlandı';
+
+  @override
+  String get ludoMmMatchFound => 'Eşleşme bulundu!';
+
+  @override
+  String get ludoMmCancel => 'Aramayı iptal et';
+
+  @override
+  String get ludoMmStarting => 'Maç başlıyor…';
+
+  @override
+  String ludoMmFoundCount(Object found, Object total) {
+    return '$found/$total oyuncu';
+  }
+
+  @override
+  String get ludoMode1v1 => '1v1 rakip';
+
+  @override
+  String get ludoMode1v1Sub => 'Hızlı maç, anonim kimlik';
+
+  @override
+  String get ludoMode4Party => '4 kişilik parti';
+
+  @override
+  String get ludoMode4PartySub => '3 rakip ara • botlar boşlukları doldurur';
+
+  @override
+  String get ludoLobbyHowToPlay => 'Nasıl oynanır';
+
+  @override
+  String get ludoRule1 =>
+      'Zar at, altı atınca evden çık, 4 taşı merkeze ulaştır';
+
+  @override
+  String get ludoRule2 => 'Yolda 4 süper güç: 🚀 ❄ 🌀 🌪';
+
+  @override
+  String get ludoRule3 => 'Rakibi yakalamak ekstra tur kazandırır';
+
+  @override
+  String get ludoRule4 =>
+      'Yıldızlar güvenli kareler • güçler her 3 atışta yer değiştirir';
 }

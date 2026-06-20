@@ -1029,4 +1029,75 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get hubTagFeatured => 'Unggulan';
+
+  @override
+  String get ludoPlayerYou => 'Kamu';
+
+  @override
+  String ludoOpponentN(Object n) {
+    return 'Lawan $n';
+  }
+
+  @override
+  String get ludoBotThinking => 'Sedang berpikir…';
+
+  @override
+  String get ludoMmTitle => 'Mencari lawan';
+
+  @override
+  String get ludoMmSearching => 'Mencari pemain…';
+
+  @override
+  String get ludoMmRealPlayers => 'Mencari pemain asli';
+
+  @override
+  String ludoMmCountdownHint(Object seconds) {
+    return 'Akan diisi bot dalam $seconds dtk jika tidak ada yang ditemukan';
+  }
+
+  @override
+  String get ludoMmFilledByBots => 'Diisi dengan bot terampil';
+
+  @override
+  String get ludoMmMatchFound => 'Pertandingan ditemukan!';
+
+  @override
+  String get ludoMmCancel => 'Batalkan pencarian';
+
+  @override
+  String get ludoMmStarting => 'Memulai pertandingan…';
+
+  @override
+  String ludoMmFoundCount(Object found, Object total) {
+    return '$found/$total pemain';
+  }
+
+  @override
+  String get ludoMode1v1 => 'Lawan 1v1';
+
+  @override
+  String get ludoMode1v1Sub => 'Pertandingan cepat, identitas anonim';
+
+  @override
+  String get ludoMode4Party => 'Pesta 4 pemain';
+
+  @override
+  String get ludoMode4PartySub => 'Cari 3 lawan • bot mengisi kekosongan';
+
+  @override
+  String get ludoLobbyHowToPlay => 'Cara bermain';
+
+  @override
+  String get ludoRule1 =>
+      'Lempar dadu, keluar rumah saat enam, bawa 4 bidak ke pusat';
+
+  @override
+  String get ludoRule2 => '4 kekuatan super di jalur: 🚀 ❄ 🌀 🌪';
+
+  @override
+  String get ludoRule3 => 'Menangkap lawan memberi giliran tambahan';
+
+  @override
+  String get ludoRule4 =>
+      'Bintang adalah kotak aman • kekuatan diacak tiap 3 lemparan';
 }

@@ -1019,4 +1019,73 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get hubTagFeatured => 'مميّز';
+
+  @override
+  String get ludoPlayerYou => 'أنت';
+
+  @override
+  String ludoOpponentN(Object n) {
+    return 'الخصم $n';
+  }
+
+  @override
+  String get ludoBotThinking => 'يفكر…';
+
+  @override
+  String get ludoMmTitle => 'إيجاد خصم';
+
+  @override
+  String get ludoMmSearching => 'جاري البحث عن لاعبين…';
+
+  @override
+  String get ludoMmRealPlayers => 'نبحث عن لاعبين حقيقيين';
+
+  @override
+  String ludoMmCountdownHint(Object seconds) {
+    return 'نكمل ببوتات بعد $seconds ثانية إذا لم نجد';
+  }
+
+  @override
+  String get ludoMmFilledByBots => 'اكتمل العدد ببوتات احترافية';
+
+  @override
+  String get ludoMmMatchFound => 'تم العثور على المباراة!';
+
+  @override
+  String get ludoMmCancel => 'إلغاء البحث';
+
+  @override
+  String get ludoMmStarting => 'تبدأ المباراة…';
+
+  @override
+  String ludoMmFoundCount(Object found, Object total) {
+    return '$found/$total لاعبين';
+  }
+
+  @override
+  String get ludoMode1v1 => 'خصم واحد (١ ضد ١)';
+
+  @override
+  String get ludoMode1v1Sub => 'مباراة سريعة بهوية مجهولة';
+
+  @override
+  String get ludoMode4Party => 'حفلة من ٤';
+
+  @override
+  String get ludoMode4PartySub => 'ابحث عن ٣ خصوم • نكمل ببوتات';
+
+  @override
+  String get ludoLobbyHowToPlay => 'كيف تلعب';
+
+  @override
+  String get ludoRule1 => 'ارمِ النرد، اخرج بستّة، اوصل ٤ قطع للمركز';
+
+  @override
+  String get ludoRule2 => '٤ قدرات خارقة في الطريق: 🚀 ❄ 🌀 🌪';
+
+  @override
+  String get ludoRule3 => 'أكل الخصم يمنحك دوراً إضافياً';
+
+  @override
+  String get ludoRule4 => 'النجوم خانات آمنة • القدرات تتبدّل كل ٣ رميات';
 }

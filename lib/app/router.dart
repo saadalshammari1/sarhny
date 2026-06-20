@@ -50,6 +50,7 @@ import '../features/games/ludo/presentation/pages/ludo_matchmaking_page.dart';
 import '../features/games/ludo_v2/presentation/ludo_v2_match_page.dart';
 import '../features/games/ludo_power/pages/ludo_power_lobby_page.dart';
 import '../features/games/ludo_power/pages/ludo_power_match_page.dart';
+import '../features/games/ludo_power/pages/ludo_power_matchmaking_page.dart';
 import '../features/profile/presentation/pages/saved_posts_page.dart';
 import '../features/settings/presentation/pages/blocked_accounts_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
@@ -120,6 +121,7 @@ class AppRoutes {
 
   // ─── Ludo Power (flagship: 4-power-ups + 2/4 player modes) ───
   static const String ludoPowerLobby = '/games/ludo-power';
+  static const String ludoPowerMatchmaking = '/games/ludo-power/matchmaking';
   static String ludoPowerMatch(int players) =>
       '/games/ludo-power/match?players=$players';
 }
@@ -372,6 +374,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.ludoPowerLobby,
         builder: (_, __) => const LudoPowerLobbyPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.ludoPowerMatchmaking,
+        builder: (_, state) {
+          final raw = state.uri.queryParameters['players'] ?? '4';
+          final n = int.tryParse(raw) ?? 4;
+          final players = (n == 2 || n == 4) ? n : 4;
+          return LudoPowerMatchmakingPage(playerCount: players);
+        },
       ),
       GoRoute(
         path: '/games/ludo-power/match',

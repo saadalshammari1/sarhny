@@ -1024,4 +1024,76 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get hubTagFeatured => 'ویژه';
+
+  @override
+  String get ludoPlayerYou => 'شما';
+
+  @override
+  String ludoOpponentN(Object n) {
+    return 'حریف $n';
+  }
+
+  @override
+  String get ludoBotThinking => 'در حال فکر کردن…';
+
+  @override
+  String get ludoMmTitle => 'یافتن حریف';
+
+  @override
+  String get ludoMmSearching => 'در حال جست‌وجوی بازیکنان…';
+
+  @override
+  String get ludoMmRealPlayers => 'به دنبال بازیکنان واقعی';
+
+  @override
+  String ludoMmCountdownHint(Object seconds) {
+    return 'اگر کسی پیدا نشد، $seconds ثانیه دیگر با بات‌ها پر می‌شود';
+  }
+
+  @override
+  String get ludoMmFilledByBots => 'با بات‌های ماهر تکمیل شد';
+
+  @override
+  String get ludoMmMatchFound => 'مسابقه پیدا شد!';
+
+  @override
+  String get ludoMmCancel => 'لغو جست‌وجو';
+
+  @override
+  String get ludoMmStarting => 'مسابقه آغاز می‌شود…';
+
+  @override
+  String ludoMmFoundCount(Object found, Object total) {
+    return '$found/$total بازیکن';
+  }
+
+  @override
+  String get ludoMode1v1 => 'حریف ۱ به ۱';
+
+  @override
+  String get ludoMode1v1Sub => 'مسابقه سریع با هویت ناشناس';
+
+  @override
+  String get ludoMode4Party => 'مهمانی ۴ نفره';
+
+  @override
+  String get ludoMode4PartySub =>
+      '۳ حریف پیدا کن • بات‌ها جای خالی را پر می‌کنند';
+
+  @override
+  String get ludoLobbyHowToPlay => 'نحوه بازی';
+
+  @override
+  String get ludoRule1 =>
+      'تاس بینداز، با شش از خانه بیرون بیا، ۴ مهره را به مرکز برسان';
+
+  @override
+  String get ludoRule2 => '۴ ابرقدرت در مسیر: 🚀 ❄ 🌀 🌪';
+
+  @override
+  String get ludoRule3 => 'گرفتن حریف یک نوبت اضافی می‌دهد';
+
+  @override
+  String get ludoRule4 =>
+      'ستاره‌ها خانه‌های امن‌اند • قدرت‌ها هر ۳ پرتاب جابه‌جا می‌شوند';
 }

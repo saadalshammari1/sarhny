@@ -1013,4 +1013,73 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get hubTagFeatured => 'おすすめ';
+
+  @override
+  String get ludoPlayerYou => 'あなた';
+
+  @override
+  String ludoOpponentN(Object n) {
+    return '対戦相手 $n';
+  }
+
+  @override
+  String get ludoBotThinking => '考え中…';
+
+  @override
+  String get ludoMmTitle => '対戦相手を探す';
+
+  @override
+  String get ludoMmSearching => 'プレイヤーを検索中…';
+
+  @override
+  String get ludoMmRealPlayers => '実プレイヤーを探しています';
+
+  @override
+  String ludoMmCountdownHint(Object seconds) {
+    return '見つからない場合 $seconds 秒後にボットで埋めます';
+  }
+
+  @override
+  String get ludoMmFilledByBots => '熟練ボットで埋まりました';
+
+  @override
+  String get ludoMmMatchFound => 'マッチが見つかりました！';
+
+  @override
+  String get ludoMmCancel => '検索をキャンセル';
+
+  @override
+  String get ludoMmStarting => '対戦を開始中…';
+
+  @override
+  String ludoMmFoundCount(Object found, Object total) {
+    return '$found/$total 人';
+  }
+
+  @override
+  String get ludoMode1v1 => '1v1 対戦';
+
+  @override
+  String get ludoMode1v1Sub => 'クイックマッチ、匿名の身分';
+
+  @override
+  String get ludoMode4Party => '4人パーティ';
+
+  @override
+  String get ludoMode4PartySub => '対戦相手3人を募集 • 空き枠はボットが埋めます';
+
+  @override
+  String get ludoLobbyHowToPlay => '遊び方';
+
+  @override
+  String get ludoRule1 => 'サイコロを振り、6でホームを出て、4つの駒を中央へ';
+
+  @override
+  String get ludoRule2 => '道中に4つの超能力: 🚀 ❄ 🌀 🌪';
+
+  @override
+  String get ludoRule3 => '相手を捕獲すると追加ターンが得られます';
+
+  @override
+  String get ludoRule4 => '星は安全マス • 能力は3回振るごとに再配置';
 }

@@ -1035,4 +1035,76 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get hubTagFeatured => 'Destacado';
+
+  @override
+  String get ludoPlayerYou => 'Tú';
+
+  @override
+  String ludoOpponentN(Object n) {
+    return 'Rival $n';
+  }
+
+  @override
+  String get ludoBotThinking => 'Pensando…';
+
+  @override
+  String get ludoMmTitle => 'Buscando rivales';
+
+  @override
+  String get ludoMmSearching => 'Buscando jugadores…';
+
+  @override
+  String get ludoMmRealPlayers => 'Buscando jugadores reales';
+
+  @override
+  String ludoMmCountdownHint(Object seconds) {
+    return 'Completaremos con bots en $seconds s si no aparece nadie';
+  }
+
+  @override
+  String get ludoMmFilledByBots => 'Completado con bots expertos';
+
+  @override
+  String get ludoMmMatchFound => '¡Partida encontrada!';
+
+  @override
+  String get ludoMmCancel => 'Cancelar búsqueda';
+
+  @override
+  String get ludoMmStarting => 'Comenzando partida…';
+
+  @override
+  String ludoMmFoundCount(Object found, Object total) {
+    return '$found/$total jugadores';
+  }
+
+  @override
+  String get ludoMode1v1 => 'Rival 1v1';
+
+  @override
+  String get ludoMode1v1Sub => 'Partida rápida, identidad anónima';
+
+  @override
+  String get ludoMode4Party => 'Partida de 4 jugadores';
+
+  @override
+  String get ludoMode4PartySub =>
+      'Busca 3 rivales • los bots cubren los huecos';
+
+  @override
+  String get ludoLobbyHowToPlay => 'Cómo jugar';
+
+  @override
+  String get ludoRule1 =>
+      'Tira el dado, sal de casa con un seis, lleva las 4 fichas al centro';
+
+  @override
+  String get ludoRule2 => '4 superpoderes en el camino: 🚀 ❄ 🌀 🌪';
+
+  @override
+  String get ludoRule3 => 'Capturar a un rival otorga un turno extra';
+
+  @override
+  String get ludoRule4 =>
+      'Las estrellas son casillas seguras • los poderes se reordenan cada 3 tiradas';
 }

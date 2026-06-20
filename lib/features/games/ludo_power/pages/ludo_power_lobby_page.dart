@@ -5,8 +5,9 @@ import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../theme/ludo_theme.dart';
 
-/// Pre-match lobby that lets the user pick 2-player (1v1 vs bot) or
-/// 4-player (1v3 vs bots). Kept dead simple — one tap launches the match.
+/// Power-Ludo lobby. Two paths into a match — both flow through the
+/// matchmaking screen so the user always feels like they're entering a
+/// live game, never a "practice mode". Bots fill in transparently.
 class LudoPowerLobbyPage extends StatelessWidget {
   const LudoPowerLobbyPage({super.key});
 
@@ -32,15 +33,13 @@ class LudoPowerLobbyPage extends StatelessWidget {
                         icon: const Icon(Icons.arrow_back_ios_new_rounded,
                             color: RoyalTheme.textLight, size: 20),
                         onPressed: () {
-                          if (context.canPop()) {
-                            context.pop();
-                          }
+                          if (context.canPop()) context.pop();
                         },
                       ),
                       const Spacer(),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Text(
                     l10n.ludoPowerTitle,
                     style: const TextStyle(
@@ -58,7 +57,7 @@ class LudoPowerLobbyPage extends StatelessWidget {
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   Text(
                     l10n.ludoLobbyChooseMode,
                     style: TextStyle(
@@ -70,34 +69,24 @@ class LudoPowerLobbyPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   _ModeCard(
-                    title: l10n.ludoMode2Players,
-                    subtitle: l10n.ludoMode2PlayersSub,
-                    icon: Icons.person_outline,
+                    title: l10n.ludoMode1v1,
+                    subtitle: l10n.ludoMode1v1Sub,
+                    icon: Icons.person_outline_rounded,
                     accent: const Color(0xFFF6C021),
-                    onTap: () => context.push(AppRoutes.ludoPowerMatch(2)),
+                    onTap: () => context
+                        .push('${AppRoutes.ludoPowerMatchmaking}?players=2'),
                   ),
                   const SizedBox(height: 12),
                   _ModeCard(
-                    title: l10n.ludoMode4Players,
-                    subtitle: l10n.ludoMode4PlayersSub,
+                    title: l10n.ludoMode4Party,
+                    subtitle: l10n.ludoMode4PartySub,
                     icon: Icons.groups_2_outlined,
                     accent: const Color(0xFF9A3FE0),
-                    onTap: () => context.push(AppRoutes.ludoPowerMatch(4)),
+                    onTap: () => context
+                        .push('${AppRoutes.ludoPowerMatchmaking}?players=4'),
                   ),
-                  const Spacer(),
-                  Center(
-                    child: Wrap(
-                      spacing: 14,
-                      runSpacing: 8,
-                      alignment: WrapAlignment.center,
-                      children: const [
-                        _PowerChip(label: 'Rocket', emoji: '🚀'),
-                        _PowerChip(label: 'Freeze', emoji: '❄'),
-                        _PowerChip(label: 'Portal', emoji: '🌀'),
-                        _PowerChip(label: 'Tornado', emoji: '🌪'),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: 22),
+                  _RulesPanel(l10n: l10n),
                 ],
               ),
             ),
@@ -137,20 +126,26 @@ class _ModeCard extends StatelessWidget {
               begin: AlignmentDirectional.topStart,
               end: AlignmentDirectional.bottomEnd,
               colors: [
-                accent.withValues(alpha: 0.20),
+                accent.withValues(alpha: 0.22),
                 accent.withValues(alpha: 0.06),
               ],
             ),
-            border: Border.all(color: accent.withValues(alpha: 0.45)),
+            border: Border.all(color: accent.withValues(alpha: 0.55)),
+            boxShadow: [
+              BoxShadow(
+                  color: accent.withValues(alpha: 0.15),
+                  blurRadius: 18,
+                  spreadRadius: 1)
+            ],
           ),
           child: Row(
             children: [
               Container(
-                width: 52,
-                height: 52,
+                width: 54,
+                height: 54,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.22),
+                  color: accent.withValues(alpha: 0.28),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(icon, color: accent, size: 28),
@@ -172,7 +167,7 @@ class _ModeCard extends StatelessWidget {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        color: RoyalTheme.textLight.withValues(alpha: 0.65),
+                        color: RoyalTheme.textLight.withValues(alpha: 0.7),
                         fontSize: 12,
                         height: 1.4,
                       ),
@@ -182,7 +177,7 @@ class _ModeCard extends StatelessWidget {
               ),
               Icon(
                 Icons.chevron_left_rounded,
-                color: RoyalTheme.textLight.withValues(alpha: 0.7),
+                color: RoyalTheme.textLight.withValues(alpha: 0.75),
               ),
             ],
           ),
@@ -192,35 +187,67 @@ class _ModeCard extends StatelessWidget {
   }
 }
 
-class _PowerChip extends StatelessWidget {
-  const _PowerChip({required this.label, required this.emoji});
-  final String label;
-  final String emoji;
+class _RulesPanel extends StatelessWidget {
+  const _RulesPanel({required this.l10n});
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: RoyalTheme.panelSolid,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: RoyalTheme.panelBorder),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 14)),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: RoyalTheme.textLight.withValues(alpha: 0.8),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              const Icon(Icons.menu_book_rounded,
+                  color: RoyalTheme.goldAccent, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                l10n.ludoLobbyHowToPlay,
+                style: const TextStyle(
+                  color: RoyalTheme.goldAccent,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
           ),
+          const SizedBox(height: 10),
+          _ruleLine(l10n.ludoRule1),
+          _ruleLine(l10n.ludoRule2),
+          _ruleLine(l10n.ludoRule3),
+          _ruleLine(l10n.ludoRule4),
         ],
       ),
     );
   }
+
+  Widget _ruleLine(String txt) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('• ',
+                style: TextStyle(
+                    color: RoyalTheme.textLight.withValues(alpha: 0.6))),
+            Expanded(
+              child: Text(
+                txt,
+                style: TextStyle(
+                  color: RoyalTheme.textLight.withValues(alpha: 0.78),
+                  fontSize: 12,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 }

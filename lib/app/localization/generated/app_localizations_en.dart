@@ -1028,4 +1028,75 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hubTagFeatured => 'Featured';
+
+  @override
+  String get ludoPlayerYou => 'You';
+
+  @override
+  String ludoOpponentN(Object n) {
+    return 'Opponent $n';
+  }
+
+  @override
+  String get ludoBotThinking => 'Thinking…';
+
+  @override
+  String get ludoMmTitle => 'Finding opponents';
+
+  @override
+  String get ludoMmSearching => 'Searching for players…';
+
+  @override
+  String get ludoMmRealPlayers => 'Looking for real players';
+
+  @override
+  String ludoMmCountdownHint(Object seconds) {
+    return 'We\'ll fill with bots in ${seconds}s if none found';
+  }
+
+  @override
+  String get ludoMmFilledByBots => 'Filled with skilled bots';
+
+  @override
+  String get ludoMmMatchFound => 'Match found!';
+
+  @override
+  String get ludoMmCancel => 'Cancel search';
+
+  @override
+  String get ludoMmStarting => 'Starting match…';
+
+  @override
+  String ludoMmFoundCount(Object found, Object total) {
+    return '$found/$total players';
+  }
+
+  @override
+  String get ludoMode1v1 => '1v1 opponent';
+
+  @override
+  String get ludoMode1v1Sub => 'Quick match, anonymous identity';
+
+  @override
+  String get ludoMode4Party => '4-player party';
+
+  @override
+  String get ludoMode4PartySub => 'Search for 3 opponents • bots fill the gaps';
+
+  @override
+  String get ludoLobbyHowToPlay => 'How to play';
+
+  @override
+  String get ludoRule1 =>
+      'Roll the dice, leave home on six, get all 4 pieces to centre';
+
+  @override
+  String get ludoRule2 => '4 super-powers on the path: 🚀 ❄ 🌀 🌪';
+
+  @override
+  String get ludoRule3 => 'Capturing an opponent grants an extra turn';
+
+  @override
+  String get ludoRule4 =>
+      'Stars are safe cells • powers reshuffle every 3 rolls';
 }

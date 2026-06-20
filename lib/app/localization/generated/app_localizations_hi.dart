@@ -1027,4 +1027,75 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get hubTagFeatured => 'फ़ीचर्ड';
+
+  @override
+  String get ludoPlayerYou => 'आप';
+
+  @override
+  String ludoOpponentN(Object n) {
+    return 'विरोधी $n';
+  }
+
+  @override
+  String get ludoBotThinking => 'सोच रहा है…';
+
+  @override
+  String get ludoMmTitle => 'विरोधी ढूँढना';
+
+  @override
+  String get ludoMmSearching => 'खिलाड़ी खोज रहे हैं…';
+
+  @override
+  String get ludoMmRealPlayers => 'असली खिलाड़ी ढूँढ रहे हैं';
+
+  @override
+  String ludoMmCountdownHint(Object seconds) {
+    return 'अगर कोई नहीं मिला तो $seconds सेकंड में बॉट से भर देंगे';
+  }
+
+  @override
+  String get ludoMmFilledByBots => 'कुशल बॉट्स से भर दिया';
+
+  @override
+  String get ludoMmMatchFound => 'मैच मिल गया!';
+
+  @override
+  String get ludoMmCancel => 'खोज रद्द करें';
+
+  @override
+  String get ludoMmStarting => 'मैच शुरू हो रहा है…';
+
+  @override
+  String ludoMmFoundCount(Object found, Object total) {
+    return '$found/$total खिलाड़ी';
+  }
+
+  @override
+  String get ludoMode1v1 => '1v1 विरोधी';
+
+  @override
+  String get ludoMode1v1Sub => 'तेज़ मैच, गुमनाम पहचान';
+
+  @override
+  String get ludoMode4Party => '4-खिलाड़ी पार्टी';
+
+  @override
+  String get ludoMode4PartySub => '3 विरोधी खोजें • बॉट्स कमी पूरी करेंगे';
+
+  @override
+  String get ludoLobbyHowToPlay => 'कैसे खेलें';
+
+  @override
+  String get ludoRule1 =>
+      'पासा फेंकें, छह पर घर से निकलें, चारों गोटियाँ केंद्र तक पहुँचाएँ';
+
+  @override
+  String get ludoRule2 => 'रास्ते में 4 महाशक्तियाँ: 🚀 ❄ 🌀 🌪';
+
+  @override
+  String get ludoRule3 => 'विरोधी को पकड़ने पर अतिरिक्त बारी मिलती है';
+
+  @override
+  String get ludoRule4 =>
+      'तारे सुरक्षित खाने हैं • हर 3 चालों में शक्तियाँ बदलती हैं';
 }

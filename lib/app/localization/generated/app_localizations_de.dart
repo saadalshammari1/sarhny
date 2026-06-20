@@ -1033,4 +1033,75 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get hubTagFeatured => 'Empfohlen';
+
+  @override
+  String get ludoPlayerYou => 'Du';
+
+  @override
+  String ludoOpponentN(Object n) {
+    return 'Gegner $n';
+  }
+
+  @override
+  String get ludoBotThinking => 'Denkt nach…';
+
+  @override
+  String get ludoMmTitle => 'Gegner suchen';
+
+  @override
+  String get ludoMmSearching => 'Suche nach Spielern…';
+
+  @override
+  String get ludoMmRealPlayers => 'Suche echte Spieler';
+
+  @override
+  String ludoMmCountdownHint(Object seconds) {
+    return 'Wir füllen mit Bots in $seconds s auf, falls niemand kommt';
+  }
+
+  @override
+  String get ludoMmFilledByBots => 'Mit starken Bots aufgefüllt';
+
+  @override
+  String get ludoMmMatchFound => 'Partie gefunden!';
+
+  @override
+  String get ludoMmCancel => 'Suche abbrechen';
+
+  @override
+  String get ludoMmStarting => 'Partie startet…';
+
+  @override
+  String ludoMmFoundCount(Object found, Object total) {
+    return '$found/$total Spieler';
+  }
+
+  @override
+  String get ludoMode1v1 => '1v1 Gegner';
+
+  @override
+  String get ludoMode1v1Sub => 'Schnelle Partie, anonyme Identität';
+
+  @override
+  String get ludoMode4Party => 'Partie zu 4';
+
+  @override
+  String get ludoMode4PartySub => 'Suche 3 Gegner • Bots füllen die Lücken';
+
+  @override
+  String get ludoLobbyHowToPlay => 'So wird gespielt';
+
+  @override
+  String get ludoRule1 =>
+      'Würfle, verlasse das Haus bei einer Sechs, bring alle 4 Figuren ins Zentrum';
+
+  @override
+  String get ludoRule2 => '4 Superkräfte auf dem Weg: 🚀 ❄ 🌀 🌪';
+
+  @override
+  String get ludoRule3 => 'Einen Gegner zu schlagen bringt einen Extrazug';
+
+  @override
+  String get ludoRule4 =>
+      'Sterne sind sichere Felder • Kräfte mischen sich alle 3 Würfe neu';
 }

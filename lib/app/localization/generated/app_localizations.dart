@@ -2071,6 +2071,132 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'مميّز'**
   String get hubTagFeatured;
+
+  /// No description provided for @ludoPlayerYou.
+  ///
+  /// In ar, this message translates to:
+  /// **'أنت'**
+  String get ludoPlayerYou;
+
+  /// No description provided for @ludoOpponentN.
+  ///
+  /// In ar, this message translates to:
+  /// **'الخصم {n}'**
+  String ludoOpponentN(Object n);
+
+  /// No description provided for @ludoBotThinking.
+  ///
+  /// In ar, this message translates to:
+  /// **'يفكر…'**
+  String get ludoBotThinking;
+
+  /// No description provided for @ludoMmTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'إيجاد خصم'**
+  String get ludoMmTitle;
+
+  /// No description provided for @ludoMmSearching.
+  ///
+  /// In ar, this message translates to:
+  /// **'جاري البحث عن لاعبين…'**
+  String get ludoMmSearching;
+
+  /// No description provided for @ludoMmRealPlayers.
+  ///
+  /// In ar, this message translates to:
+  /// **'نبحث عن لاعبين حقيقيين'**
+  String get ludoMmRealPlayers;
+
+  /// No description provided for @ludoMmCountdownHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'نكمل ببوتات بعد {seconds} ثانية إذا لم نجد'**
+  String ludoMmCountdownHint(Object seconds);
+
+  /// No description provided for @ludoMmFilledByBots.
+  ///
+  /// In ar, this message translates to:
+  /// **'اكتمل العدد ببوتات احترافية'**
+  String get ludoMmFilledByBots;
+
+  /// No description provided for @ludoMmMatchFound.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم العثور على المباراة!'**
+  String get ludoMmMatchFound;
+
+  /// No description provided for @ludoMmCancel.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء البحث'**
+  String get ludoMmCancel;
+
+  /// No description provided for @ludoMmStarting.
+  ///
+  /// In ar, this message translates to:
+  /// **'تبدأ المباراة…'**
+  String get ludoMmStarting;
+
+  /// No description provided for @ludoMmFoundCount.
+  ///
+  /// In ar, this message translates to:
+  /// **'{found}/{total} لاعبين'**
+  String ludoMmFoundCount(Object found, Object total);
+
+  /// No description provided for @ludoMode1v1.
+  ///
+  /// In ar, this message translates to:
+  /// **'خصم واحد (١ ضد ١)'**
+  String get ludoMode1v1;
+
+  /// No description provided for @ludoMode1v1Sub.
+  ///
+  /// In ar, this message translates to:
+  /// **'مباراة سريعة بهوية مجهولة'**
+  String get ludoMode1v1Sub;
+
+  /// No description provided for @ludoMode4Party.
+  ///
+  /// In ar, this message translates to:
+  /// **'حفلة من ٤'**
+  String get ludoMode4Party;
+
+  /// No description provided for @ludoMode4PartySub.
+  ///
+  /// In ar, this message translates to:
+  /// **'ابحث عن ٣ خصوم • نكمل ببوتات'**
+  String get ludoMode4PartySub;
+
+  /// No description provided for @ludoLobbyHowToPlay.
+  ///
+  /// In ar, this message translates to:
+  /// **'كيف تلعب'**
+  String get ludoLobbyHowToPlay;
+
+  /// No description provided for @ludoRule1.
+  ///
+  /// In ar, this message translates to:
+  /// **'ارمِ النرد، اخرج بستّة، اوصل ٤ قطع للمركز'**
+  String get ludoRule1;
+
+  /// No description provided for @ludoRule2.
+  ///
+  /// In ar, this message translates to:
+  /// **'٤ قدرات خارقة في الطريق: 🚀 ❄ 🌀 🌪'**
+  String get ludoRule2;
+
+  /// No description provided for @ludoRule3.
+  ///
+  /// In ar, this message translates to:
+  /// **'أكل الخصم يمنحك دوراً إضافياً'**
+  String get ludoRule3;
+
+  /// No description provided for @ludoRule4.
+  ///
+  /// In ar, this message translates to:
+  /// **'النجوم خانات آمنة • القدرات تتبدّل كل ٣ رميات'**
+  String get ludoRule4;
 }
 
 class _AppLocalizationsDelegate

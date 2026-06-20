@@ -1039,4 +1039,76 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get hubTagFeatured => 'Vedette';
+
+  @override
+  String get ludoPlayerYou => 'Vous';
+
+  @override
+  String ludoOpponentN(Object n) {
+    return 'Adversaire $n';
+  }
+
+  @override
+  String get ludoBotThinking => 'Réflexion…';
+
+  @override
+  String get ludoMmTitle => 'Recherche d\'adversaires';
+
+  @override
+  String get ludoMmSearching => 'Recherche de joueurs…';
+
+  @override
+  String get ludoMmRealPlayers => 'Recherche de vrais joueurs';
+
+  @override
+  String ludoMmCountdownHint(Object seconds) {
+    return 'Nous complèterons avec des bots dans $seconds s si personne n\'est trouvé';
+  }
+
+  @override
+  String get ludoMmFilledByBots => 'Complété par des bots aguerris';
+
+  @override
+  String get ludoMmMatchFound => 'Partie trouvée !';
+
+  @override
+  String get ludoMmCancel => 'Annuler la recherche';
+
+  @override
+  String get ludoMmStarting => 'Démarrage de la partie…';
+
+  @override
+  String ludoMmFoundCount(Object found, Object total) {
+    return '$found/$total joueurs';
+  }
+
+  @override
+  String get ludoMode1v1 => 'Adversaire 1v1';
+
+  @override
+  String get ludoMode1v1Sub => 'Partie rapide, identité anonyme';
+
+  @override
+  String get ludoMode4Party => 'Partie à 4 joueurs';
+
+  @override
+  String get ludoMode4PartySub =>
+      'Cherchez 3 adversaires • les bots comblent les vides';
+
+  @override
+  String get ludoLobbyHowToPlay => 'Comment jouer';
+
+  @override
+  String get ludoRule1 =>
+      'Lancez le dé, sortez avec un six, amenez les 4 pions au centre';
+
+  @override
+  String get ludoRule2 => '4 super-pouvoirs sur le parcours : 🚀 ❄ 🌀 🌪';
+
+  @override
+  String get ludoRule3 => 'Capturer un adversaire offre un tour supplémentaire';
+
+  @override
+  String get ludoRule4 =>
+      'Les étoiles sont des cases sûres • les pouvoirs se réorganisent tous les 3 lancers';
 }

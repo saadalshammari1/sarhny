@@ -12,9 +12,25 @@ import '../theme/ludo_theme.dart';
 import '../widgets/ludo_board_painter.dart';
 import '../widgets/ludo_dice.dart';
 import '../widgets/ludo_pawn.dart';
+import '../widgets/player_seat.dart';
 
-/// Full-screen Ludo-Power match. `playerCount` chooses 2-player (1v1 vs bot)
-/// or 4-player (1v3 vs bots) mode — the engine handles the rest.
+/// Pacing constants — chosen so the table feels deliberate, not frantic.
+/// Each bot's turn becomes a small choreographed beat the user can watch:
+/// "X is thinking" → roll animation → 800ms dwell on dice → move → 600ms
+/// post-move dwell → next seat. The full bot loop sits at ~3.5s rather
+/// than the ~1s it used to be — closer to a real table game.
+const Duration _kRollSpinDuration = Duration(milliseconds: 1200);
+const Duration _kBotThinkDuration = Duration(milliseconds: 1100);
+const Duration _kPostRollDwell = Duration(milliseconds: 800);
+const Duration _kPostMoveDwell = Duration(milliseconds: 650);
+const Duration _kTurnHandoffDwell = Duration(milliseconds: 450);
+
+/// Full-screen Ludo-Power match.
+/// `playerCount` chooses 2-player (1v1 vs anonymous opponent) or 4-player
+/// (1v3) mode. Opponents are addressed anonymously as "الخصم ١/٢/٣"
+/// regardless of whether they're bots — keeps the user's mental model
+/// consistent with Sarhny's anonymity ethos and ports cleanly when real
+/// online opponents land.
 class LudoPowerMatchPage extends ConsumerStatefulWidget {
   final int playerCount;
   const LudoPowerMatchPage({super.key, this.playerCount = 4})
@@ -28,19 +44,22 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
   late LudoEngine engine;
   String? message;
   bool busy = false;
+  bool _isRollingDice = false; // drives the dice spin animation
   String? toastMsg;
   Timer? _toastTimer;
   int diceShown = 6;
+  // Per-player last-dice values for the corner mini-dice indicators.
+  // 6 is the visual neutral state before the player has rolled.
+  final List<int> _lastDicePerPlayer = [6, 6, 6, 6];
 
   @override
   void initState() {
     super.initState();
     engine = LudoEngine(onEvent: _onEvent, playerCount: widget.playerCount);
-    // Warm the interstitial in the background so the next every-3-matches
-    // trigger fires instantly without a 6-second blocking load.
     ref.read(interstitialAdServiceProvider).preload().catchError((_) {});
   }
 
+  // ─── Event handling ────────────────────────────────────────────────────
   void _onEvent(GameEvent e) {
     switch (e.kind) {
       case 'rocket':
@@ -52,9 +71,6 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
         _showToast(_eventMessage(e));
         break;
       case 'win':
-        // Count the match in the cross-game interstitial cadence and show
-        // the winner dialog. The ad (if due) plays after the user dismisses
-        // the celebration via "New game" so it never interrupts the moment.
         ref
             .read(interstitialAdServiceProvider)
             .onMatchCompleted()
@@ -87,26 +103,35 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
     }
   }
 
+  /// Anonymous names: the user is "You" (`أنت`) and every opponent is
+  /// numbered. In 4-player mode we number them 1,2,3 based on their seat
+  /// index relative to the human (so the player above is "1", to the side
+  /// "2", diagonal "3"). In 2-player there's just one opponent.
   String _playerName(int p) {
     final l10n = AppLocalizations.of(context);
-    return switch (p) {
-      0 => l10n.ludoPlayerGold,
-      1 => l10n.ludoPlayerBlue,
-      2 => l10n.ludoPlayerPurple,
-      3 => l10n.ludoPlayerGreen,
-      _ => '',
-    };
+    if (p == LudoEngine.humanPlayer) return l10n.ludoPlayerYou;
+    if (widget.playerCount == 2) {
+      // Single opponent — drop the number to keep the chip uncluttered.
+      return l10n.ludoOpponentN(1);
+    }
+    // 4-player: number opponents 1,2,3 in the engine's clockwise order.
+    final activeOpponents = engine.activePlayers
+        .where((x) => x != LudoEngine.humanPlayer)
+        .toList();
+    final idx = activeOpponents.indexOf(p);
+    return l10n.ludoOpponentN(idx + 1);
   }
 
   void _showToast(String m) {
     if (m.isEmpty) return;
     setState(() => toastMsg = m);
     _toastTimer?.cancel();
-    _toastTimer = Timer(const Duration(milliseconds: 1400), () {
+    _toastTimer = Timer(const Duration(milliseconds: 1600), () {
       if (mounted) setState(() => toastMsg = null);
     });
   }
 
+  // ─── Roll & move flow ─────────────────────────────────────────────────
   Future<void> _roll() async {
     if (busy ||
         engine.rolled ||
@@ -114,30 +139,52 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
         engine.current != LudoEngine.humanPlayer) {
       return;
     }
-    setState(() => busy = true);
-    for (int i = 0; i < 9; i++) {
-      setState(() => diceShown = 1 + (DateTime.now().microsecond % 6));
-      await Future.delayed(const Duration(milliseconds: 55));
+    await _animateRollAndCommit(LudoEngine.humanPlayer);
+    _afterRoll();
+  }
+
+  /// Centralised roll choreography for both human + bot. Starts the spin
+  /// animation, plays it for the full duration, locks the result, briefly
+  /// dwells so the user can READ the value, then returns.
+  Future<void> _animateRollAndCommit(int player) async {
+    setState(() {
+      busy = true;
+      _isRollingDice = true;
+    });
+    // Animate "fake" dice values during the spin so the corner mini-dice
+    // shimmers too.
+    final spinFrames = (_kRollSpinDuration.inMilliseconds / 80).round();
+    for (int i = 0; i < spinFrames; i++) {
+      if (!mounted) return;
+      setState(() {
+        final fake = 1 + (DateTime.now().microsecond % 6);
+        diceShown = fake;
+        _lastDicePerPlayer[player] = fake;
+      });
+      await Future.delayed(const Duration(milliseconds: 80));
     }
     final v = engine.rollDice();
+    if (!mounted) return;
     setState(() {
       diceShown = v;
-      busy = false;
+      _lastDicePerPlayer[player] = v;
+      _isRollingDice = false;
     });
-    _afterRoll();
+    await Future.delayed(_kPostRollDwell);
+    setState(() => busy = false);
   }
 
   void _afterRoll() {
     final moves = engine.legalMoves(engine.current, engine.dice);
     if (moves.isEmpty) {
       _showToast(AppLocalizations.of(context).ludoNoMove);
-      Future.delayed(const Duration(milliseconds: 700), _endTurn);
+      Future.delayed(_kTurnHandoffDwell, _endTurn);
       return;
     }
     if (engine.current == LudoEngine.humanPlayer) {
       setState(() => message = AppLocalizations.of(context).ludoTapPawn);
     } else {
-      Future.delayed(const Duration(milliseconds: 550),
+      Future.delayed(const Duration(milliseconds: 700),
           () => _doMove(engine.botChoose(moves)));
     }
   }
@@ -147,7 +194,7 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
     final player = engine.current;
     final extra = engine.applyMove(player, m);
     setState(() {});
-    await Future.delayed(const Duration(milliseconds: 350));
+    await Future.delayed(_kPostMoveDwell);
     if (engine.gameOver) {
       setState(() => busy = false);
       return;
@@ -155,11 +202,10 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
     setState(() => busy = false);
     if (extra) {
       engine.rolled = false;
-      setState(() => diceShown = 6);
       if (player == LudoEngine.humanPlayer) {
         setState(() => message = AppLocalizations.of(context).ludoExtraTurn);
       } else {
-        Future.delayed(const Duration(milliseconds: 500), _rollForBot);
+        Future.delayed(_kTurnHandoffDwell, _rollForBot);
       }
     } else {
       _endTurn();
@@ -174,25 +220,16 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
       diceShown = 6;
       message = engine.current == LudoEngine.humanPlayer
           ? l10n.ludoYourTurn
-          : l10n.ludoBotTurn(_playerName(engine.current));
+          : l10n.ludoBotThinking;
     });
     if (engine.current != LudoEngine.humanPlayer && !engine.gameOver) {
-      Future.delayed(const Duration(milliseconds: 600), _rollForBot);
+      Future.delayed(_kBotThinkDuration, _rollForBot);
     }
   }
 
   Future<void> _rollForBot() async {
-    if (engine.gameOver) return;
-    setState(() => busy = true);
-    for (int i = 0; i < 6; i++) {
-      setState(() => diceShown = 1 + (DateTime.now().microsecond % 6));
-      await Future.delayed(const Duration(milliseconds: 50));
-    }
-    final v = engine.rollDice();
-    setState(() {
-      diceShown = v;
-      busy = false;
-    });
+    if (engine.gameOver || !mounted) return;
+    await _animateRollAndCommit(engine.current);
     _afterRoll();
   }
 
@@ -250,6 +287,9 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
                 setState(() {
                   engine.reset();
                   diceShown = 6;
+                  for (int i = 0; i < 4; i++) {
+                    _lastDicePerPlayer[i] = 6;
+                  }
                   message = null;
                 });
               },
@@ -271,6 +311,7 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
     super.dispose();
   }
 
+  // ─── Build ────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -286,23 +327,23 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
               children: [
                 Column(
                   children: [
-                    const SizedBox(height: 4),
                     _topBar(l10n),
-                    const SizedBox(height: 10),
-                    _turnBar(l10n),
-                    const SizedBox(height: 10),
-                    Expanded(child: Center(child: _board())),
+                    const SizedBox(height: 6),
+                    Expanded(child: Center(child: _boardWithSeats(l10n))),
                     const SizedBox(height: 8),
                     Text(
                       effectiveMessage,
                       style: TextStyle(
-                        color: RoyalTheme.textLight.withValues(alpha: 0.67),
+                        color: RoyalTheme.textLight.withValues(alpha: 0.7),
                         fontSize: 13,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     LudoDice(
                       value: diceShown,
+                      rolling: _isRollingDice &&
+                          engine.current == LudoEngine.humanPlayer,
                       onTap: _roll,
                       enabled: !busy &&
                           !engine.rolled &&
@@ -315,35 +356,10 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
                             color: RoyalTheme.goldAccent,
                             fontWeight: FontWeight.bold,
                             fontSize: 12)),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                   ],
                 ),
-                if (toastMsg != null)
-                  Positioned(
-                    top: 70,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 18, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: RoyalTheme.panelSolid,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                              color: RoyalTheme.goldAccent
-                                  .withValues(alpha: 0.6)),
-                        ),
-                        child: Text(
-                          toastMsg!,
-                          style: const TextStyle(
-                              color: RoyalTheme.textLight,
-                              fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ),
-                  ),
+                if (toastMsg != null) _toastBanner(),
               ],
             ),
           ),
@@ -354,7 +370,7 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
 
   Widget _topBar(AppLocalizations l10n) {
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 4, 8, 0),
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 8, 0),
       child: Row(
         children: [
           IconButton(
@@ -362,20 +378,16 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
             icon: const Icon(Icons.arrow_back_ios_new_rounded,
                 color: RoyalTheme.textLight, size: 20),
             onPressed: () {
-              if (context.canPop()) {
-                context.pop();
-              }
+              if (context.canPop()) context.pop();
             },
           ),
           const Spacer(),
           Text(
-            widget.playerCount == 2
-                ? l10n.ludoMode2Players
-                : l10n.ludoMode4Players,
+            widget.playerCount == 2 ? l10n.ludoMode1v1 : l10n.ludoMode4Party,
             style: TextStyle(
-                color: RoyalTheme.textLight.withValues(alpha: 0.7),
+                color: RoyalTheme.textLight.withValues(alpha: 0.75),
                 fontSize: 12,
-                fontWeight: FontWeight.w600),
+                fontWeight: FontWeight.w700),
           ),
           const SizedBox(width: 8),
         ],
@@ -383,73 +395,157 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
     );
   }
 
-  Widget _turnBar(AppLocalizations l10n) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-      decoration: BoxDecoration(
-        color: RoyalTheme.panelSolid,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: RoyalTheme.panelBorder),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('♛ ',
-              style:
-                  TextStyle(color: RoyalTheme.goldAccent, fontSize: 16)),
-          Text(
-            l10n.ludoTurnLabel(_playerName(engine.current)),
+  Widget _toastBanner() {
+    return Positioned(
+      top: 56,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            color: RoyalTheme.panelSolid,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+                color: RoyalTheme.goldAccent.withValues(alpha: 0.7)),
+            boxShadow: [
+              BoxShadow(
+                  color: RoyalTheme.goldAccent.withValues(alpha: 0.25),
+                  blurRadius: 18,
+                  spreadRadius: 1),
+            ],
+          ),
+          child: Text(
+            toastMsg!,
             style: const TextStyle(
                 color: RoyalTheme.textLight,
-                fontWeight: FontWeight.bold,
-                fontSize: 15),
+                fontWeight: FontWeight.w800,
+                fontSize: 14),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _board() {
+  /// Stacks player-seat HUD pills in the 4 corners around the board.
+  /// In 2-player mode only the human (TL) + the diagonal opponent (BR)
+  /// seats render — the empty corners remain visually quiet.
+  Widget _boardWithSeats(AppLocalizations l10n) {
     return LayoutBuilder(builder: (context, constraints) {
       final size =
           constraints.biggest.shortestSide.clamp(0.0, 460.0).toDouble();
-      return GestureDetector(
-        onTapDown: (d) => _tapBoard(d.localPosition, size),
-        child: Container(
-          width: size,
-          height: size,
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            gradient: RoyalTheme.goldFrame,
-            borderRadius: BorderRadius.circular(size * 0.05),
-            boxShadow: const [
-              BoxShadow(
-                  color: Color(0x88000000),
-                  blurRadius: 16,
-                  offset: Offset(0, 6))
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(size * 0.04),
-            child: Stack(
-              children: [
-                CustomPaint(
-                  size: Size(size - 16, size - 16),
-                  painter: LudoBoardPainter(engine),
-                ),
-                ..._buildPawns(size - 16),
-              ],
+      return SizedBox(
+        width: size,
+        height: size + 70, // extra room for the seat pills sitting outside
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              top: 30,
+              child: _boardOnly(size),
             ),
-          ),
+            // Seat TL: human (player 0, yellow)
+            Positioned(
+              top: 0,
+              left: 0,
+              child: PlayerSeat(
+                label: _playerName(0),
+                colorKey: BoardScheme.playerColors[0],
+                diceValue: _lastDicePerPlayer[0],
+                isCurrent: engine.current == 0 && !engine.gameOver,
+                isThinking:
+                    engine.current == 0 && _isRollingDice,
+                isRolling: _isRollingDice && engine.current == 0,
+                alignment: Alignment.topLeft,
+              ),
+            ),
+            // Seat TR: player 1 (blue) — only in 4-player
+            if (engine.isActivePlayer(1))
+              Positioned(
+                top: 0,
+                right: 0,
+                child: PlayerSeat(
+                  label: _playerName(1),
+                  colorKey: BoardScheme.playerColors[1],
+                  diceValue: _lastDicePerPlayer[1],
+                  isCurrent: engine.current == 1 && !engine.gameOver,
+                  isThinking:
+                      engine.current == 1 && _isRollingDice,
+                  isRolling: _isRollingDice && engine.current == 1,
+                  alignment: Alignment.topRight,
+                ),
+              ),
+            // Seat BR: player 2 (purple) — active in both modes
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: PlayerSeat(
+                label: _playerName(2),
+                colorKey: BoardScheme.playerColors[2],
+                diceValue: _lastDicePerPlayer[2],
+                isCurrent: engine.current == 2 && !engine.gameOver,
+                isThinking:
+                    engine.current == 2 && _isRollingDice,
+                isRolling: _isRollingDice && engine.current == 2,
+                alignment: Alignment.bottomRight,
+              ),
+            ),
+            // Seat BL: player 3 (green) — only in 4-player
+            if (engine.isActivePlayer(3))
+              Positioned(
+                bottom: 0,
+                left: 0,
+                child: PlayerSeat(
+                  label: _playerName(3),
+                  colorKey: BoardScheme.playerColors[3],
+                  diceValue: _lastDicePerPlayer[3],
+                  isCurrent: engine.current == 3 && !engine.gameOver,
+                  isThinking:
+                      engine.current == 3 && _isRollingDice,
+                  isRolling: _isRollingDice && engine.current == 3,
+                  alignment: Alignment.bottomLeft,
+                ),
+              ),
+          ],
         ),
       );
     });
   }
 
-  /// Builds pawn widgets layered on top of the board. Pieces sharing a cell
-  /// fan out in a small circle so overlapping stacks remain distinguishable.
-  /// In 2-player mode the inactive seats never have pieces leave the yard
-  /// (their `pieces[p]` stays all-zero), so they render as ambient decoration.
+  Widget _boardOnly(double size) {
+    return GestureDetector(
+      onTapDown: (d) => _tapBoard(d.localPosition, size),
+      child: Container(
+        width: size,
+        height: size,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          gradient: RoyalTheme.goldFrame,
+          borderRadius: BorderRadius.circular(size * 0.05),
+          boxShadow: const [
+            BoxShadow(
+                color: Color(0x99000000),
+                blurRadius: 22,
+                offset: Offset(0, 8))
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(size * 0.04),
+          child: Stack(
+            children: [
+              CustomPaint(
+                size: Size(size - 16, size - 16),
+                painter: LudoBoardPainter(engine),
+              ),
+              ..._buildPawns(size - 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   List<Widget> _buildPawns(double boardSize) {
     final s = boardSize / 15.0;
     final widgets = <Widget>[];
@@ -474,7 +570,9 @@ class _LudoPowerMatchPageState extends ConsumerState<LudoPowerMatchPage> {
         }
         final pawnSize = s * 0.85;
         final cx = g[0] * s + ox, cy = g[1] * s + oy;
-        widgets.add(Positioned(
+        widgets.add(AnimatedPositioned(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeInOutCubic,
           left: cx - pawnSize / 2,
           top: cy - pawnSize * 1.5 + s * 0.45,
           child: LudoPawn(

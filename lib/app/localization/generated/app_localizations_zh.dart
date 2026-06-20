@@ -1012,4 +1012,73 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get hubTagFeatured => '精选';
+
+  @override
+  String get ludoPlayerYou => '你';
+
+  @override
+  String ludoOpponentN(Object n) {
+    return '对手 $n';
+  }
+
+  @override
+  String get ludoBotThinking => '思考中…';
+
+  @override
+  String get ludoMmTitle => '寻找对手';
+
+  @override
+  String get ludoMmSearching => '正在搜索玩家…';
+
+  @override
+  String get ludoMmRealPlayers => '正在寻找真实玩家';
+
+  @override
+  String ludoMmCountdownHint(Object seconds) {
+    return '若未找到，$seconds 秒后将由机器人补位';
+  }
+
+  @override
+  String get ludoMmFilledByBots => '已由高水平机器人补满';
+
+  @override
+  String get ludoMmMatchFound => '找到对局！';
+
+  @override
+  String get ludoMmCancel => '取消搜索';
+
+  @override
+  String get ludoMmStarting => '比赛开始中…';
+
+  @override
+  String ludoMmFoundCount(Object found, Object total) {
+    return '$found/$total 名玩家';
+  }
+
+  @override
+  String get ludoMode1v1 => '1v1 对手';
+
+  @override
+  String get ludoMode1v1Sub => '快速对战，匿名身份';
+
+  @override
+  String get ludoMode4Party => '4 人派对';
+
+  @override
+  String get ludoMode4PartySub => '寻找 3 名对手 • 机器人补位空缺';
+
+  @override
+  String get ludoLobbyHowToPlay => '玩法说明';
+
+  @override
+  String get ludoRule1 => '掷骰子，掷到六出家，把 4 颗棋子全部送到中心';
+
+  @override
+  String get ludoRule2 => '路径上有 4 种超能力：🚀 ❄ 🌀 🌪';
+
+  @override
+  String get ludoRule3 => '击杀对手可获得额外回合';
+
+  @override
+  String get ludoRule4 => '星格为安全格 • 能力每 3 次掷骰重新洗牌';
 }

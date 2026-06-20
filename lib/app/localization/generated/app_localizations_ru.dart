@@ -1035,4 +1035,76 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get hubTagFeatured => 'Хит';
+
+  @override
+  String get ludoPlayerYou => 'Вы';
+
+  @override
+  String ludoOpponentN(Object n) {
+    return 'Соперник $n';
+  }
+
+  @override
+  String get ludoBotThinking => 'Думает…';
+
+  @override
+  String get ludoMmTitle => 'Поиск соперников';
+
+  @override
+  String get ludoMmSearching => 'Ищем игроков…';
+
+  @override
+  String get ludoMmRealPlayers => 'Ищем реальных игроков';
+
+  @override
+  String ludoMmCountdownHint(Object seconds) {
+    return 'Если никого не найдём, через $seconds с дополним ботами';
+  }
+
+  @override
+  String get ludoMmFilledByBots => 'Дополнено опытными ботами';
+
+  @override
+  String get ludoMmMatchFound => 'Матч найден!';
+
+  @override
+  String get ludoMmCancel => 'Отменить поиск';
+
+  @override
+  String get ludoMmStarting => 'Запуск матча…';
+
+  @override
+  String ludoMmFoundCount(Object found, Object total) {
+    return '$found/$total игроков';
+  }
+
+  @override
+  String get ludoMode1v1 => 'Соперник 1v1';
+
+  @override
+  String get ludoMode1v1Sub => 'Быстрый матч, анонимная личность';
+
+  @override
+  String get ludoMode4Party => 'Партия на 4 игрока';
+
+  @override
+  String get ludoMode4PartySub =>
+      'Найдите 3 соперников • боты заполнят пробелы';
+
+  @override
+  String get ludoLobbyHowToPlay => 'Как играть';
+
+  @override
+  String get ludoRule1 =>
+      'Бросьте кубик, выйдите из дома на шестёрке, доведите 4 фишки до центра';
+
+  @override
+  String get ludoRule2 => 'На пути 4 суперспособности: 🚀 ❄ 🌀 🌪';
+
+  @override
+  String get ludoRule3 => 'Поимка соперника даёт дополнительный ход';
+
+  @override
+  String get ludoRule4 =>
+      'Звёзды — безопасные клетки • способности перетасовываются каждые 3 броска';
 }

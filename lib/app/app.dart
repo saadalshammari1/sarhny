@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-import '../core/providers/app_settings_providers.dart';
+import '../core/providers/app_settings_providers.dart' show themeModeProvider, localeProvider, isRtl;
 import '../core/providers/auth_providers.dart';
 import '../features/notifications/data/fcm_provider.dart';
 import 'router.dart';
@@ -59,9 +59,11 @@ class SarhnyApp extends ConsumerWidget {
             GlobalWidgetsLocalizations.delegate,
           ],
           builder: (context, child) {
-            // فرض RTL/LTR حسب اللغة المختارة.
+            // RTL detection is no longer hard-coded to Arabic — Persian,
+            // Hebrew, Urdu, Pashto are all RTL too. `isRtl()` consults a
+            // central language-code whitelist in app_settings_providers.
             final direction =
-                locale.languageCode == 'ar' ? TextDirection.rtl : TextDirection.ltr;
+                isRtl(locale) ? TextDirection.rtl : TextDirection.ltr;
             return Directionality(textDirection: direction, child: child!);
           },
         );

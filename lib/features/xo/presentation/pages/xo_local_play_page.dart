@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/ads/interstitial_service.dart';
@@ -70,11 +71,12 @@ class _XoLocalPlayPageState extends ConsumerState<XoLocalPlayPage> {
 
   void _onRejectedTap(int row, int col, String reason) {
     if (reason == 'filled') {
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('الخانة مشغولة — اختر أخرى'),
-          duration: Duration(seconds: 1),
+        SnackBar(
+          content: Text(l10n.xoCellFilled),
+          duration: const Duration(seconds: 1),
         ),
       );
     }
@@ -107,6 +109,7 @@ class _XoLocalPlayPageState extends ConsumerState<XoLocalPlayPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final l10n = AppLocalizations.of(context);
     final myTurn = _engine.turn == me && !_engine.isOver && !_aiThinking;
     return Scaffold(
       backgroundColor: colors.background,
@@ -125,13 +128,13 @@ class _XoLocalPlayPageState extends ConsumerState<XoLocalPlayPage> {
             }
           },
         ),
-        title: const Text(
-          'XO — تدريب',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+        title: Text(
+          l10n.xoPracticeTitle,
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
         ),
         actions: [
           IconButton(
-            tooltip: 'إعادة',
+            tooltip: l10n.actionPlayAgain,
             onPressed: _engine.movesMade == 0 ? null : _restart,
             icon: const Icon(Icons.replay_rounded),
           ),
@@ -148,6 +151,7 @@ class _XoLocalPlayPageState extends ConsumerState<XoLocalPlayPage> {
                 aiThinking: _aiThinking,
                 winner: _engine.winner,
                 colors: colors,
+                l10n: l10n,
               ),
               const Gap(18),
               XoBoardV3(
@@ -168,6 +172,7 @@ class _XoLocalPlayPageState extends ConsumerState<XoLocalPlayPage> {
                   winner: _engine.winner!,
                   mySymbol: me,
                   colors: colors,
+                  l10n: l10n,
                 ),
                 const Gap(14),
                 Row(
@@ -176,7 +181,7 @@ class _XoLocalPlayPageState extends ConsumerState<XoLocalPlayPage> {
                       child: FilledButton.icon(
                         onPressed: _restart,
                         icon: const Icon(Icons.replay_rounded, size: 18),
-                        label: const Text('مباراة جديدة'),
+                        label: Text(l10n.actionPlayAgain),
                       ),
                     ),
                     const Gap(10),
@@ -187,7 +192,7 @@ class _XoLocalPlayPageState extends ConsumerState<XoLocalPlayPage> {
                           context.go(AppRoutes.gamesHub);
                         },
                         icon: const Icon(Icons.home_rounded, size: 18),
-                        label: const Text('الساحة'),
+                        label: Text(l10n.labelGamesHome),
                       ),
                     ),
                   ],
@@ -197,6 +202,7 @@ class _XoLocalPlayPageState extends ConsumerState<XoLocalPlayPage> {
                   myTurn: myTurn,
                   aiThinking: _aiThinking,
                   colors: colors,
+                  l10n: l10n,
                 ),
             ],
           ),
@@ -216,11 +222,13 @@ class _TurnHeader extends StatelessWidget {
     required this.aiThinking,
     required this.winner,
     required this.colors,
+    required this.l10n,
   });
   final bool myTurn;
   final bool aiThinking;
   final String? winner;
   final SarhnyColors colors;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -228,19 +236,19 @@ class _TurnHeader extends StatelessWidget {
     Color accent;
     IconData icon;
     if (winner != null) {
-      text = 'انتهت المباراة';
+      text = l10n.gameOverTitle;
       accent = colors.crystal;
       icon = Icons.emoji_events_rounded;
     } else if (myTurn) {
-      text = 'دورك — اختر خانة';
+      text = l10n.labelTurnYours;
       accent = colors.moment;
       icon = Icons.touch_app_rounded;
     } else if (aiThinking) {
-      text = 'الذكاء يفكّر…';
+      text = l10n.labelTurnAi;
       accent = colors.face;
       icon = Icons.psychology_rounded;
     } else {
-      text = 'استعداد';
+      text = l10n.labelWaiting;
       accent = colors.textSecondary;
       icon = Icons.adjust_rounded;
     }
@@ -289,10 +297,12 @@ class _MarksLegend extends StatelessWidget {
     required this.myTurn,
     required this.aiThinking,
     required this.colors,
+    required this.l10n,
   });
   final bool myTurn;
   final bool aiThinking;
   final SarhnyColors colors;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -300,7 +310,7 @@ class _MarksLegend extends StatelessWidget {
       children: [
         Expanded(
           child: _Mark(
-            label: 'أنت',
+            label: l10n.labelYou,
             mark: 'X',
             color: colors.moment,
             active: myTurn,
@@ -308,7 +318,7 @@ class _MarksLegend extends StatelessWidget {
         ),
         const Gap(8),
         Text(
-          'VS',
+          l10n.labelVs,
           style: TextStyle(
             color: colors.textSecondary,
             fontWeight: FontWeight.w900,
@@ -317,7 +327,7 @@ class _MarksLegend extends StatelessWidget {
         const Gap(8),
         Expanded(
           child: _Mark(
-            label: 'الذكاء',
+            label: l10n.labelAi,
             mark: 'O',
             color: colors.face,
             active: aiThinking,
@@ -392,19 +402,25 @@ class _OutcomeBanner extends StatelessWidget {
     required this.winner,
     required this.mySymbol,
     required this.colors,
+    required this.l10n,
   });
   final String winner;
   final String mySymbol;
   final SarhnyColors colors;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
     final isDraw = winner == 'draw';
     final iWon = !isDraw && winner == mySymbol;
-    final text = isDraw ? 'تعادل 🤝' : (iWon ? 'فزت! 🏆' : 'الذكاء فاز');
+    final text = isDraw
+        ? l10n.outcomeDraw
+        : (iWon ? l10n.outcomeYouWon : l10n.outcomeAiWins);
     final sub = isDraw
-        ? 'لعبة متكافئة.'
-        : (iWon ? 'إكس-أو على التوالي — أداء جيد.' : 'حاول مرة أخرى.');
+        ? l10n.xoLocalDrawSub
+        : (iWon
+            ? l10n.xoLocalWinSub
+            : l10n.xoLocalLoseSub);
     final accent = isDraw
         ? colors.crystal
         : (iWon ? colors.moment : colors.face);

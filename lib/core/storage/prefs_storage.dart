@@ -32,8 +32,14 @@ class PrefsStorage {
   }
 
   // ───── Locale ─────
-  String get locale => _prefs.getString(_kLocale) ?? 'ar';
+  /// Returns the user's saved language code, OR null when none was ever
+  /// explicitly chosen. null means "auto-detect from the device locale" —
+  /// resolved by [LocaleNotifier]. Returning a default here would
+  /// shadow first-launch detection, so we deliberately keep it nullable.
+  String? get locale => _prefs.getString(_kLocale);
   Future<void> setLocale(String code) => _prefs.setString(_kLocale, code);
+  /// Wipe the saved override — next read goes back to device auto-detect.
+  Future<void> clearLocale() => _prefs.remove(_kLocale);
 
   // ───── Onboarding ─────
   bool get hasOnboarded => _prefs.getBool(_kOnboarded) ?? false;

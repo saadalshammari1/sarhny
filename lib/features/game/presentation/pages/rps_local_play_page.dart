@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/ads/interstitial_service.dart';
@@ -140,6 +141,7 @@ class _RpsLocalPlayPageState extends ConsumerState<RpsLocalPlayPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
@@ -157,13 +159,13 @@ class _RpsLocalPlayPageState extends ConsumerState<RpsLocalPlayPage> {
             }
           },
         ),
-        title: const Text(
-          'تحدّى — تدريب',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+        title: Text(
+          l10n.rpsPracticeTitle,
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
         ),
         actions: [
           IconButton(
-            tooltip: 'إعادة',
+            tooltip: l10n.actionPlayAgain,
             onPressed: _engine.roundNumber == 1 && !_engine.isOver
                 ? null
                 : _restart,
@@ -195,7 +197,7 @@ class _RpsLocalPlayPageState extends ConsumerState<RpsLocalPlayPage> {
               ),
               const Gap(14),
               if (!_engine.isOver) ...[
-                _SectionLabel('اختر يدك', colors),
+                _SectionLabel(l10n.rpsChooseHand, colors),
                 const Gap(6),
                 _HandRow(
                   selected: _myHand,
@@ -208,7 +210,7 @@ class _RpsLocalPlayPageState extends ConsumerState<RpsLocalPlayPage> {
                   },
                 ),
                 const Gap(12),
-                _SectionLabel('خمّن يد الذكاء', colors),
+                _SectionLabel(l10n.rpsGuessHand, colors),
                 const Gap(6),
                 _HandRow(
                   selected: _myGuess,
@@ -227,7 +229,9 @@ class _RpsLocalPlayPageState extends ConsumerState<RpsLocalPlayPage> {
                     onPressed: _canLock ? _lockIn : null,
                     icon: const Icon(Icons.lock_outline_rounded, size: 18),
                     label: Text(
-                      _revealing ? 'يكشف...' : 'ثبّت',
+                      _revealing
+                          ? l10n.revealingSoon
+                          : l10n.actionLockIn,
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 15,
@@ -258,7 +262,7 @@ class _RpsLocalPlayPageState extends ConsumerState<RpsLocalPlayPage> {
                       child: FilledButton.icon(
                         onPressed: _restart,
                         icon: const Icon(Icons.replay_rounded, size: 18),
-                        label: const Text('مباراة جديدة'),
+                        label: Text(l10n.actionPlayAgain),
                       ),
                     ),
                     const Gap(10),
@@ -269,7 +273,7 @@ class _RpsLocalPlayPageState extends ConsumerState<RpsLocalPlayPage> {
                           context.go(AppRoutes.gamesHub);
                         },
                         icon: const Icon(Icons.home_rounded, size: 18),
-                        label: const Text('الساحة'),
+                        label: Text(l10n.labelGamesHome),
                       ),
                     ),
                   ],
@@ -299,6 +303,7 @@ class _MoodPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     Widget chip(String key, String label, String emoji) {
       final selected = current == key;
       return Expanded(
@@ -341,9 +346,9 @@ class _MoodPicker extends StatelessWidget {
 
     return Row(
       children: [
-        chip('light', 'خفيف', '🌤️'),
-        chip('bold', 'جريء', '🔥'),
-        chip('funny', 'مضحك', '😂'),
+        chip('light', l10n.moodLight, '🌤️'),
+        chip('bold', l10n.moodBold, '🔥'),
+        chip('funny', l10n.moodFunny, '😂'),
       ],
     );
   }
@@ -358,6 +363,7 @@ class _ScoreHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -368,7 +374,7 @@ class _ScoreHeader extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: _scoreSide('أنت', engine.myScore, engine.winScore,
+            child: _scoreSide(l10n.labelYou, engine.myScore, engine.winScore,
                 colors.moment),
           ),
           Container(
@@ -379,7 +385,7 @@ class _ScoreHeader extends StatelessWidget {
               color: colors.crystal.withValues(alpha: 0.18),
             ),
             child: Text(
-              'جولة ${engine.roundNumber}',
+              l10n.labelRound(engine.roundNumber),
               style: TextStyle(
                 color: colors.crystal,
                 fontWeight: FontWeight.w900,
@@ -388,7 +394,7 @@ class _ScoreHeader extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: _scoreSide('الذكاء', engine.oppScore, engine.winScore,
+            child: _scoreSide(l10n.labelAi, engine.oppScore, engine.winScore,
                 colors.face,
                 alignEnd: true),
           ),
@@ -459,6 +465,7 @@ class _Stage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // While revealing the last round, show both hands.
     final myGlyph = lastRound?.myHand.glyph ?? myHand?.glyph;
     final aiGlyph = lastRound?.oppHand.glyph;
@@ -492,7 +499,7 @@ class _Stage extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'أنا',
+                  l10n.labelMe,
                   style: TextStyle(
                     color: colors.moment,
                     fontWeight: FontWeight.w800,
@@ -511,7 +518,7 @@ class _Stage extends StatelessWidget {
                       : (lastRound!.myPoints < lastRound!.oppPoints
                           ? '−'
                           : '='))
-                  : 'VS',
+                  : l10n.labelVs,
               style: TextStyle(
                 color: colors.textSecondary,
                 fontWeight: FontWeight.w900,
@@ -537,7 +544,7 @@ class _Stage extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'الذكاء',
+                  l10n.labelAi,
                   style: TextStyle(
                     color: colors.face,
                     fontWeight: FontWeight.w800,
@@ -639,6 +646,7 @@ class _OutcomeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final iWon = engine.winner == 'me';
     final accent = iWon ? colors.moment : colors.face;
     return Container(
@@ -662,7 +670,7 @@ class _OutcomeBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  iWon ? 'فزت! 🎉' : 'الذكاء فاز',
+                  iWon ? l10n.outcomeYouWon : l10n.outcomeAiWins,
                   style: TextStyle(
                     color: accent,
                     fontWeight: FontWeight.w900,
@@ -672,8 +680,8 @@ class _OutcomeBanner extends StatelessWidget {
                 const Gap(2),
                 Text(
                   iWon
-                      ? 'اطرح سؤالك على الذكاء (للمتعة فقط)'
-                      : 'الذكاء يطرح سؤالاً من بنك الأسئلة',
+                      ? l10n.rpsMyQuestionLabel
+                      : l10n.rpsAiQuestionLabel,
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontWeight: FontWeight.w600,
@@ -720,6 +728,7 @@ class _MeWinnerComposer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -735,7 +744,7 @@ class _MeWinnerComposer extends StatelessWidget {
               Icon(Icons.edit_note_rounded, color: colors.moment, size: 18),
               const Gap(8),
               Text(
-                'سؤالك للذكاء',
+                l10n.rpsMyQuestionLabel,
                 style: TextStyle(
                   color: colors.textPrimary,
                   fontWeight: FontWeight.w800,
@@ -750,7 +759,7 @@ class _MeWinnerComposer extends StatelessWidget {
             maxLength: 200,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'اطرح سؤالاً صريحاً... (للمتعة فقط)',
+              hintText: l10n.rpsLocalAskHint,
               filled: true,
               fillColor: colors.background,
               border: OutlineInputBorder(
@@ -787,6 +796,7 @@ class _AiWinnerQuestion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -802,7 +812,7 @@ class _AiWinnerQuestion extends StatelessWidget {
               Icon(Icons.psychology_rounded, color: colors.face, size: 18),
               const Gap(8),
               Text(
-                'سؤال الذكاء',
+                l10n.rpsAiQuestionLabel,
                 style: TextStyle(
                   color: colors.face,
                   fontWeight: FontWeight.w900,
@@ -828,7 +838,7 @@ class _AiWinnerQuestion extends StatelessWidget {
                   ),
                   const Gap(10),
                   Text(
-                    'يحضّر سؤالاً...',
+                    l10n.rpsLocalAiPreparing,
                     style: TextStyle(
                       color: colors.textSecondary,
                       fontWeight: FontWeight.w600,
@@ -853,7 +863,7 @@ class _AiWinnerQuestion extends StatelessWidget {
             maxLength: 400,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'أجب لنفسك...',
+              hintText: l10n.rpsLocalAnswerHint,
               filled: true,
               fillColor: colors.background,
               border: OutlineInputBorder(
@@ -872,7 +882,7 @@ class _AiWinnerQuestion extends StatelessWidget {
           ),
           const Gap(4),
           Text(
-            'الإجابة لك وحدك — لا تُحفظ ولا تُرسل.',
+            l10n.rpsAnswerPrivate,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: colors.textSecondary,

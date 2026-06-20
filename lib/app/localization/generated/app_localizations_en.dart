@@ -395,4 +395,637 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get carromLobbyCustomizeSub =>
       'Pick your board, piece colors, and striker';
+
+  @override
+  String get actionPlay => 'Play';
+
+  @override
+  String get actionPlayAgain => 'Play again';
+
+  @override
+  String get actionRetry => 'Retry';
+
+  @override
+  String get actionConfirm => 'Confirm';
+
+  @override
+  String get actionSend => 'Send';
+
+  @override
+  String get actionSkip => 'Skip';
+
+  @override
+  String get actionLockIn => 'Lock in';
+
+  @override
+  String get actionDiscard => 'Discard';
+
+  @override
+  String get actionBack => 'Back';
+
+  @override
+  String get actionLeave => 'Leave';
+
+  @override
+  String get actionLeaveLobby => 'Back to lobby';
+
+  @override
+  String get actionJoin => 'Join';
+
+  @override
+  String get actionCopy => 'Copy';
+
+  @override
+  String get actionPaste => 'Paste';
+
+  @override
+  String get actionDone => 'Done';
+
+  @override
+  String get labelLobby => 'Lobby';
+
+  @override
+  String get labelGamesHome => 'Arena';
+
+  @override
+  String get labelOpponent => 'Opponent';
+
+  @override
+  String get labelYou => 'You';
+
+  @override
+  String get labelMe => 'Me';
+
+  @override
+  String get labelAi => 'AI';
+
+  @override
+  String get labelVs => 'VS';
+
+  @override
+  String get labelTurnYours => 'Your turn';
+
+  @override
+  String get labelTurnTheirs => 'Opponent\'s turn';
+
+  @override
+  String get labelTurnAi => 'AI is thinking…';
+
+  @override
+  String labelRound(Object n) {
+    return 'Round $n';
+  }
+
+  @override
+  String get labelWaiting => 'Waiting…';
+
+  @override
+  String get labelWaitingOpponent => 'Waiting for opponent…';
+
+  @override
+  String get labelSearching => 'Finding opponent…';
+
+  @override
+  String get outcomeYouWon => 'You won!';
+
+  @override
+  String get outcomeYouLost => 'You lost';
+
+  @override
+  String get outcomeDraw => 'Draw';
+
+  @override
+  String get outcomeAiWins => 'AI wins';
+
+  @override
+  String get moodLight => 'Light';
+
+  @override
+  String get moodBold => 'Bold';
+
+  @override
+  String get moodFunny => 'Funny';
+
+  @override
+  String get moodChoose => 'Choose mood';
+
+  @override
+  String get lobbyVsRandom => 'Random opponent';
+
+  @override
+  String get lobbyVsAi => 'vs AI';
+
+  @override
+  String get lobbyVsAiSub => 'Instant practice — AI asks if it wins';
+
+  @override
+  String get lobbyInviteFriend => 'Play with a friend';
+
+  @override
+  String get lobbyInviteFriendSub => 'Generate an invite code to share';
+
+  @override
+  String get lobbyJoinByCode => 'Join with code';
+
+  @override
+  String get lobbyPasteCode => 'Paste the code';
+
+  @override
+  String get questionAsk => 'Ask your question';
+
+  @override
+  String get questionAnswer => 'Answer honestly';
+
+  @override
+  String get questionWaitingQ => 'Waiting for opponent\'s question…';
+
+  @override
+  String get questionWaitingA => 'Waiting for opponent\'s answer…';
+
+  @override
+  String get questionSkipNew => 'Get a new question';
+
+  @override
+  String get questionAbstainAd => 'Abstain · watch ad (+1 point)';
+
+  @override
+  String get questionAbstainNote =>
+      'Abstaining ends the match without an answer and adds a point.';
+
+  @override
+  String get adLoading => 'Loading ad…';
+
+  @override
+  String get adIncomplete => 'Ad not finished';
+
+  @override
+  String get adUnavailable => 'No ad available';
+
+  @override
+  String get adDailyCap => 'Daily ad limit reached';
+
+  @override
+  String get adRewardEarned => 'Got a point — abstained.';
+
+  @override
+  String get rpsRock => 'Rock';
+
+  @override
+  String get rpsPaper => 'Paper';
+
+  @override
+  String get rpsScissors => 'Scissors';
+
+  @override
+  String get rpsChooseHand => 'Choose your hand';
+
+  @override
+  String get rpsGuessHand => 'Guess opponent\'s hand';
+
+  @override
+  String get rpsAiQuestionLabel => 'AI\'s question';
+
+  @override
+  String get rpsMyQuestionLabel => 'Your question for the AI';
+
+  @override
+  String get rpsAnswerPrivate =>
+      'Your answer stays with you — not saved or sent.';
+
+  @override
+  String get xoCellFilled => 'Cell already taken — pick another';
+
+  @override
+  String get xoNotYourTurn => 'Not your turn yet';
+
+  @override
+  String get xoPracticeTitle => 'XO — Practice';
+
+  @override
+  String get leaveTitle => 'Leave the match?';
+
+  @override
+  String get leaveBody => 'Your round will count as a loss.';
+
+  @override
+  String get rematchTitle => 'Want a rematch?';
+
+  @override
+  String get rematchAccept => 'Play again';
+
+  @override
+  String get rematchDecline => 'I\'m done';
+
+  @override
+  String get rematchWaiting => 'Waiting for opponent\'s response…';
+
+  @override
+  String get rematchDeclined => 'Opponent declined the rematch';
+
+  @override
+  String get rematchTimeout => 'Rematch window closed';
+
+  @override
+  String get hubGameRps => 'Showdown';
+
+  @override
+  String get hubGameRpsSub =>
+      'Rock · Paper · Scissors — winner asks the question';
+
+  @override
+  String get hubGameXo => 'Tic-Tac-Toe';
+
+  @override
+  String get hubGameXoSub => 'Three in a row — winner asks the question';
+
+  @override
+  String get hubAdEarnTitle => 'Watch a short ad';
+
+  @override
+  String get hubAdEarnSub =>
+      'Daily limit 10 — points added to your wallet instantly.';
+
+  @override
+  String get hubAdPointBadge => '+1 point';
+
+  @override
+  String get hubTagAdNew => 'New';
+
+  @override
+  String get hubTagOnline => 'Online';
+
+  @override
+  String get hubSectionPlay => 'Play now';
+
+  @override
+  String get hubSectionEarn => 'Earn points without playing';
+
+  @override
+  String get hubAbstainHint =>
+      'You can also abstain mid-game by watching an ad.';
+
+  @override
+  String get settingsLanguage => 'Language';
+
+  @override
+  String get settingsLanguageAuto => 'Auto (device language)';
+
+  @override
+  String get settingsEmail => 'Email';
+
+  @override
+  String get settingsChangePassword => 'Change password';
+
+  @override
+  String get settingsAnonymousReceive => 'Receive anonymous messages';
+
+  @override
+  String get settingsVoiceReceive => 'Receive voice messages';
+
+  @override
+  String get settingsImageReceive => 'Receive images';
+
+  @override
+  String get settingsRegisteredOnly => 'From registered users only';
+
+  @override
+  String get settingsBlockedAccounts => 'Blocked accounts';
+
+  @override
+  String get settingsLikes => 'Likes';
+
+  @override
+  String get settingsComments => 'Comments';
+
+  @override
+  String get settingsFollowers => 'New followers';
+
+  @override
+  String get settingsAppearance => 'Appearance';
+
+  @override
+  String get settingsGeneral => 'General';
+
+  @override
+  String get settingsHelpCenter => 'Help center';
+
+  @override
+  String get settingsTerms => 'Terms of use';
+
+  @override
+  String get settingsPrivacyPolicy => 'Privacy policy';
+
+  @override
+  String get settingsContentPolicy => 'Content policy';
+
+  @override
+  String get settingsDangerZone => 'Danger zone';
+
+  @override
+  String get settingsDeleteAccount => 'Delete account';
+
+  @override
+  String get settingsUpdated => 'Updated';
+
+  @override
+  String get settingsUpdateFailed => 'Could not update';
+
+  @override
+  String get settingsPasswordShort => 'New password is too short';
+
+  @override
+  String get settingsPasswordCurrent => 'Current password';
+
+  @override
+  String get settingsPasswordNew => 'New password';
+
+  @override
+  String get settingsDeleteConfirmTitle => 'Permanently delete account';
+
+  @override
+  String get settingsDeleteConfirmBody =>
+      'This cannot be undone — all your data will be erased.';
+
+  @override
+  String get settingsDeleteConfirmField => 'Confirm your password';
+
+  @override
+  String get settingsDeleteAction => 'Delete';
+
+  @override
+  String get settingsDeleteFailed => 'Could not delete';
+
+  @override
+  String get settingsThemeAuto => 'Auto';
+
+  @override
+  String get errorGeneric => 'Something went wrong';
+
+  @override
+  String get errorMatchLoad => 'Could not load match';
+
+  @override
+  String get errorGameStart => 'Could not start game';
+
+  @override
+  String get errorAdLaunch => 'Could not play ad';
+
+  @override
+  String get errorClipboardCopied => 'Copied';
+
+  @override
+  String get roundWon => 'You won this round';
+
+  @override
+  String get roundLost => 'Opponent won this round';
+
+  @override
+  String get roundDraw => 'No winner this round';
+
+  @override
+  String get gameOverTitle => 'Game over';
+
+  @override
+  String get revealingSoon => 'Revealing now…';
+
+  @override
+  String get nextRoundSoon => 'Next round starting…';
+
+  @override
+  String get leaveStay => 'Stay';
+
+  @override
+  String get answerWriteHint => 'Write your honest answer';
+
+  @override
+  String get questionWriteHint => 'Write your honest question';
+
+  @override
+  String get continueMatch => 'Continue';
+
+  @override
+  String get xoPageTitle => 'XO Challenge';
+
+  @override
+  String xoMovesProgress(Object moves, Object total) {
+    return 'Move $moves/$total';
+  }
+
+  @override
+  String get questionUsePresetCta => 'Or use a preset question';
+
+  @override
+  String get questionSkipUsed => 'Swap used';
+
+  @override
+  String questionYoursPrefix(Object q) {
+    return 'Your question: $q';
+  }
+
+  @override
+  String get xoLocalDrawSub => 'Tight game.';
+
+  @override
+  String get xoLocalWinSub => 'Three in a row — nice.';
+
+  @override
+  String get xoLocalLoseSub => 'Try again.';
+
+  @override
+  String get lobbyStartMatchSection => 'Start a match';
+
+  @override
+  String get lobbyVsRandomSub => 'Find an online opponent';
+
+  @override
+  String get xoLobbyHeroDescription =>
+      'Beat your opponent to three in a row.\nThe winner asks a question. The loser answers.';
+
+  @override
+  String get gamePageTitle => 'Challenge 🎮';
+
+  @override
+  String get gameLobbyRandomSub =>
+      '5 rounds rock-paper-scissors + guess • first to 5 points wins';
+
+  @override
+  String get gameRulesTitle => 'Quick rules';
+
+  @override
+  String get gameRule1 => 'Pick a hand and guess your opponent\'s pick';
+
+  @override
+  String get gameRule2 => 'Round win = 1 point. Correct guess = 1 point';
+
+  @override
+  String get gameRule3 => 'First to 5 points wins';
+
+  @override
+  String get gameRule4 => 'Winner writes a question for the loser (25 seconds)';
+
+  @override
+  String get gameRule5 => 'Abusive answers or questions → round is voided';
+
+  @override
+  String get gameUnusualEndSub => 'The round ended unexpectedly.';
+
+  @override
+  String get gameAnonymityTagline =>
+      'Don\'t reveal your identity. Don\'t reveal your opponent\'s.';
+
+  @override
+  String secondsRemaining(Object n) {
+    return '${n}s remaining';
+  }
+
+  @override
+  String secondsToAnswer(Object n) {
+    return '${n}s to answer';
+  }
+
+  @override
+  String secondsShort(Object n) {
+    return '${n}s';
+  }
+
+  @override
+  String get questionAutoFallbackPrefix => 'Auto question if you don\'t write:';
+
+  @override
+  String get questionFromOpponent => 'Question from your opponent';
+
+  @override
+  String get questionAppearingSoon =>
+      'The question will appear shortly. Hang on.';
+
+  @override
+  String get questionSent =>
+      'Question sent — their answer arrives in a moment.';
+
+  @override
+  String get rpsPracticeTitle => 'Challenge — Practice';
+
+  @override
+  String get rpsLocalAskHint => 'Ask a candid question... (for fun only)';
+
+  @override
+  String get rpsLocalAiPreparing => 'Preparing a question...';
+
+  @override
+  String get rpsLocalAnswerHint => 'Answer to yourself...';
+
+  @override
+  String get ludoPowerTitle => 'Power Ludo';
+
+  @override
+  String get ludoPowerSubtitle =>
+      '4-player Ludo with superpowers — Rocket, Freeze, Portal, Tornado. Powers reshuffle every 3 rolls.';
+
+  @override
+  String get ludoLobbyChooseMode => 'Choose mode';
+
+  @override
+  String get ludoMode2Players => 'Two players (1v1)';
+
+  @override
+  String get ludoMode2PlayersSub => 'You vs. a bot — faster, more intense';
+
+  @override
+  String get ludoMode4Players => 'Four players';
+
+  @override
+  String get ludoMode4PlayersSub => 'You vs. 3 bots — the full experience';
+
+  @override
+  String get ludoStartTap => 'Tap the dice to start';
+
+  @override
+  String get ludoTapPawn => 'Pick a pawn to move';
+
+  @override
+  String get ludoExtraTurn => 'Extra turn! Roll again';
+
+  @override
+  String get ludoYourTurn => 'Your turn — roll the dice';
+
+  @override
+  String ludoBotTurn(Object name) {
+    return '$name is playing…';
+  }
+
+  @override
+  String get ludoRollDice => 'Roll the dice';
+
+  @override
+  String ludoTurnLabel(Object name) {
+    return '$name\'s turn';
+  }
+
+  @override
+  String get ludoYouWin => '🎉 You won!';
+
+  @override
+  String ludoBotWin(Object name) {
+    return '$name won';
+  }
+
+  @override
+  String get ludoYouWinSub => 'All four of your pieces reached the centre';
+
+  @override
+  String get ludoLossSub => 'Better luck next round';
+
+  @override
+  String get ludoNewGame => 'New game';
+
+  @override
+  String get ludoNoMove => 'No move';
+
+  @override
+  String get ludoPlayerGold => 'Gold';
+
+  @override
+  String get ludoPlayerBlue => 'Blue';
+
+  @override
+  String get ludoPlayerPurple => 'Purple';
+
+  @override
+  String get ludoPlayerGreen => 'Green';
+
+  @override
+  String ludoEventRocket(Object boost) {
+    return 'Rocket! +$boost';
+  }
+
+  @override
+  String get ludoEventFreeze => 'Frozen!';
+
+  @override
+  String ludoEventPortalForward(Object diff) {
+    return 'Portal! +$diff';
+  }
+
+  @override
+  String ludoEventPortalBack(Object diff) {
+    return 'Portal! -$diff';
+  }
+
+  @override
+  String get ludoEventTornado => 'Tornado!';
+
+  @override
+  String get ludoEventCapture => 'Captured!';
+
+  @override
+  String get ludoEventShuffle => 'Powers reshuffled';
+
+  @override
+  String get hubGameLudoPower => 'Power Ludo';
+
+  @override
+  String get hubGameLudoPowerSub => '4-player Ludo with superpowers — featured';
+
+  @override
+  String get hubTagFeatured => 'Featured';
 }

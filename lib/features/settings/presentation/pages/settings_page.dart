@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
@@ -21,13 +22,14 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.sarhnyColors;
+    final l10n = AppLocalizations.of(context);
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
     final state = ref.watch(settingsStateProvider);
     final subState = ref.watch(subscriptionStateProvider);
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(title: const Text('الإعدادات')),
+      appBar: AppBar(title: Text(l10n.settingsTitle)),
       body: RefreshIndicator(
         color: colors.moment,
         onRefresh: () async {
@@ -51,23 +53,23 @@ class SettingsPage extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 12),
               children: [
                 _SubscriptionCard(state: subState),
-                _SectionTitle('الحساب'),
+                _SectionTitle(l10n.settingsAccount),
                 _Tile(
                   icon: Icons.alternate_email,
-                  title: 'البريد الإلكتروني',
+                  title: l10n.settingsEmail,
                   subtitle: account['email']?.toString() ?? '—',
                   onTap: () =>
                       _showEmailDialog(context, ref, account['email']?.toString()),
                 ),
                 _Tile(
                   icon: Icons.lock_outline,
-                  title: 'تغيير كلمة المرور',
+                  title: l10n.settingsChangePassword,
                   onTap: () => _showPasswordDialog(context, ref),
                 ),
-                _SectionTitle('الخصوصية'),
+                _SectionTitle(l10n.settingsPrivacy),
                 _SwitchTile(
                   icon: Icons.visibility_off_outlined,
-                  title: 'استقبال الرسائل المجهولة',
+                  title: l10n.settingsAnonymousReceive,
                   value: (privacy['anonymous_questions'] ?? 1) != 0,
                   onChanged: (v) async {
                     try {
@@ -76,41 +78,41 @@ class SettingsPage extends ConsumerWidget {
                           .updatePrivacy({'anonymous_questions': v ? 1 : 0});
                       ref.invalidate(settingsStateProvider);
                     } catch (_) {
-                      Fluttertoast.showToast(msg: 'تعذّر التحديث');
+                      Fluttertoast.showToast(msg: l10n.settingsUpdateFailed);
                     }
                   },
                 ),
                 _SwitchTile(
                   icon: Icons.mic_none_outlined,
-                  title: 'استقبال الرسائل الصوتية',
+                  title: l10n.settingsVoiceReceive,
                   value: (privacy['accept_anon_voice'] ?? 0) != 0,
                   onChanged: (v) =>
-                      _toggle(ref, 'accept_anon_voice', v),
+                      _toggle(context, ref, 'accept_anon_voice', v),
                 ),
                 _SwitchTile(
                   icon: Icons.image_outlined,
-                  title: 'استقبال الصور',
+                  title: l10n.settingsImageReceive,
                   value: (privacy['accept_anon_image'] ?? 0) != 0,
                   onChanged: (v) =>
-                      _toggle(ref, 'accept_anon_image', v),
+                      _toggle(context, ref, 'accept_anon_image', v),
                 ),
                 _SwitchTile(
                   icon: Icons.verified_user_outlined,
-                  title: 'من الأعضاء المسجّلين فقط',
+                  title: l10n.settingsRegisteredOnly,
                   value: (privacy['accept_anon_from_registered_only'] ?? 0) !=
                       0,
                   onChanged: (v) => _toggle(
-                      ref, 'accept_anon_from_registered_only', v),
+                      context, ref, 'accept_anon_from_registered_only', v),
                 ),
                 _Tile(
                   icon: Icons.block_outlined,
-                  title: 'الحسابات المحظورة',
+                  title: l10n.settingsBlockedAccounts,
                   onTap: () => context.push(AppRoutes.blockedAccounts),
                 ),
-                _SectionTitle('الإشعارات'),
+                _SectionTitle(l10n.settingsNotifications),
                 _SwitchTile(
                   icon: Icons.favorite_outline,
-                  title: 'إعجابات',
+                  title: l10n.settingsLikes,
                   value: (notif['likes'] ?? 1) != 0,
                   onChanged: (v) async {
                     try {
@@ -119,13 +121,13 @@ class SettingsPage extends ConsumerWidget {
                           .updateNotifications({'likes': v ? 1 : 0});
                       ref.invalidate(settingsStateProvider);
                     } catch (_) {
-                      Fluttertoast.showToast(msg: 'تعذّر التحديث');
+                      Fluttertoast.showToast(msg: l10n.settingsUpdateFailed);
                     }
                   },
                 ),
                 _SwitchTile(
                   icon: Icons.chat_bubble_outline,
-                  title: 'تعليقات',
+                  title: l10n.settingsComments,
                   value: (notif['comments'] ?? 1) != 0,
                   onChanged: (v) async {
                     try {
@@ -134,13 +136,13 @@ class SettingsPage extends ConsumerWidget {
                           .updateNotifications({'comments': v ? 1 : 0});
                       ref.invalidate(settingsStateProvider);
                     } catch (_) {
-                      Fluttertoast.showToast(msg: 'تعذّر التحديث');
+                      Fluttertoast.showToast(msg: l10n.settingsUpdateFailed);
                     }
                   },
                 ),
                 _SwitchTile(
                   icon: Icons.person_add_alt_1_outlined,
-                  title: 'متابعون جدد',
+                  title: l10n.settingsFollowers,
                   value: (notif['followers'] ?? 1) != 0,
                   onChanged: (v) async {
                     try {
@@ -149,46 +151,48 @@ class SettingsPage extends ConsumerWidget {
                           .updateNotifications({'followers': v ? 1 : 0});
                       ref.invalidate(settingsStateProvider);
                     } catch (_) {
-                      Fluttertoast.showToast(msg: 'تعذّر التحديث');
+                      Fluttertoast.showToast(msg: l10n.settingsUpdateFailed);
                     }
                   },
                 ),
-                _SectionTitle('المظهر'),
+                _SectionTitle(l10n.settingsAppearance),
                 _ThemeSelector(
+                  l10n: l10n,
                   mode: themeMode,
                   onChange: (m) =>
                       ref.read(themeModeProvider.notifier).set(m),
                 ),
                 _LanguageSelector(
+                  l10n: l10n,
                   locale: locale,
-                  onChange: (l) =>
-                      ref.read(localeProvider.notifier).set(l),
+                  isAuto: ref.read(localeProvider.notifier).isAuto,
+                  onPickerOpen: () => _openLanguagePicker(context, ref),
                 ),
-                _SectionTitle('عام'),
+                _SectionTitle(l10n.settingsGeneral),
                 _Tile(
                   icon: Icons.help_outline,
-                  title: 'مركز المساعدة',
+                  title: l10n.settingsHelpCenter,
                   onTap: () => context.push(AppRoutes.help),
                 ),
                 _Tile(
                   icon: Icons.gavel_outlined,
-                  title: 'شروط الاستخدام',
+                  title: l10n.settingsTerms,
                   onTap: () => context.push(AppRoutes.terms),
                 ),
                 _Tile(
                   icon: Icons.shield_outlined,
-                  title: 'سياسة الخصوصية',
+                  title: l10n.settingsPrivacyPolicy,
                   onTap: () => context.push(AppRoutes.privacy),
                 ),
                 _Tile(
                   icon: Icons.policy_outlined,
-                  title: 'سياسة المحتوى',
+                  title: l10n.settingsContentPolicy,
                   onTap: () => context.push(AppRoutes.contentPolicy),
                 ),
-                _SectionTitle('منطقة خطرة'),
+                _SectionTitle(l10n.settingsDangerZone),
                 _Tile(
                   icon: Icons.logout,
-                  title: 'تسجيل الخروج',
+                  title: l10n.settingsLogout,
                   color: colors.danger,
                   onTap: () async {
                     await ref.read(authStateProvider.notifier).logout();
@@ -197,7 +201,7 @@ class SettingsPage extends ConsumerWidget {
                 ),
                 _Tile(
                   icon: Icons.delete_forever,
-                  title: 'حذف الحساب',
+                  title: l10n.settingsDeleteAccount,
                   color: colors.danger,
                   onTap: () => _showDeleteDialog(context, ref),
                 ),
@@ -210,35 +214,38 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _toggle(WidgetRef ref, String key, bool value) async {
+  Future<void> _toggle(
+      BuildContext context, WidgetRef ref, String key, bool value) async {
+    final failMsg = AppLocalizations.of(context).settingsUpdateFailed;
     try {
       await ref
           .read(settingsRepositoryProvider)
           .updatePrivacy({key: value ? 1 : 0});
       ref.invalidate(settingsStateProvider);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر التحديث');
+      Fluttertoast.showToast(msg: failMsg);
     }
   }
 
   Future<void> _showEmailDialog(
       BuildContext context, WidgetRef ref, String? current) async {
+    final l10n = AppLocalizations.of(context);
     final ctrl = TextEditingController(text: current ?? '');
     bool saving = false;
     await showDialog(
       context: context,
       builder: (c) => StatefulBuilder(builder: (c, set) {
         return AlertDialog(
-          title: const Text('تغيير البريد'),
+          title: Text(l10n.settingsEmail),
           content: AppTextField(
             controller: ctrl,
-            label: 'البريد الإلكتروني',
+            label: l10n.settingsEmail,
             keyboardType: TextInputType.emailAddress,
           ),
           actions: [
             TextButton(
                 onPressed: () => Navigator.of(c).pop(),
-                child: const Text('إلغاء')),
+                child: Text(l10n.commonCancel)),
             FilledButton(
               onPressed: saving
                   ? null
@@ -249,7 +256,7 @@ class SettingsPage extends ConsumerWidget {
                             .read(settingsRepositoryProvider)
                             .updateAccount(email: ctrl.text.trim());
                         if (context.mounted) Navigator.of(c).pop();
-                        Fluttertoast.showToast(msg: 'تم التحديث');
+                        Fluttertoast.showToast(msg: l10n.settingsUpdated);
                         ref.invalidate(settingsStateProvider);
                       } on ApiException catch (e) {
                         Fluttertoast.showToast(msg: e.message);
@@ -257,7 +264,7 @@ class SettingsPage extends ConsumerWidget {
                         set(() => saving = false);
                       }
                     },
-              child: Text(saving ? '…' : 'حفظ'),
+              child: Text(saving ? '…' : l10n.commonSave),
             ),
           ],
         );
@@ -267,6 +274,7 @@ class SettingsPage extends ConsumerWidget {
 
   Future<void> _showPasswordDialog(
       BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     final cur = TextEditingController();
     final next = TextEditingController();
     bool saving = false;
@@ -274,19 +282,19 @@ class SettingsPage extends ConsumerWidget {
       context: context,
       builder: (c) => StatefulBuilder(builder: (c, set) {
         return AlertDialog(
-          title: const Text('تغيير كلمة المرور'),
+          title: Text(l10n.settingsChangePassword),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               AppTextField(
                 controller: cur,
-                label: 'كلمة المرور الحالية',
+                label: l10n.settingsPasswordCurrent,
                 obscure: true,
               ),
               const SizedBox(height: 12),
               AppTextField(
                 controller: next,
-                label: 'كلمة المرور الجديدة',
+                label: l10n.settingsPasswordNew,
                 obscure: true,
               ),
             ],
@@ -294,14 +302,13 @@ class SettingsPage extends ConsumerWidget {
           actions: [
             TextButton(
                 onPressed: () => Navigator.of(c).pop(),
-                child: const Text('إلغاء')),
+                child: Text(l10n.commonCancel)),
             FilledButton(
               onPressed: saving
                   ? null
                   : () async {
                       if (next.text.length < 8) {
-                        Fluttertoast.showToast(
-                            msg: 'كلمة المرور الجديدة قصيرة');
+                        Fluttertoast.showToast(msg: l10n.settingsPasswordShort);
                         return;
                       }
                       set(() => saving = true);
@@ -313,16 +320,16 @@ class SettingsPage extends ConsumerWidget {
                               newPassword: next.text,
                             );
                         if (context.mounted) Navigator.of(c).pop();
-                        Fluttertoast.showToast(msg: 'تم التحديث');
+                        Fluttertoast.showToast(msg: l10n.settingsUpdated);
                       } on ValidationException catch (e) {
                         Fluttertoast.showToast(msg: e.message);
                       } catch (_) {
-                        Fluttertoast.showToast(msg: 'تعذّر التحديث');
+                        Fluttertoast.showToast(msg: l10n.settingsUpdateFailed);
                       } finally {
                         set(() => saving = false);
                       }
                     },
-              child: Text(saving ? '…' : 'حفظ'),
+              child: Text(saving ? '…' : l10n.commonSave),
             ),
           ],
         );
@@ -332,22 +339,22 @@ class SettingsPage extends ConsumerWidget {
 
   Future<void> _showDeleteDialog(
       BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     final pwdCtrl = TextEditingController();
     bool busy = false;
     await showDialog(
       context: context,
       builder: (c) => StatefulBuilder(builder: (c, set) {
         return AlertDialog(
-          title: const Text('حذف الحساب نهائيًا'),
+          title: Text(l10n.settingsDeleteConfirmTitle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                  'هذا الإجراء لا يمكن التراجع عنه — كل بياناتك ستُحذف.'),
+              Text(l10n.settingsDeleteConfirmBody),
               const SizedBox(height: 12),
               AppTextField(
                 controller: pwdCtrl,
-                label: 'أكّد كلمة المرور',
+                label: l10n.settingsDeleteConfirmField,
                 obscure: true,
               ),
             ],
@@ -355,7 +362,7 @@ class SettingsPage extends ConsumerWidget {
           actions: [
             TextButton(
                 onPressed: () => Navigator.of(c).pop(),
-                child: const Text('إلغاء')),
+                child: Text(l10n.commonCancel)),
             FilledButton(
               style: FilledButton.styleFrom(
                   backgroundColor: Theme.of(c).colorScheme.error),
@@ -373,18 +380,87 @@ class SettingsPage extends ConsumerWidget {
                             .clearSession();
                         if (context.mounted) context.go(AppRoutes.login);
                       } catch (e) {
-                        Fluttertoast.showToast(msg: 'تعذّر الحذف');
+                        Fluttertoast.showToast(msg: l10n.settingsDeleteFailed);
                       } finally {
                         set(() => busy = false);
                       }
                     },
-              child: Text(busy ? '…' : 'احذف'),
+              child: Text(busy ? '…' : l10n.settingsDeleteAction),
             ),
           ],
         );
       }),
     );
   }
+}
+
+/// Opens a bottom sheet listing every supported language in its own script
+/// plus an "Auto (device language)" row that clears the user's pick and
+/// reverts to platform detection. Tapping a row sets locale and closes.
+Future<void> _openLanguagePicker(BuildContext context, WidgetRef ref) async {
+  final colors = context.sarhnyColors;
+  final l10n = AppLocalizations.of(context);
+  final notifier = ref.read(localeProvider.notifier);
+  final current = ref.read(localeProvider);
+  final supported = AppLocalizations.supportedLocales;
+  final isAuto = notifier.isAuto;
+
+  await showModalBottomSheet(
+    context: context,
+    backgroundColor: colors.surface,
+    showDragHandle: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (sheetCtx) {
+      return SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(4, 4, 4, 16),
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: Text(
+                l10n.settingsLanguage,
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.smartphone_rounded,
+                  color: colors.textSecondary, size: 20),
+              title: Text(l10n.settingsLanguageAuto),
+              trailing: isAuto
+                  ? Icon(Icons.check_rounded, color: colors.moment)
+                  : null,
+              onTap: () async {
+                await notifier.resetToDevice();
+                if (sheetCtx.mounted) Navigator.of(sheetCtx).pop();
+              },
+            ),
+            Divider(height: 1, color: colors.border),
+            for (final loc in supported)
+              ListTile(
+                title: Text(
+                  kLanguageDisplayNames[loc.languageCode] ?? loc.languageCode,
+                ),
+                trailing: !isAuto && loc.languageCode == current.languageCode
+                    ? Icon(Icons.check_rounded, color: colors.moment)
+                    : null,
+                onTap: () async {
+                  await notifier.set(loc);
+                  if (sheetCtx.mounted) Navigator.of(sheetCtx).pop();
+                },
+              ),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 class _SubscriptionCard extends ConsumerWidget {
@@ -800,7 +876,12 @@ class _SwitchTile extends StatelessWidget {
 }
 
 class _ThemeSelector extends StatelessWidget {
-  const _ThemeSelector({required this.mode, required this.onChange});
+  const _ThemeSelector({
+    required this.l10n,
+    required this.mode,
+    required this.onChange,
+  });
+  final AppLocalizations l10n;
   final ThemeMode mode;
   final ValueChanged<ThemeMode> onChange;
   @override
@@ -821,14 +902,18 @@ class _ThemeSelector extends StatelessWidget {
             Icon(Icons.color_lens_outlined,
                 size: 18, color: colors.textPrimary),
             const SizedBox(width: 8),
-            Text('المظهر', style: TextStyle(color: colors.textPrimary)),
+            Text(l10n.settingsAppearance,
+                style: TextStyle(color: colors.textPrimary)),
           ]),
           const SizedBox(height: 10),
           SegmentedButton<ThemeMode>(
-            segments: const [
-              ButtonSegment(value: ThemeMode.light, label: Text('نهاري')),
-              ButtonSegment(value: ThemeMode.dark, label: Text('داكن')),
-              ButtonSegment(value: ThemeMode.system, label: Text('تلقائي')),
+            segments: [
+              ButtonSegment(
+                  value: ThemeMode.light, label: Text(l10n.themeLight)),
+              ButtonSegment(
+                  value: ThemeMode.dark, label: Text(l10n.themeDark)),
+              ButtonSegment(
+                  value: ThemeMode.system, label: Text(l10n.settingsThemeAuto)),
             ],
             selected: {mode},
             onSelectionChanged: (s) => onChange(s.first),
@@ -839,39 +924,61 @@ class _ThemeSelector extends StatelessWidget {
   }
 }
 
+/// Single-row language tile that opens a full bottom-sheet picker on tap.
+/// Replaces the old 2-option SegmentedButton — a segmented button doesn't
+/// scale past 3 choices, and we now support 14 languages.
 class _LanguageSelector extends StatelessWidget {
-  const _LanguageSelector({required this.locale, required this.onChange});
+  const _LanguageSelector({
+    required this.l10n,
+    required this.locale,
+    required this.isAuto,
+    required this.onPickerOpen,
+  });
+  final AppLocalizations l10n;
   final Locale locale;
-  final ValueChanged<Locale> onChange;
+  final bool isAuto;
+  final VoidCallback onPickerOpen;
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.border, width: 0.4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
+    final currentLabel = isAuto
+        ? l10n.settingsLanguageAuto
+        : (kLanguageDisplayNames[locale.languageCode] ?? locale.languageCode);
+    return InkWell(
+      onTap: onPickerOpen,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: colors.border, width: 0.4),
+        ),
+        child: Row(
+          children: [
             Icon(Icons.translate, size: 18, color: colors.textPrimary),
-            const SizedBox(width: 8),
-            Text('اللغة', style: TextStyle(color: colors.textPrimary)),
-          ]),
-          const SizedBox(height: 10),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'ar', label: Text('العربية')),
-              ButtonSegment(value: 'en', label: Text('English')),
-            ],
-            selected: {locale.languageCode},
-            onSelectionChanged: (s) => onChange(Locale(s.first)),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.settingsLanguage,
+                      style: TextStyle(color: colors.textPrimary)),
+                  const SizedBox(height: 2),
+                  Text(
+                    currentLabel,
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_left, color: colors.textSecondary),
+          ],
+        ),
       ),
     );
   }

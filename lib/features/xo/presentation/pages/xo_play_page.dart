@@ -6,6 +6,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/haptics/game_haptics.dart';
@@ -77,6 +78,7 @@ class _XoPlayPageState extends ConsumerState<XoPlayPage> {
   }
 
   Future<bool> _confirmLeave(BuildContext context, SarhnyColors colors) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => Dialog(
@@ -99,7 +101,7 @@ class _XoPlayPageState extends ConsumerState<XoPlayPage> {
               ),
               const Gap(12),
               Text(
-                'مغادرة المباراة؟',
+                l10n.leaveTitle,
                 style: TextStyle(
                   color: colors.textPrimary,
                   fontWeight: FontWeight.w800,
@@ -108,7 +110,7 @@ class _XoPlayPageState extends ConsumerState<XoPlayPage> {
               ),
               const Gap(4),
               Text(
-                'سيتم احتساب جولتك خسارة.',
+                l10n.leaveBody,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: colors.textSecondary, fontSize: 13),
               ),
@@ -118,7 +120,7 @@ class _XoPlayPageState extends ConsumerState<XoPlayPage> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(ctx).pop(false),
-                      child: const Text('متابعة'),
+                      child: Text(l10n.continueMatch),
                     ),
                   ),
                   const Gap(10),
@@ -128,7 +130,7 @@ class _XoPlayPageState extends ConsumerState<XoPlayPage> {
                         backgroundColor: const Color(0xFFD22F2F),
                       ),
                       onPressed: () => Navigator.of(ctx).pop(true),
-                      child: const Text('خروج'),
+                      child: Text(l10n.actionLeave),
                     ),
                   ),
                 ],
@@ -142,48 +144,49 @@ class _XoPlayPageState extends ConsumerState<XoPlayPage> {
   }
 
   Future<void> _handleAbstain(BuildContext context, SarhnyColors colors) async {
+    final l10n = AppLocalizations.of(context);
     final controller = ref.read(xoMatchControllerProvider(widget.gameId).notifier);
     final svc = _adService ??= AdMobRewardService(ref.read(carromApiProvider));
-    Fluttertoast.showToast(msg: 'جاري تحميل الإعلان...');
+    Fluttertoast.showToast(msg: l10n.adLoading);
     try {
       final grant = await svc.showRewardedAd();
       if (grant == null) {
         if (!context.mounted) return;
-        Fluttertoast.showToast(msg: 'الإعلان لم يكتمل');
+        Fluttertoast.showToast(msg: l10n.adIncomplete);
         return;
       }
       final token = grant.adToken;
       if (token == null || token.isEmpty) {
         if (!context.mounted) return;
-        Fluttertoast.showToast(msg: 'لم نتحقق من الإعلان');
+        Fluttertoast.showToast(msg: l10n.errorGeneric);
         return;
       }
       await controller.abstain(token);
       if (!context.mounted) return;
       Fluttertoast.showToast(
-        msg: 'حصلت على نقطة. تم الامتناع.',
+        msg: l10n.adRewardEarned,
       );
     } on AdRewardException catch (e) {
-      Fluttertoast.showToast(msg: _adErrorMessage(e.code));
+      Fluttertoast.showToast(msg: _adErrorMessage(e.code, l10n));
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر تشغيل الإعلان');
+      Fluttertoast.showToast(msg: l10n.errorAdLaunch);
     }
   }
 
-  String _adErrorMessage(String code) {
+  String _adErrorMessage(String code, AppLocalizations l10n) {
     switch (code) {
       case 'ads_unsupported_platform':
-        return 'الإعلانات غير متاحة هنا';
+        return l10n.errorAdLaunch;
       case 'ad_unavailable':
-        return 'لا يوجد إعلان متاح حالياً';
+        return l10n.adUnavailable;
       case 'daily_cap_reached':
-        return 'وصلت الحد اليومي للإعلانات';
+        return l10n.adDailyCap;
       case 'already_granted':
-        return 'تم احتساب هذا الإعلان مسبقاً';
+        return l10n.adRewardEarned;
       case 'invalid_signature':
-        return 'فشل التحقق من الإعلان';
+        return l10n.errorGeneric;
       default:
-        return 'تعذّر الحصول على المكافأة';
+        return l10n.errorGeneric;
     }
   }
 
@@ -250,7 +253,7 @@ class _XoPlayPageState extends ConsumerState<XoPlayPage> {
             },
           ),
           title: Text(
-            'XO تحدّى',
+            AppLocalizations.of(context).xoPageTitle,
             style: TextStyle(
               color: colors.textPrimary,
               fontWeight: FontWeight.w900,
@@ -272,7 +275,7 @@ class _XoPlayPageState extends ConsumerState<XoPlayPage> {
     }
     final snap = mState.snapshot;
     if (snap == null) {
-      return const Center(child: Text('تعذّر تحميل المباراة'));
+      return Center(child: Text(AppLocalizations.of(context).errorMatchLoad));
     }
 
     // Waiting for opponent.
@@ -330,6 +333,7 @@ class _WaitingForOpponentState extends State<_WaitingForOpponent>
   @override
   Widget build(BuildContext context) {
     final colors = widget.colors;
+    final l10n = AppLocalizations.of(context);
     final isInvite = widget.snapshot.isInvite && widget.snapshot.inviteCode != null;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
@@ -375,7 +379,7 @@ class _WaitingForOpponentState extends State<_WaitingForOpponent>
           ),
           const Gap(28),
           Text(
-            isInvite ? 'بانتظار صديقك' : 'البحث عن منافس...',
+            isInvite ? l10n.labelWaitingOpponent : l10n.labelSearching,
             style: TextStyle(
               color: colors.textPrimary,
               fontWeight: FontWeight.w800,
@@ -445,6 +449,7 @@ class _PlayingView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         const Gap(8),
@@ -475,8 +480,8 @@ class _PlayingView extends ConsumerWidget {
               // force a snapshot refresh so the next tap sees current
               // state.
               final msg = switch (reason) {
-                'filled' => 'الخانة مشغولة — اختر أخرى',
-                'inert' => 'ليس دورك بعد',
+                'filled' => l10n.xoCellFilled,
+                'inert' => l10n.xoNotYourTurn,
                 _ => '',
               };
               if (msg.isEmpty) return;
@@ -494,7 +499,7 @@ class _PlayingView extends ConsumerWidget {
             children: [
               Expanded(
                 child: _MarkChip(
-                  label: 'أنت',
+                  label: l10n.labelYou,
                   mark: snapshot.myMark,
                   accent: colors.moment,
                   active: snapshot.myTurn,
@@ -502,7 +507,7 @@ class _PlayingView extends ConsumerWidget {
               ),
               const Gap(8),
               Text(
-                'VS',
+                l10n.labelVs,
                 style: TextStyle(
                   color: colors.textSecondary,
                   fontSize: 12,
@@ -512,7 +517,7 @@ class _PlayingView extends ConsumerWidget {
               const Gap(8),
               Expanded(
                 child: _MarkChip(
-                  label: 'الخصم',
+                  label: l10n.labelOpponent,
                   mark: snapshot.oppMark,
                   accent: colors.face,
                   active: !snapshot.myTurn,
@@ -533,7 +538,8 @@ class _TurnHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = snapshot.myTurn ? 'دورك' : 'دور الخصم';
+    final l10n = AppLocalizations.of(context);
+    final text = snapshot.myTurn ? l10n.labelTurnYours : l10n.labelTurnTheirs;
     final accent = snapshot.myTurn ? colors.moment : colors.face;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 18),
@@ -557,7 +563,7 @@ class _TurnHeader extends StatelessWidget {
           ),
           const Spacer(),
           Text(
-            'حركة ${snapshot.movesMade}/9',
+            l10n.xoMovesProgress(snapshot.movesMade, 9),
             style: TextStyle(
               color: colors.textSecondary,
               fontSize: 11,
@@ -693,25 +699,26 @@ class _ResultBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (snapshot.isDraw) {
       return _Banner(
-        text: 'تعادل 🤝',
-        sub: 'لا فائز هذه الجولة.',
+        text: l10n.outcomeDraw,
+        sub: l10n.roundDraw,
         accent: colors.crystal,
         emoji: '🤝',
       );
     }
     if (snapshot.isWinner == true) {
       return _Banner(
-        text: 'فزت 🏆',
-        sub: 'اسأل خصمك بصدق.',
+        text: l10n.outcomeYouWon,
+        sub: l10n.questionAsk,
         accent: colors.moment,
         emoji: '🏆',
       );
     }
     return _Banner(
-      text: 'خسارة',
-      sub: 'أجب بصدق، أو شاهد إعلاناً للامتناع.',
+      text: l10n.outcomeYouLost,
+      sub: l10n.questionAbstainNote,
       accent: colors.face,
       emoji: '🎯',
     );
@@ -889,6 +896,7 @@ class _WinnerComposer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -904,7 +912,7 @@ class _WinnerComposer extends StatelessWidget {
               Icon(Icons.edit_rounded, color: colors.moment, size: 18),
               const Gap(8),
               Text(
-                'اكتب سؤالك للخصم',
+                l10n.questionAsk,
                 style: TextStyle(
                   color: colors.textPrimary,
                   fontWeight: FontWeight.w800,
@@ -921,7 +929,7 @@ class _WinnerComposer extends StatelessWidget {
             maxLength: 200,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'سؤال صريح وقصير...',
+              hintText: l10n.questionWriteHint,
               filled: true,
               fillColor: colors.background,
               border: OutlineInputBorder(
@@ -944,13 +952,13 @@ class _WinnerComposer extends StatelessWidget {
                       ? null
                       : controller.text.trim()),
               icon: const Icon(Icons.send_rounded, size: 16),
-              label: const Text('أرسل السؤال'),
+              label: Text(l10n.actionSend),
             ),
           ),
           const Gap(6),
           TextButton(
             onPressed: busy ? null : () => onSubmit(null),
-            child: const Text('أو استخدم سؤالاً جاهزاً'),
+            child: Text(l10n.questionUsePresetCta),
           ),
         ],
       ),
@@ -984,7 +992,7 @@ class _LoserWaiting extends StatelessWidget {
               ),
               const Gap(10),
               Text(
-                'الخصم يكتب سؤاله...',
+                AppLocalizations.of(context).questionWaitingQ,
                 style: TextStyle(
                   color: colors.textPrimary,
                   fontWeight: FontWeight.w800,
@@ -1025,6 +1033,7 @@ class _LoserAnswerer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1067,7 +1076,7 @@ class _LoserAnswerer extends StatelessWidget {
           Row(
             children: [
               Text(
-                'جوابك بصدق',
+                l10n.questionAnswer,
                 style: TextStyle(
                   color: colors.textPrimary,
                   fontWeight: FontWeight.w800,
@@ -1084,7 +1093,7 @@ class _LoserAnswerer extends StatelessWidget {
             maxLength: 500,
             maxLines: 4,
             decoration: InputDecoration(
-              hintText: 'أجب بصراحة...',
+              hintText: l10n.answerWriteHint,
               filled: true,
               fillColor: colors.background,
               border: OutlineInputBorder(
@@ -1106,13 +1115,13 @@ class _LoserAnswerer extends StatelessWidget {
                   : () {
                       final t = controller.text.trim();
                       if (t.isEmpty) {
-                        Fluttertoast.showToast(msg: 'اكتب إجابة');
+                        Fluttertoast.showToast(msg: l10n.answerWriteHint);
                         return;
                       }
                       onAnswer(t);
                     },
               icon: const Icon(Icons.send_rounded, size: 16),
-              label: const Text('أرسل الجواب'),
+              label: Text(l10n.actionSend),
             ),
           ),
           const Gap(10),
@@ -1123,7 +1132,9 @@ class _LoserAnswerer extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: busy || skipUsed ? null : onSkip,
                   icon: const Icon(Icons.shuffle_rounded, size: 14),
-                  label: Text(skipUsed ? 'استُخدم التبديل' : 'بدّل السؤال'),
+                  label: Text(skipUsed
+                      ? l10n.questionSkipUsed
+                      : l10n.questionSkipNew),
                 ),
               ),
               const Gap(10),
@@ -1131,14 +1142,14 @@ class _LoserAnswerer extends StatelessWidget {
                 child: FilledButton.tonalIcon(
                   onPressed: busy ? null : onAbstain,
                   icon: const Icon(Icons.play_circle_outline_rounded, size: 16),
-                  label: const Text('امتنع · إعلان +1'),
+                  label: Text(l10n.questionAbstainAd),
                 ),
               ),
             ],
           ),
           const Gap(4),
           Text(
-            'الامتناع: شاهد إعلاناً قصيراً → تنتهي اللعبة بدون إجابة وتربح نقطة.',
+            l10n.questionAbstainNote,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: colors.textSecondary,
@@ -1164,6 +1175,7 @@ class _WinnerAwaitingAnswer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1183,7 +1195,7 @@ class _WinnerAwaitingAnswer extends StatelessWidget {
               const Gap(10),
               Expanded(
                 child: Text(
-                  'الخصم يجيب الآن...',
+                  l10n.questionWaitingA,
                   style: TextStyle(
                     color: colors.textPrimary,
                     fontWeight: FontWeight.w800,
@@ -1202,7 +1214,7 @@ class _WinnerAwaitingAnswer extends StatelessWidget {
               color: colors.moment.withValues(alpha: 0.08),
             ),
             child: Text(
-              'سؤالك: $question',
+              l10n.questionYoursPrefix(question),
               style: TextStyle(
                 color: colors.textSecondary,
                 fontSize: 13,
@@ -1338,6 +1350,7 @@ class _RematchAndExitState extends ConsumerState<_RematchAndExit> {
   }
 
   Future<void> _request(bool accept) async {
+    final l10n = AppLocalizations.of(context);
     setState(() => _busy = true);
     GameHaptics.uiPop();
     try {
@@ -1353,7 +1366,7 @@ class _RematchAndExitState extends ConsumerState<_RematchAndExit> {
     } on XoApiException catch (e) {
       Fluttertoast.showToast(msg: e.message);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الطلب');
+      Fluttertoast.showToast(msg: l10n.errorGeneric);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1362,19 +1375,20 @@ class _RematchAndExitState extends ConsumerState<_RematchAndExit> {
   @override
   Widget build(BuildContext context) {
     final colors = widget.colors;
+    final l10n = AppLocalizations.of(context);
     String status;
     switch (_phase) {
       case 'waiting':
-        status = 'بانتظار رد الخصم...';
+        status = l10n.rematchWaiting;
         break;
       case 'declined':
-        status = 'الخصم رفض الإعادة';
+        status = l10n.rematchDeclined;
         break;
       case 'timeout':
-        status = 'انتهى وقت الطلب';
+        status = l10n.rematchTimeout;
         break;
       default:
-        status = 'هل تريد إعادة المباراة؟';
+        status = l10n.rematchTitle;
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1419,7 +1433,7 @@ class _RematchAndExitState extends ConsumerState<_RematchAndExit> {
                           ? null
                           : () => _request(true),
                       icon: const Icon(Icons.replay_rounded, size: 16),
-                      label: const Text('إعادة المباراة'),
+                      label: Text(l10n.rematchAccept),
                     ),
                   ),
                   const Gap(10),
@@ -1427,7 +1441,7 @@ class _RematchAndExitState extends ConsumerState<_RematchAndExit> {
                     child: OutlinedButton.icon(
                       onPressed: _busy ? null : () => _request(false),
                       icon: const Icon(Icons.close_rounded, size: 16),
-                      label: const Text('انتهيت'),
+                      label: Text(l10n.rematchDecline),
                     ),
                   ),
                 ],
@@ -1444,7 +1458,7 @@ class _RematchAndExitState extends ConsumerState<_RematchAndExit> {
               context.go(AppRoutes.gamesHub);
             },
             icon: const Icon(Icons.home_rounded, size: 18),
-            label: const Text('العودة للوبي'),
+            label: Text(l10n.actionLeaveLobby),
           ),
         ),
       ],

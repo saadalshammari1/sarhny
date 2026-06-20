@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../data/game_repository.dart';
 import '../providers/game_providers.dart';
@@ -28,6 +29,7 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
   }
 
   Future<void> _join({String? inviteCode, bool createInvite = false}) async {
+    final l10n = AppLocalizations.of(context);
     setState(() => _busy = true);
     try {
       final r = await ref.read(gameRepositoryProvider).join(
@@ -42,7 +44,7 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
     } on GameApiException catch (e) {
       Fluttertoast.showToast(msg: e.message);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر بدء اللعبة');
+      Fluttertoast.showToast(msg: l10n.errorGameStart);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -51,15 +53,16 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: colors.background,
       // Explicit leading — go_router-pushed routes sometimes don't expose
       // canPop to Material's auto back-arrow, so make it bulletproof here.
       appBar: AppBar(
-        title: const Text('تحدّى 🎮'),
+        title: Text(l10n.gamePageTitle),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          tooltip: 'رجوع',
+          tooltip: l10n.actionBack,
           onPressed: () {
             if (context.canPop()) {
               context.pop();
@@ -77,7 +80,7 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
             children: [
               // Mood picker
               Text(
-                'اختر مزاج اللعبة',
+                l10n.moodChoose,
                 style: TextStyle(
                   color: colors.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -88,7 +91,7 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
               Row(
                 children: [
                   _MoodCard(
-                    label: 'خفيف',
+                    label: l10n.moodLight,
                     emoji: '🌤️',
                     selected: _mood == 'light',
                     onTap: () => setState(() => _mood = 'light'),
@@ -96,7 +99,7 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
                   ),
                   const SizedBox(width: 8),
                   _MoodCard(
-                    label: 'جريء',
+                    label: l10n.moodBold,
                     emoji: '🔥',
                     selected: _mood == 'bold',
                     onTap: () => setState(() => _mood = 'bold'),
@@ -104,7 +107,7 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
                   ),
                   const SizedBox(width: 8),
                   _MoodCard(
-                    label: 'مضحك',
+                    label: l10n.moodFunny,
                     emoji: '😂',
                     selected: _mood == 'funny',
                     onTap: () => setState(() => _mood = 'funny'),
@@ -116,8 +119,8 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
 
               // Local vs AI — tap-to-play, no waiting.
               _PrimaryCta(
-                label: 'ضد الذكاء',
-                subtitle: 'تدريب فوري — الذكاء يطرح سؤالاً إذا فاز',
+                label: l10n.lobbyVsAi,
+                subtitle: l10n.lobbyVsAiSub,
                 icon: Icons.psychology_rounded,
                 onTap: _busy
                     ? null
@@ -128,8 +131,8 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
 
               // Random match
               _PrimaryCta(
-                label: 'العب مع لاعب عشوائي',
-                subtitle: '5 جولات حجر/ورقة/مقص + تخمين • أول من يصل 5 نقاط يفوز',
+                label: l10n.lobbyVsRandom,
+                subtitle: l10n.gameLobbyRandomSub,
                 icon: Icons.shuffle_rounded,
                 onTap: _busy ? null : () => _join(),
                 colors: colors,
@@ -138,8 +141,8 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
 
               // Invite friend
               _PrimaryCta(
-                label: 'تحدّى صديق',
-                subtitle: 'أنشئ رمز دعوة وأرسله',
+                label: l10n.lobbyInviteFriend,
+                subtitle: l10n.lobbyInviteFriendSub,
                 icon: Icons.person_add_alt_1_rounded,
                 onTap: _busy ? null : () => _join(createInvite: true),
                 colors: colors,
@@ -148,7 +151,7 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
 
               // Accept invite
               Text(
-                'انضم بدعوة',
+                l10n.lobbyJoinByCode,
                 style: TextStyle(
                   color: colors.textSecondary,
                   fontWeight: FontWeight.w700,
@@ -164,7 +167,7 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
                       decoration: InputDecoration(
-                        hintText: 'الصق رمز الدعوة',
+                        hintText: l10n.lobbyPasteCode,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -176,7 +179,7 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
                     onPressed: _busy
                         ? null
                         : () => _join(inviteCode: _inviteCtrl.text.trim()),
-                    child: const Text('انضم'),
+                    child: Text(l10n.actionJoin),
                   ),
                 ],
               ),
@@ -194,7 +197,7 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'قواعد سريعة',
+                      l10n.gameRulesTitle,
                       style: TextStyle(
                         color: colors.textPrimary,
                         fontWeight: FontWeight.w700,
@@ -202,11 +205,11 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    ..._rule(colors, '• اختر سؤالاً وخمّن اختيار خصمك'),
-                    ..._rule(colors, '• فوز الجولة = نقطة. تخمين صحيح = نقطة'),
-                    ..._rule(colors, '• أول من يصل 5 نقاط يربح'),
-                    ..._rule(colors, '• الفائز يكتب سؤالاً للخاسر (له 25 ثانية)'),
-                    ..._rule(colors, '• إجابات أو أسئلة مسيئة → الجولة تُلغى'),
+                    ..._rule(colors, '• ${l10n.gameRule1}'),
+                    ..._rule(colors, '• ${l10n.gameRule2}'),
+                    ..._rule(colors, '• ${l10n.gameRule3}'),
+                    ..._rule(colors, '• ${l10n.gameRule4}'),
+                    ..._rule(colors, '• ${l10n.gameRule5}'),
                   ],
                 ),
               ),
@@ -345,7 +348,8 @@ class _PrimaryCta extends StatelessWidget {
 }
 
 /// Tiny helper if other pages need to copy the invite code to the clipboard.
-Future<void> copyInviteCode(String code) async {
+Future<void> copyInviteCode(BuildContext context, String code) async {
+  final l10n = AppLocalizations.of(context);
   await Clipboard.setData(ClipboardData(text: code));
-  Fluttertoast.showToast(msg: 'نُسخ الرمز');
+  Fluttertoast.showToast(msg: l10n.errorClipboardCopied);
 }

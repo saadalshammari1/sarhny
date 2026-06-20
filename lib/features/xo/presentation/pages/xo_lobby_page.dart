@@ -4,6 +4,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/haptics/game_haptics.dart';
@@ -29,6 +30,7 @@ class _XoLobbyPageState extends ConsumerState<XoLobbyPage> {
   }
 
   Future<void> _join({String? inviteCode, bool createInvite = false}) async {
+    final l10n = AppLocalizations.of(context);
     setState(() => _busy = true);
     GameHaptics.uiPop();
     try {
@@ -42,7 +44,7 @@ class _XoLobbyPageState extends ConsumerState<XoLobbyPage> {
     } on XoApiException catch (e) {
       Fluttertoast.showToast(msg: e.message);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر بدء اللعبة');
+      Fluttertoast.showToast(msg: l10n.errorGameStart);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -51,6 +53,7 @@ class _XoLobbyPageState extends ConsumerState<XoLobbyPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
@@ -81,12 +84,12 @@ class _XoLobbyPageState extends ConsumerState<XoLobbyPage> {
             children: [
               _Hero(colors: colors),
               const Gap(20),
-              _SectionLabel('اختر مزاج السؤال', colors),
+              _SectionLabel(l10n.moodChoose, colors),
               const Gap(10),
               Row(
                 children: [
                   _MoodTile(
-                    label: 'خفيف',
+                    label: l10n.moodLight,
                     emoji: '🌤️',
                     selected: _mood == 'light',
                     onTap: () {
@@ -97,7 +100,7 @@ class _XoLobbyPageState extends ConsumerState<XoLobbyPage> {
                   ),
                   const Gap(8),
                   _MoodTile(
-                    label: 'جريء',
+                    label: l10n.moodBold,
                     emoji: '🔥',
                     selected: _mood == 'bold',
                     onTap: () {
@@ -108,7 +111,7 @@ class _XoLobbyPageState extends ConsumerState<XoLobbyPage> {
                   ),
                   const Gap(8),
                   _MoodTile(
-                    label: 'مضحك',
+                    label: l10n.moodFunny,
                     emoji: '😂',
                     selected: _mood == 'funny',
                     onTap: () {
@@ -120,11 +123,11 @@ class _XoLobbyPageState extends ConsumerState<XoLobbyPage> {
                 ],
               ),
               const Gap(22),
-              _SectionLabel('ابدأ المباراة', colors),
+              _SectionLabel(l10n.lobbyStartMatchSection, colors),
               const Gap(10),
               _PrimaryAction(
-                label: 'ضد الذكاء',
-                sublabel: 'تدريب فوري بدون انتظار',
+                label: l10n.lobbyVsAi,
+                sublabel: l10n.lobbyVsAiSub,
                 icon: Icons.psychology_rounded,
                 accent: colors.crystal,
                 colors: colors,
@@ -136,8 +139,8 @@ class _XoLobbyPageState extends ConsumerState<XoLobbyPage> {
               ),
               const Gap(10),
               _PrimaryAction(
-                label: 'منافس عشوائي',
-                sublabel: 'ابحث عن لاعب أونلاين',
+                label: l10n.lobbyVsRandom,
+                sublabel: l10n.lobbyVsRandomSub,
                 icon: Icons.public_rounded,
                 accent: colors.moment,
                 colors: colors,
@@ -146,8 +149,8 @@ class _XoLobbyPageState extends ConsumerState<XoLobbyPage> {
               ),
               const Gap(10),
               _PrimaryAction(
-                label: 'العب مع صديق',
-                sublabel: 'أنشئ رمز دعوة وشاركه',
+                label: l10n.lobbyInviteFriend,
+                sublabel: l10n.lobbyInviteFriendSub,
                 icon: Icons.group_add_rounded,
                 accent: colors.face,
                 colors: colors,
@@ -155,7 +158,7 @@ class _XoLobbyPageState extends ConsumerState<XoLobbyPage> {
                 onTap: () => _join(createInvite: true),
               ),
               const Gap(14),
-              _SectionLabel('انضم بدعوة', colors),
+              _SectionLabel(l10n.lobbyJoinByCode, colors),
               const Gap(10),
               Row(
                 children: [
@@ -203,7 +206,7 @@ class _XoLobbyPageState extends ConsumerState<XoLobbyPage> {
                           ? null
                           : () => _join(inviteCode: _inviteCtrl.text.trim()),
                       icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 14),
-                      label: const Text('انضم'),
+                      label: Text(l10n.actionJoin),
                     ),
                   ),
                 ],
@@ -226,6 +229,7 @@ class _Hero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
       decoration: BoxDecoration(
@@ -247,7 +251,7 @@ class _Hero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'XO تحدّى',
+                  l10n.xoPageTitle,
                   style: TextStyle(
                     color: colors.textPrimary,
                     fontWeight: FontWeight.w900,
@@ -256,7 +260,7 @@ class _Hero extends StatelessWidget {
                 ),
                 const Gap(4),
                 Text(
-                  'اسبق خصمك بثلاث علامات على التوالي.\nالفائز يطرح السؤال. الخاسر يجيب.',
+                  l10n.xoLobbyHeroDescription,
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontSize: 12.5,

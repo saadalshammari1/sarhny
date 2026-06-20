@@ -6,6 +6,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/localization/generated/app_localizations.dart';
 import '../../app/router.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/haptics/game_haptics.dart';
@@ -52,44 +53,43 @@ class _GamesHubPageState extends ConsumerState<GamesHubPage>
     setState(() => _watchingAd = true);
     GameHaptics.uiPop();
     final svc = _adService ??= AdMobRewardService(ref.read(carromApiProvider));
+    final l10n = AppLocalizations.of(context);
     try {
       final grant = await svc.showRewardedAd();
       if (!mounted) return;
       if (grant == null) {
-        Fluttertoast.showToast(msg: 'الإعلان لم يكتمل');
+        Fluttertoast.showToast(msg: l10n.adIncomplete);
       } else {
         ref.invalidate(carromWalletProvider);
-        Fluttertoast.showToast(
-          msg: 'حصلت على ${grant.credited} نقطة · رصيدك ${grant.balance}',
-        );
+        Fluttertoast.showToast(msg: l10n.adRewardEarned);
       }
     } on AdRewardException catch (e) {
-      Fluttertoast.showToast(msg: _adErr(e.code));
+      Fluttertoast.showToast(msg: _adErr(l10n, e.code));
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر تشغيل الإعلان');
+      Fluttertoast.showToast(msg: l10n.adUnavailable);
     } finally {
       if (mounted) setState(() => _watchingAd = false);
     }
   }
 
-  String _adErr(String code) {
+  String _adErr(AppLocalizations l10n, String code) {
     switch (code) {
       case 'ads_unsupported_platform':
-        return 'الإعلانات غير متاحة هنا';
       case 'ad_unavailable':
-        return 'لا يوجد إعلان متاح حالياً';
+        return l10n.adUnavailable;
       case 'daily_cap_reached':
-        return 'وصلت الحد اليومي للإعلانات';
+        return l10n.adDailyCap;
       case 'already_granted':
-        return 'تم احتساب الإعلان مسبقاً';
+        return l10n.adRewardEarned;
       default:
-        return 'تعذّر الحصول على المكافأة';
+        return l10n.adUnavailable;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final l10n = AppLocalizations.of(context);
     final walletAsync = ref.watch(carromWalletProvider);
     final balance =
         walletAsync.maybeWhen(data: (w) => w.points, orElse: () => null);
@@ -102,7 +102,7 @@ class _GamesHubPageState extends ConsumerState<GamesHubPage>
         scrolledUnderElevation: 0,
         centerTitle: false,
         leading: IconButton(
-          tooltip: 'رجوع',
+          tooltip: l10n.actionBack,
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: colors.textPrimary, size: 20),
           onPressed: () {
@@ -115,7 +115,7 @@ class _GamesHubPageState extends ConsumerState<GamesHubPage>
           },
         ),
         title: Text(
-          'الساحة',
+          l10n.labelGamesHome,
           style: TextStyle(
             color: colors.textPrimary,
             fontWeight: FontWeight.w900,
@@ -132,16 +132,30 @@ class _GamesHubPageState extends ConsumerState<GamesHubPage>
         child: ListView(
           padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
           children: [
-            const Gap(6),
-            _IntroLine(colors: colors),
-            const Gap(18),
-            _SectionLabel(text: 'العب الآن', colors: colors),
+            const Gap(12),
+            _SectionLabel(text: l10n.hubSectionPlay, colors: colors),
             const Gap(10),
+            // Flagship game — placed first so new users see it immediately.
             _GameTile(
-              title: 'تحدّى',
-              subtitle: 'حجرة · ورقة · مقص — الفائز يطرح السؤال',
+              title: l10n.hubGameLudoPower,
+              subtitle: l10n.hubGameLudoPowerSub,
+              icon: Icons.casino_rounded,
+              tag: l10n.hubTagFeatured,
+              accent: const Color(0xFFE3BD5E),
+              colors: colors,
+              shimmer: _shimmer,
+              decoration: _GameTileDecoration.shapes,
+              onTap: () {
+                GameHaptics.uiPop();
+                context.push(AppRoutes.ludoPowerLobby);
+              },
+            ),
+            const Gap(12),
+            _GameTile(
+              title: l10n.hubGameRps,
+              subtitle: l10n.hubGameRpsSub,
               icon: Icons.compare_arrows_rounded,
-              tag: 'أونلاين',
+              tag: l10n.hubTagOnline,
               accent: colors.moment,
               colors: colors,
               shimmer: _shimmer,
@@ -153,10 +167,10 @@ class _GamesHubPageState extends ConsumerState<GamesHubPage>
             ),
             const Gap(12),
             _GameTile(
-              title: 'إكس-أو',
-              subtitle: 'ثلاثة على التوالي — الفائز يطرح السؤال',
+              title: l10n.hubGameXo,
+              subtitle: l10n.hubGameXoSub,
               icon: Icons.grid_3x3_rounded,
-              tag: 'جديد',
+              tag: l10n.hubTagAdNew,
               accent: colors.face,
               colors: colors,
               shimmer: _shimmer,
@@ -167,15 +181,16 @@ class _GamesHubPageState extends ConsumerState<GamesHubPage>
               },
             ),
             const Gap(22),
-            _SectionLabel(text: 'اربح نقاطاً بدون لعب', colors: colors),
+            _SectionLabel(text: l10n.hubSectionEarn, colors: colors),
             const Gap(10),
             _AdEarnTile(
+              l10n: l10n,
               colors: colors,
               busy: _watchingAd,
               onTap: _watchAdForPoint,
             ),
             const Gap(10),
-            _HintRow(colors: colors),
+            _HintRow(l10n: l10n, colors: colors),
           ],
         ),
       ),
@@ -184,25 +199,6 @@ class _GamesHubPageState extends ConsumerState<GamesHubPage>
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Intro — a single subtle line under the AppBar
-// ─────────────────────────────────────────────────────────────────────
-
-class _IntroLine extends StatelessWidget {
-  const _IntroLine({required this.colors});
-  final SarhnyColors colors;
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      'لعبتان · سؤال صريح للخاسر · نقاط من الإعلانات.',
-      style: TextStyle(
-        color: colors.textSecondary,
-        fontSize: 13,
-        height: 1.55,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────
 // Section label
@@ -568,10 +564,12 @@ class _TileBackgroundPainter extends CustomPainter {
 
 class _AdEarnTile extends StatelessWidget {
   const _AdEarnTile({
+    required this.l10n,
     required this.colors,
     required this.busy,
     required this.onTap,
   });
+  final AppLocalizations l10n;
   final SarhnyColors colors;
   final bool busy;
   final VoidCallback onTap;
@@ -624,7 +622,7 @@ class _AdEarnTile extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          'شاهد إعلاناً قصيراً',
+                          l10n.hubAdEarnTitle,
                           style: TextStyle(
                             color: colors.textPrimary,
                             fontSize: 15,
@@ -640,7 +638,7 @@ class _AdEarnTile extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            '+1 نقطة',
+                            l10n.hubAdPointBadge,
                             style: TextStyle(
                               color: colors.crystal,
                               fontSize: 10,
@@ -652,7 +650,7 @@ class _AdEarnTile extends StatelessWidget {
                     ),
                     const Gap(4),
                     Text(
-                      'حد يومي 10 — جميع النقاط تُضاف لمحفظتك فوراً.',
+                      l10n.hubAdEarnSub,
                       style: TextStyle(
                         color: colors.textSecondary,
                         fontSize: 12,
@@ -694,7 +692,8 @@ class _AdEarnTile extends StatelessWidget {
 }
 
 class _HintRow extends StatelessWidget {
-  const _HintRow({required this.colors});
+  const _HintRow({required this.l10n, required this.colors});
+  final AppLocalizations l10n;
   final SarhnyColors colors;
   @override
   Widget build(BuildContext context) {
@@ -705,7 +704,7 @@ class _HintRow extends StatelessWidget {
         const Gap(6),
         Expanded(
           child: Text(
-            'تستطيع أيضاً الامتناع عن الجواب خلال اللعبة بمشاهدة إعلان.',
+            l10n.hubAbstainHint,
             style: TextStyle(
               color: colors.textSecondary,
               fontSize: 11.5,

@@ -1083,4 +1083,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get ludoRule4 => '별은 안전 칸 • 능력은 3번 굴릴 때마다 재배치';
+
+  @override
+  String get rpsGuessExplain => '상대의 선택을 맞혀 보세요 — 정답이면 라운드 승점에 보너스 점수까지!';
 }

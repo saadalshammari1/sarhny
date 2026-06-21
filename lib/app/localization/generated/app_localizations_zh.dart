@@ -1081,4 +1081,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get ludoRule4 => '星格为安全格 • 能力每 3 次掷骰重新洗牌';
+
+  @override
+  String get rpsGuessExplain => '猜猜对手会出什么 —— 猜中即可在赢回合的基础上再得一个奖励分！';
 }

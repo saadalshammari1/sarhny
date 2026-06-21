@@ -1110,4 +1110,8 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get ludoRule4 =>
       'Estrelas são casas seguras • poderes se rearranjam a cada 3 jogadas';
+
+  @override
+  String get rpsGuessExplain =>
+      'Adivinhe a escolha do adversário — acertou, ganha um ponto bônus além do ponto da rodada!';
 }

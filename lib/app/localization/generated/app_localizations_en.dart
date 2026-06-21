@@ -1099,4 +1099,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get ludoRule4 =>
       'Stars are safe cells • powers reshuffle every 3 rolls';
+
+  @override
+  String get rpsGuessExplain =>
+      'Guess your opponent\'s pick — get it right for a bonus point on top of your round win!';
 }

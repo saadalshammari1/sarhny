@@ -384,5 +384,7 @@
   "ludoRule1": "Lempar dadu, keluar rumah saat enam, bawa 4 bidak ke pusat",
   "ludoRule2": "4 kekuatan super di jalur: 🚀 ❄ 🌀 🌪",
   "ludoRule3": "Menangkap lawan memberi giliran tambahan",
-  "ludoRule4": "Bintang adalah kotak aman • kekuatan diacak tiap 3 lemparan"
+  "ludoRule4": "Bintang adalah kotak aman • kekuatan diacak tiap 3 lemparan",
+
+  "rpsGuessExplain": "Tebak pilihan lawanmu — tebakan benar memberi poin bonus di atas poin kemenangan ronde!"
 }

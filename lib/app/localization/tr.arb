@@ -384,5 +384,7 @@
   "ludoRule1": "Zar at, altı atınca evden çık, 4 taşı merkeze ulaştır",
   "ludoRule2": "Yolda 4 süper güç: 🚀 ❄ 🌀 🌪",
   "ludoRule3": "Rakibi yakalamak ekstra tur kazandırır",
-  "ludoRule4": "Yıldızlar güvenli kareler • güçler her 3 atışta yer değiştirir"
+  "ludoRule4": "Yıldızlar güvenli kareler • güçler her 3 atışta yer değiştirir",
+
+  "rpsGuessExplain": "Rakibinin seçimini tahmin et — doğru tahmin tur kazancının üstüne bonus puan kazandırır!"
 }

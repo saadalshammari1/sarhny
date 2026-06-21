@@ -485,6 +485,16 @@ class _PlayingViewState extends State<_PlayingView>
             const SizedBox(height: 14),
             // Section: my guess of opponent
             _SectionLabel(text: l10n.rpsGuessHand, colors: c),
+            const SizedBox(height: 4),
+            Text(
+              l10n.rpsGuessExplain,
+              style: TextStyle(
+                color: c.textSecondary,
+                fontSize: 12,
+                height: 1.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             const SizedBox(height: 8),
             _RpsPickRow(
               selected: liveGuess,

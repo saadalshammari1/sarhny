@@ -1111,4 +1111,8 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get ludoRule4 =>
       'Les étoiles sont des cases sûres • les pouvoirs se réorganisent tous les 3 lancers';
+
+  @override
+  String get rpsGuessExplain =>
+      'Devine le choix de ton adversaire — bonne réponse = point bonus en plus du point de manche !';
 }

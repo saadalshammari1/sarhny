@@ -2197,6 +2197,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'النجوم خانات آمنة • القدرات تتبدّل كل ٣ رميات'**
   String get ludoRule4;
+
+  /// No description provided for @rpsGuessExplain.
+  ///
+  /// In ar, this message translates to:
+  /// **'خمّن ما سيختاره خصمك — تخمين صحيح = نقطة إضافية مع نقطة الفوز بالجولة!'**
+  String get rpsGuessExplain;
 }
 
 class _AppLocalizationsDelegate

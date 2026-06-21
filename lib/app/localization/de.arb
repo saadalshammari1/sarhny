@@ -384,5 +384,7 @@
   "ludoRule1": "Würfle, verlasse das Haus bei einer Sechs, bring alle 4 Figuren ins Zentrum",
   "ludoRule2": "4 Superkräfte auf dem Weg: 🚀 ❄ 🌀 🌪",
   "ludoRule3": "Einen Gegner zu schlagen bringt einen Extrazug",
-  "ludoRule4": "Sterne sind sichere Felder • Kräfte mischen sich alle 3 Würfe neu"
+  "ludoRule4": "Sterne sind sichere Felder • Kräfte mischen sich alle 3 Würfe neu",
+
+  "rpsGuessExplain": "Errate, was dein Gegner wählt — richtig getippt = Bonuspunkt zusätzlich zum Rundensieg!"
 }

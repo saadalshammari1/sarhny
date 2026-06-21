@@ -1088,4 +1088,8 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get ludoRule4 => 'النجوم خانات آمنة • القدرات تتبدّل كل ٣ رميات';
+
+  @override
+  String get rpsGuessExplain =>
+      'خمّن ما سيختاره خصمك — تخمين صحيح = نقطة إضافية مع نقطة الفوز بالجولة!';
 }

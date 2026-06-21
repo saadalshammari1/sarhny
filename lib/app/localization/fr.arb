@@ -384,5 +384,7 @@
   "ludoRule1": "Lancez le dé, sortez avec un six, amenez les 4 pions au centre",
   "ludoRule2": "4 super-pouvoirs sur le parcours : 🚀 ❄ 🌀 🌪",
   "ludoRule3": "Capturer un adversaire offre un tour supplémentaire",
-  "ludoRule4": "Les étoiles sont des cases sûres • les pouvoirs se réorganisent tous les 3 lancers"
+  "ludoRule4": "Les étoiles sont des cases sûres • les pouvoirs se réorganisent tous les 3 lancers",
+
+  "rpsGuessExplain": "Devine le choix de ton adversaire — bonne réponse = point bonus en plus du point de manche !"
 }

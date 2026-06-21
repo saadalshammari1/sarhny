@@ -135,22 +135,6 @@ class _GamesHubPageState extends ConsumerState<GamesHubPage>
             const Gap(12),
             _SectionLabel(text: l10n.hubSectionPlay, colors: colors),
             const Gap(10),
-            // Flagship game — placed first so new users see it immediately.
-            _GameTile(
-              title: l10n.hubGameLudoPower,
-              subtitle: l10n.hubGameLudoPowerSub,
-              icon: Icons.casino_rounded,
-              tag: l10n.hubTagFeatured,
-              accent: const Color(0xFFE3BD5E),
-              colors: colors,
-              shimmer: _shimmer,
-              decoration: _GameTileDecoration.shapes,
-              onTap: () {
-                GameHaptics.uiPop();
-                context.push(AppRoutes.ludoPowerLobby);
-              },
-            ),
-            const Gap(12),
             _GameTile(
               title: l10n.hubGameRps,
               subtitle: l10n.hubGameRpsSub,

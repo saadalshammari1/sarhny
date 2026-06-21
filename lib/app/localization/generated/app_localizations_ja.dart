@@ -1082,4 +1082,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get ludoRule4 => '星は安全マス • 能力は3回振るごとに再配置';
+
+  @override
+  String get rpsGuessExplain => '相手の手を予想しよう — 当たればラウンド勝利の得点にボーナスポイント！';
 }

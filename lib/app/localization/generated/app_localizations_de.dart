@@ -1104,4 +1104,8 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get ludoRule4 =>
       'Sterne sind sichere Felder • Kräfte mischen sich alle 3 Würfe neu';
+
+  @override
+  String get rpsGuessExplain =>
+      'Errate, was dein Gegner wählt — richtig getippt = Bonuspunkt zusätzlich zum Rundensieg!';
 }

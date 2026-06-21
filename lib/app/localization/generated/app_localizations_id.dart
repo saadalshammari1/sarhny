@@ -1100,4 +1100,8 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get ludoRule4 =>
       'Bintang adalah kotak aman • kekuatan diacak tiap 3 lemparan';
+
+  @override
+  String get rpsGuessExplain =>
+      'Tebak pilihan lawanmu — tebakan benar memberi poin bonus di atas poin kemenangan ronde!';
 }

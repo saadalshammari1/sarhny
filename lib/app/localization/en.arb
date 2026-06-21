@@ -384,5 +384,7 @@
   "ludoRule1": "Roll the dice, leave home on six, get all 4 pieces to centre",
   "ludoRule2": "4 super-powers on the path: 🚀 ❄ 🌀 🌪",
   "ludoRule3": "Capturing an opponent grants an extra turn",
-  "ludoRule4": "Stars are safe cells • powers reshuffle every 3 rolls"
+  "ludoRule4": "Stars are safe cells • powers reshuffle every 3 rolls",
+
+  "rpsGuessExplain": "Guess your opponent's pick — get it right for a bonus point on top of your round win!"
 }

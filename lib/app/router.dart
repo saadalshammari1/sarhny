@@ -48,9 +48,6 @@ import '../features/games/ludo/presentation/pages/ludo_lobby_page.dart';
 import '../features/games/ludo/presentation/pages/ludo_match_page.dart';
 import '../features/games/ludo/presentation/pages/ludo_matchmaking_page.dart';
 import '../features/games/ludo_v2/presentation/ludo_v2_match_page.dart';
-import '../features/games/ludo_power/pages/ludo_power_lobby_page.dart';
-import '../features/games/ludo_power/pages/ludo_power_match_page.dart';
-import '../features/games/ludo_power/pages/ludo_power_matchmaking_page.dart';
 import '../features/profile/presentation/pages/saved_posts_page.dart';
 import '../features/settings/presentation/pages/blocked_accounts_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
@@ -118,12 +115,6 @@ class AppRoutes {
   /// Query string supports ?players=2|3|4 (default 4) and
   /// ?variant=normal|magic.
   static const String ludoLocalV2 = '/games/ludo/local-v2';
-
-  // ─── Ludo Power (flagship: 4-power-ups + 2/4 player modes) ───
-  static const String ludoPowerLobby = '/games/ludo-power';
-  static const String ludoPowerMatchmaking = '/games/ludo-power/matchmaking';
-  static String ludoPowerMatch(int players) =>
-      '/games/ludo-power/match?players=$players';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -368,29 +359,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             roomId: state.pathParameters['roomId'] ?? '',
             outcome: outcome,
           );
-        },
-      ),
-      // ────────── Ludo Power (flagship game) ──────────
-      GoRoute(
-        path: AppRoutes.ludoPowerLobby,
-        builder: (_, __) => const LudoPowerLobbyPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.ludoPowerMatchmaking,
-        builder: (_, state) {
-          final raw = state.uri.queryParameters['players'] ?? '4';
-          final n = int.tryParse(raw) ?? 4;
-          final players = (n == 2 || n == 4) ? n : 4;
-          return LudoPowerMatchmakingPage(playerCount: players);
-        },
-      ),
-      GoRoute(
-        path: '/games/ludo-power/match',
-        builder: (_, state) {
-          final raw = state.uri.queryParameters['players'] ?? '4';
-          final n = int.tryParse(raw) ?? 4;
-          final players = (n == 2 || n == 4) ? n : 4;
-          return LudoPowerMatchPage(playerCount: players);
         },
       ),
       GoRoute(path: AppRoutes.help, builder: (_, __) => const HelpPage()),

@@ -384,5 +384,7 @@
   "ludoRule1": "Jogue o dado, saia de casa no seis, leve as 4 peças até o centro",
   "ludoRule2": "4 superpoderes no caminho: 🚀 ❄ 🌀 🌪",
   "ludoRule3": "Capturar um adversário dá um turno extra",
-  "ludoRule4": "Estrelas são casas seguras • poderes se rearranjam a cada 3 jogadas"
+  "ludoRule4": "Estrelas são casas seguras • poderes se rearranjam a cada 3 jogadas",
+
+  "rpsGuessExplain": "Adivinhe a escolha do adversário — acertou, ganha um ponto bônus além do ponto da rodada!"
 }

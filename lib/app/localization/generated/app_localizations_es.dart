@@ -1107,4 +1107,8 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get ludoRule4 =>
       'Las estrellas son casillas seguras • los poderes se reordenan cada 3 tiradas';
+
+  @override
+  String get rpsGuessExplain =>
+      'Adivina la elección de tu rival — si aciertas, ¡punto extra además del punto de la ronda!';
 }

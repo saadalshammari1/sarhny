@@ -211,7 +211,17 @@ class _RpsLocalPlayPageState extends ConsumerState<RpsLocalPlayPage> {
                 ),
                 const Gap(12),
                 _SectionLabel(l10n.rpsGuessHand, colors),
-                const Gap(6),
+                const Gap(4),
+                Text(
+                  l10n.rpsGuessExplain,
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 12,
+                    height: 1.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Gap(8),
                 _HandRow(
                   selected: _myGuess,
                   disabled: _revealing,

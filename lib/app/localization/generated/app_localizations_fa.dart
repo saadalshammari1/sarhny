@@ -1096,4 +1096,8 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get ludoRule4 =>
       'ستاره‌ها خانه‌های امن‌اند • قدرت‌ها هر ۳ پرتاب جابه‌جا می‌شوند';
+
+  @override
+  String get rpsGuessExplain =>
+      'حدس بزن حریفت چه انتخاب می‌کند — حدس درست یعنی امتیاز اضافه روی امتیاز برد دور!';
 }

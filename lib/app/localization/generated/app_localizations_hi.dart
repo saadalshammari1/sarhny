@@ -1098,4 +1098,8 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get ludoRule4 =>
       'तारे सुरक्षित खाने हैं • हर 3 चालों में शक्तियाँ बदलती हैं';
+
+  @override
+  String get rpsGuessExplain =>
+      'अंदाज़ा लगाओ कि विरोधी क्या चुनेगा — सही अनुमान पर राउंड जीत के साथ बोनस अंक!';
 }

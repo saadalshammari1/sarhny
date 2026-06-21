@@ -1099,4 +1099,8 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get ludoRule4 =>
       'Yıldızlar güvenli kareler • güçler her 3 atışta yer değiştirir';
+
+  @override
+  String get rpsGuessExplain =>
+      'Rakibinin seçimini tahmin et — doğru tahmin tur kazancının üstüne bonus puan kazandırır!';
 }

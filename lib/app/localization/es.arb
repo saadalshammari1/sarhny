@@ -384,5 +384,7 @@
   "ludoRule1": "Tira el dado, sal de casa con un seis, lleva las 4 fichas al centro",
   "ludoRule2": "4 superpoderes en el camino: 🚀 ❄ 🌀 🌪",
   "ludoRule3": "Capturar a un rival otorga un turno extra",
-  "ludoRule4": "Las estrellas son casillas seguras • los poderes se reordenan cada 3 tiradas"
+  "ludoRule4": "Las estrellas son casillas seguras • los poderes se reordenan cada 3 tiradas",
+
+  "rpsGuessExplain": "Adivina la elección de tu rival — si aciertas, ¡punto extra además del punto de la ronda!"
 }

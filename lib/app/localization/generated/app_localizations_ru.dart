@@ -1107,4 +1107,8 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get ludoRule4 =>
       'Звёзды — безопасные клетки • способности перетасовываются каждые 3 броска';
+
+  @override
+  String get rpsGuessExplain =>
+      'Угадай выбор соперника — верная догадка даёт бонусное очко вдобавок к очку за раунд!';
 }

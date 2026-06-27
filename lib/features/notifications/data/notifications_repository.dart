@@ -63,6 +63,18 @@ class NotificationsRepository {
     );
   }
 
+  /// Remove a push token on sign-out so the signed-out user no longer receives
+  /// pushes on this device. Best-effort; the token alone identifies the device.
+  Future<void> unregisterDevice(String fcmToken) {
+    return _client.request<void>(
+      () => _client.raw.delete(
+        ApiEndpoints.devices,
+        data: {'fcm_token': fcmToken},
+      ),
+      parser: (_) {},
+    );
+  }
+
   /// Fire-and-forget diagnostic ping so the server can see what stage the
   /// FCM flow reached on a release / TestFlight build. Failure is silent.
   Future<void> diagnostic({

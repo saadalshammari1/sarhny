@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/providers/api_providers.dart';
 import '../../../../core/widgets/error_view.dart';
@@ -25,19 +26,20 @@ class HelpPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.sarhnyColors;
+    final l = AppLocalizations.of(context);
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         backgroundColor: colors.background,
         appBar: AppBar(
-          title: const Text('مركز المساعدة'),
+          title: Text(l.settingsHelpCenter),
           bottom: TabBar(
             indicatorColor: colors.moment,
             labelColor: colors.textPrimary,
             unselectedLabelColor: colors.textSecondary,
-            tabs: const [
-              Tab(text: 'الميزات', icon: Icon(Icons.auto_awesome_outlined)),
-              Tab(text: 'أسئلة شائعة', icon: Icon(Icons.help_outline)),
+            tabs: [
+              Tab(text: l.helpTabFeatures, icon: const Icon(Icons.auto_awesome_outlined)),
+              Tab(text: l.helpTabFaq, icon: const Icon(Icons.help_outline)),
             ],
           ),
         ),

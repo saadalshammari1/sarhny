@@ -3,8 +3,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart' as intl;
+import '../../../../core/utils/relative_time.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/dto.dart';
 import '../../../../core/widgets/empty_state.dart';
@@ -45,12 +46,13 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final notifs = ref.watch(notificationsListProvider);
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('الإشعارات'),
+        title: Text(l.notifTitle),
         actions: [
           TextButton(
             onPressed: () async {
@@ -58,15 +60,15 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                 final n = await ref
                     .read(notificationsRepositoryProvider)
                     .markAllRead();
-                Fluttertoast.showToast(msg: 'تم وضع علامة كمقروء ($n)');
+                Fluttertoast.showToast(msg: l.notifAllMarkedRead(n));
                 ref.invalidate(notificationsListProvider);
                 ref.invalidate(unreadNotificationsCountProvider);
               } catch (_) {
-                Fluttertoast.showToast(msg: 'تعذّر التحديث');
+                Fluttertoast.showToast(msg: l.notifMarkReadFailed);
               }
             },
             child: Text(
-              'الكل مقروء',
+              l.notifMarkAllRead,
               style: TextStyle(color: colors.moment),
             ),
           ),
@@ -86,11 +88,11 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           ),
           data: (state) {
             if (state.items.isEmpty) {
-              return const Center(
+              return Center(
                 child: EmptyState(
                   icon: Icons.notifications_none_outlined,
-                  title: 'لا توجد إشعارات',
-                  subtitle: 'سيظهر هنا تنبيهك عن كل جديد',
+                  title: l.notifEmptyTitle,
+                  subtitle: l.notifEmptySubtitle,
                 ),
               );
             }
@@ -130,27 +132,27 @@ class _NotifTile extends StatelessWidget {
   final NotificationDto notification;
 
   ({IconData icon, String label, Color color, String? target}) _resolve(
-      SarhnyColors colors) {
+      SarhnyColors colors, AppLocalizations l) {
     final p = notification.payload;
     switch (notification.type) {
       case 'like':
         return (
           icon: Icons.favorite,
-          label: 'أعجبهم منشورك',
+          label: l.notifLikedYourPost,
           color: const Color(0xFFE2685A),
           target: p['post_id'] != null ? '/post/${p['post_id']}' : null
         );
       case 'comment':
         return (
           icon: Icons.chat_bubble_outline,
-          label: 'علّق على منشورك',
+          label: l.notifCommentedOnYourPost,
           color: colors.face,
           target: p['post_id'] != null ? '/post/${p['post_id']}' : null
         );
       case 'follow':
         return (
           icon: Icons.person_add_alt_1_outlined,
-          label: 'بدأ متابعتك',
+          label: l.notifStartedFollowingYou,
           color: colors.mind,
           target: p['username'] != null ? '/u/${p['username']}' : null
         );
@@ -158,7 +160,7 @@ class _NotifTile extends StatelessWidget {
       case 'anon_question':
         return (
           icon: Icons.visibility_off_outlined,
-          label: 'وصلك سؤال مجهول',
+          label: l.notifAnonymousQuestion,
           color: colors.moment,
           target: '/inbox'
         );
@@ -166,7 +168,7 @@ class _NotifTile extends StatelessWidget {
       case 'crystallized':
         return (
           icon: Icons.diamond_outlined,
-          label: 'منشورك تبلور ✦',
+          label: l.notifPostCrystallized,
           color: colors.crystal,
           target: p['post_id'] != null ? '/post/${p['post_id']}' : null
         );
@@ -182,8 +184,9 @@ class _NotifTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
-    final r = _resolve(colors);
+    final r = _resolve(colors, l);
     return InkWell(
       onTap: r.target == null
           ? null
@@ -230,7 +233,7 @@ class _NotifTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    _formatRelative(notification.createdAt),
+                    formatRelative(context, notification.createdAt),
                     style: TextStyle(
                       color: colors.textSecondary,
                       fontSize: 11,
@@ -244,16 +247,4 @@ class _NotifTile extends StatelessWidget {
       ),
     ).animate().fadeIn(duration: 180.ms);
   }
-}
-
-String _formatRelative(String? iso) {
-  if (iso == null) return '';
-  final dt = DateTime.tryParse(iso);
-  if (dt == null) return iso;
-  final delta = DateTime.now().toUtc().difference(dt.toUtc());
-  if (delta.inMinutes < 1) return 'الآن';
-  if (delta.inMinutes < 60) return 'قبل ${delta.inMinutes} د';
-  if (delta.inHours < 24) return 'قبل ${delta.inHours} س';
-  if (delta.inDays < 7) return 'قبل ${delta.inDays} يوم';
-  return intl.DateFormat('d MMM', 'ar').format(dt.toLocal());
 }

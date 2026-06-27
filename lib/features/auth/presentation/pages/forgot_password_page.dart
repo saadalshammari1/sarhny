@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
@@ -31,6 +32,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   }
 
   Future<void> _submit() async {
+    final l = AppLocalizations.of(context);
     if (!_formKey.currentState!.validate() || _busy) return;
     setState(() {
       _busy = true;
@@ -41,11 +43,11 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
       await repo.requestReset(_emailCtrl.text.trim());
       if (mounted) setState(() => _sent = true);
     } on NetworkException {
-      setState(() => _error = 'تعذّر الاتصال بالخادم');
+      setState(() => _error = l.errorServerUnreachable);
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } catch (_) {
-      setState(() => _error = 'حدث خطأ غير متوقع');
+      setState(() => _error = l.errorUnexpected);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -53,6 +55,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     return Scaffold(
       backgroundColor: colors.background,
@@ -61,7 +64,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go(AppRoutes.login),
         ),
-        title: const Text('استعادة كلمة المرور'),
+        title: Text(l.forgotTitle),
       ),
       body: SafeArea(
         child: Center(
@@ -90,14 +93,14 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                                 size: 32, color: colors.moment),
                           ),
                           Text(
-                            'نسيت كلمة المرور؟',
+                            l.loginForgotPassword,
                             textAlign: TextAlign.center,
                             style: context.textStyles.headlineSmall
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'أدخل بريدك المسجَّل، وسنرسل لك رابطاً لإعادة تعيين كلمة المرور خلال ساعة واحدة.',
+                            l.forgotInstructions,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: colors.textSecondary,
@@ -107,15 +110,15 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                           const SizedBox(height: 28),
                           AppTextField(
                             controller: _emailCtrl,
-                            label: 'البريد الإلكتروني',
+                            label: l.registerEmail,
                             prefixIcon: Icons.mail_outline,
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.done,
                             validator: (v) {
                               final raw = (v ?? '').trim();
-                              if (raw.isEmpty) return 'الحقل مطلوب';
+                              if (raw.isEmpty) return l.fieldRequired;
                               if (!raw.contains('@') || !raw.contains('.')) {
-                                return 'بريد غير صالح';
+                                return l.registerEmailInvalidShort;
                               }
                               return null;
                             },
@@ -149,7 +152,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                           ],
                           const SizedBox(height: 20),
                           AppButton(
-                            label: 'إرسال الرابط',
+                            label: l.forgotSendLink,
                             onPressed: _submit,
                             loading: _busy,
                           ),
@@ -157,7 +160,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                           TextButton(
                             onPressed: () => context.go(AppRoutes.login),
                             child: Text(
-                              'عودة لتسجيل الدخول',
+                              l.forgotBackToLogin,
                               style:
                                   TextStyle(color: colors.textSecondary),
                             ),
@@ -179,6 +182,7 @@ class _Success extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -200,7 +204,7 @@ class _Success extends StatelessWidget {
               .shimmer(delay: 100.ms, duration: 800.ms),
         ),
         Text(
-          'تحقّق من بريدك',
+          l.forgotCheckEmailTitle,
           textAlign: TextAlign.center,
           style: context.textStyles.headlineSmall
               ?.copyWith(fontWeight: FontWeight.w700),
@@ -211,7 +215,7 @@ class _Success extends StatelessWidget {
           text: TextSpan(
             style: TextStyle(color: colors.textSecondary, height: 1.6),
             children: [
-              const TextSpan(text: 'لو هذا البريد مسجَّل، أرسلنا رابط الاستعادة إلى\n'),
+              TextSpan(text: '${l.forgotEmailSentBody}\n'),
               TextSpan(
                 text: email,
                 style: TextStyle(
@@ -219,13 +223,13 @@ class _Success extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const TextSpan(text: '\nتفقّد صندوق الرسائل (و"غير المرغوب فيه" أحياناً)'),
+              TextSpan(text: '\n${l.forgotCheckSpamHint}'),
             ],
           ),
         ),
         const SizedBox(height: 24),
         AppButton(
-          label: 'عودة لتسجيل الدخول',
+          label: l.forgotBackToLogin,
           onPressed: () => context.go(AppRoutes.login),
         ),
       ],

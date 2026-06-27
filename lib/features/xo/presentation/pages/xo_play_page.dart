@@ -199,7 +199,8 @@ class _XoPlayPageState extends ConsumerState<XoPlayPage> {
     ref.listen(xoMatchControllerProvider(widget.gameId),
         (prev, next) {
       if (next.error != null && prev?.error != next.error) {
-        Fluttertoast.showToast(msg: next.error!);
+        Fluttertoast.showToast(
+            msg: xoErrorMessage(next.error!, AppLocalizations.of(context)));
         ref.read(xoMatchControllerProvider(widget.gameId).notifier).clearError();
       }
       final isDone = next.snapshot?.status == 'answered' ||
@@ -1364,7 +1365,7 @@ class _RematchAndExitState extends ConsumerState<_RematchAndExit> {
         if (mounted) context.go('/xo/play/${r.newGameId}');
       }
     } on XoApiException catch (e) {
-      Fluttertoast.showToast(msg: e.message);
+      Fluttertoast.showToast(msg: xoErrorMessage(e.message, l10n));
     } catch (_) {
       Fluttertoast.showToast(msg: l10n.errorGeneric);
     } finally {
@@ -1510,7 +1511,7 @@ class _CountdownState extends State<_Countdown> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        '$clamped ث',
+        AppLocalizations.of(context).secondsShort(clamped),
         style: TextStyle(
           color: widget.colors.crystal,
           fontSize: 11,

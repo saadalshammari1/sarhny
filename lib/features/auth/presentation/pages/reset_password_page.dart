@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
@@ -38,6 +39,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
   }
 
   Future<void> _submit() async {
+    final l = AppLocalizations.of(context);
     if (!_formKey.currentState!.validate() || _busy) return;
     setState(() {
       _busy = true;
@@ -53,14 +55,14 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
     } on ValidationException catch (e) {
       setState(() => _error = e.message);
     } on NetworkException {
-      setState(() => _error = 'تعذّر الاتصال بالخادم');
+      setState(() => _error = l.errorServerUnreachable);
     } on ApiException catch (e) {
       setState(() => _error = e.message.contains('expired') ||
               e.message.contains('invalid')
-          ? 'الرابط منتهي الصلاحية أو غير صالح'
+          ? l.resetLinkExpired
           : e.message);
     } catch (_) {
-      setState(() => _error = 'حدث خطأ غير متوقع');
+      setState(() => _error = l.errorUnexpected);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -68,10 +70,11 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(title: const Text('تعيين كلمة مرور جديدة')),
+      appBar: AppBar(title: Text(l.resetTitle)),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -99,14 +102,14 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                                 size: 32, color: colors.moment),
                           ),
                           Text(
-                            'كلمة مرور جديدة',
+                            l.resetHeading,
                             textAlign: TextAlign.center,
                             style: context.textStyles.headlineSmall
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'اختر كلمة مرور قوية جديدة لحسابك.',
+                            l.resetSubtitle,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                                 color: colors.textSecondary, height: 1.6),
@@ -114,7 +117,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                           const SizedBox(height: 24),
                           AppTextField(
                             controller: _pwdCtrl,
-                            label: 'كلمة المرور الجديدة',
+                            label: l.settingsPasswordNew,
                             prefixIcon: Icons.lock_outline,
                             obscure: _obs1,
                             suffixIcon: IconButton(
@@ -128,14 +131,14 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                               onPressed: () => setState(() => _obs1 = !_obs1),
                             ),
                             validator: (v) {
-                              if ((v ?? '').length < 8) return 'الحد الأدنى ٨ أحرف';
+                              if ((v ?? '').length < 8) return l.registerPasswordMin;
                               return null;
                             },
                           ),
                           const SizedBox(height: 14),
                           AppTextField(
                             controller: _pwd2Ctrl,
-                            label: 'تأكيد كلمة المرور',
+                            label: l.registerPasswordConfirm,
                             prefixIcon: Icons.lock_outline,
                             obscure: _obs2,
                             suffixIcon: IconButton(
@@ -149,7 +152,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                               onPressed: () => setState(() => _obs2 = !_obs2),
                             ),
                             validator: (v) {
-                              if (v != _pwdCtrl.text) return 'لا تتطابق';
+                              if (v != _pwdCtrl.text) return l.resetPasswordMismatch;
                               return null;
                             },
                             onSubmitted: (_) => _submit(),
@@ -182,7 +185,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                           ],
                           const SizedBox(height: 20),
                           AppButton(
-                            label: 'تأكيد',
+                            label: l.actionConfirm,
                             onPressed: _submit,
                             loading: _busy,
                           ),
@@ -202,6 +205,7 @@ class _Done extends StatelessWidget {
   final SarhnyColors colors;
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -220,20 +224,20 @@ class _Done extends StatelessWidget {
               .scale(duration: 320.ms, curve: Curves.easeOutBack),
         ),
         Text(
-          'تم تحديث كلمة المرور',
+          l.resetDoneTitle,
           textAlign: TextAlign.center,
           style: context.textStyles.headlineSmall
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
         Text(
-          'يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.',
+          l.resetDoneBody,
           textAlign: TextAlign.center,
           style: TextStyle(color: colors.textSecondary, height: 1.6),
         ),
         const SizedBox(height: 24),
         AppButton(
-          label: 'تسجيل الدخول',
+          label: l.resetGoToLogin,
           onPressed: () => context.go(AppRoutes.login),
         ),
       ],

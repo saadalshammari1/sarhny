@@ -4,6 +4,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart' as audio;
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
 import '../../../../core/api/dto.dart';
@@ -28,6 +29,7 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
   bool _hidden = false;
 
   Future<bool> _handleSend(ComposedMedia m) async {
+    final l = AppLocalizations.of(context);
     try {
       final reply =
           await ref.read(postRepositoryProvider).createAnonReply(
@@ -40,16 +42,16 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
       await ref
           .read(anonRepliesControllerProvider(widget.postId).notifier)
           .add(reply);
-      Fluttertoast.showToast(msg: 'تم الإرسال 🌙');
+      Fluttertoast.showToast(msg: l.postReplySent);
       return true;
     } on UnauthorizedException {
-      Fluttertoast.showToast(msg: 'سجّل دخولك للرد');
+      Fluttertoast.showToast(msg: l.postLoginToReply);
       return false;
     } on ValidationException catch (e) {
       Fluttertoast.showToast(msg: e.message);
       return false;
     } on RateLimitException {
-      Fluttertoast.showToast(msg: 'تمهّل قليلاً قبل الإرسال');
+      Fluttertoast.showToast(msg: l.postSlowDownBeforeSend);
       return false;
     } on ApiException catch (e) {
       // Surface real reasons (e.g. 402 رصيد الانتباه غير كافٍ) instead of a
@@ -57,13 +59,14 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
       Fluttertoast.showToast(msg: e.message);
       return false;
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الإرسال');
+      Fluttertoast.showToast(msg: l.postSendFailed);
       return false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final state = ref.watch(anonRepliesControllerProvider(widget.postId));
     return Container(
@@ -83,7 +86,7 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
                   color: colors.moment, size: 18),
               const SizedBox(width: 6),
               Text(
-                'الردود',
+                l.postRepliesTitle,
                 style: TextStyle(
                   color: colors.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -109,7 +112,7 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
           ),
           const SizedBox(height: 12),
           MediaComposer(
-            placeholder: 'اكتب ردّك…',
+            placeholder: l.postReplyHint,
             onSend: _handleSend,
             hiddenSwitch: _HiddenChip(
               hidden: _hidden,
@@ -127,7 +130,7 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: Text(
-                  'تعذّر تحميل الردود',
+                  l.postRepliesLoadFailed,
                   style: TextStyle(color: colors.textSecondary),
                 ),
               ),
@@ -138,7 +141,7 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Center(
                     child: Text(
-                      'لا توجد ردود بعد. كن أوّل من يفتح حواراً 🌙',
+                      l.postRepliesEmpty,
                       style: TextStyle(color: colors.textSecondary),
                     ),
                   ),
@@ -161,7 +164,7 @@ class _AnonRepliesSectionState extends ConsumerState<AnonRepliesSection> {
                                 .notifier)
                             .loadMore(),
                         child: Text(
-                          s.loadingMore ? 'جارٍ التحميل…' : 'تحميل المزيد',
+                          s.loadingMore ? l.commonLoading : l.postLoadMore,
                           style: TextStyle(color: colors.moment),
                         ),
                       ),
@@ -187,6 +190,7 @@ class _HiddenChip extends StatelessWidget {
   final SarhnyColors colors;
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(99),
       onTap: onTap,
@@ -214,7 +218,7 @@ class _HiddenChip extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              hidden ? 'مجهول' : 'باسمي',
+              hidden ? l.postAnonymous : l.postWithName,
               style: TextStyle(
                 color: hidden ? colors.moment : colors.textSecondary,
                 fontSize: 11,
@@ -239,26 +243,27 @@ class _ReplyTile extends ConsumerWidget {
   final SarhnyColors colors;
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final l = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('حذف الرد'),
+        title: Text(l.postDeleteReplyTitle),
         content: Text(
           reply.isMine
-              ? 'سيختفي ردّك. هل أنت متأكد؟'
-              : 'سيختفي هذا الرد من منشورك.',
+              ? l.postDeleteReplyConfirmMine
+              : l.postDeleteReplyConfirmOther,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('إلغاء'),
+            child: Text(l.commonCancel),
           ),
           TextButton(
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFFD22F2F),
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('حذف'),
+            child: Text(l.commonDelete),
           ),
         ],
       ),
@@ -269,14 +274,15 @@ class _ReplyTile extends ConsumerWidget {
       await ref
           .read(anonRepliesControllerProvider(postId).notifier)
           .remove(reply.id);
-      Fluttertoast.showToast(msg: 'تم الحذف');
+      Fluttertoast.showToast(msg: l.postDeleted);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الحذف');
+      Fluttertoast.showToast(msg: l.postDeleteFailed);
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
     final senderRevealed = !reply.isSenderHidden && reply.sender != null;
     return Container(
       margin: const EdgeInsets.only(top: 10),
@@ -321,7 +327,7 @@ class _ReplyTile extends ConsumerWidget {
                       child: Text(
                         senderRevealed
                             ? '@${reply.sender!.username}'
-                            : 'مجهول',
+                            : l.postAnonymous,
                         style: TextStyle(
                           color: senderRevealed
                               ? colors.textPrimary

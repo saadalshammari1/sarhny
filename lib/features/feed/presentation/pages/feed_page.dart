@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../core/widgets/banner_ad_slot.dart';
+import '../../../../core/rating/rate_app_service.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../data/feed_repository.dart';
@@ -27,6 +29,13 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   void initState() {
     super.initState();
     _scrollCtrl = ScrollController()..addListener(_onScroll);
+    // Ask for a rating once the user has settled on the feed — self-gates on
+    // open-count, so it only ever fires for engaged returning users.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(seconds: 3), () {
+        if (mounted) ref.read(rateAppServiceProvider).maybePrompt(context);
+      });
+    });
   }
 
   @override
@@ -60,6 +69,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final scope = ref.watch(feedScopeProvider);
     final section = ref.watch(feedSectionProvider);
@@ -79,7 +89,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           IconButton(
             icon: Icon(Icons.search_rounded,
                 color: colors.textSecondary),
-            tooltip: 'بحث',
+            tooltip: l.feedSearchTooltip,
             onPressed: () => context.push('/search'),
           ),
           IconButton(
@@ -132,11 +142,11 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                   EmptyState(
                     icon: Icons.inbox_outlined,
                     title: scope == FeedScope.following
-                        ? 'لا توجد منشورات بعد'
-                        : 'لا يوجد شيء في هذا القسم',
+                        ? l.feedEmptyFollowingTitle
+                        : l.feedEmptySectionTitle,
                     subtitle: scope == FeedScope.following
-                        ? 'تابع أشخاص لتشاهد منشوراتهم'
-                        : 'كن أول من ينشر شيئاً ⚡',
+                        ? l.feedEmptyFollowingSubtitle
+                        : l.feedEmptySectionSubtitle,
                   ),
                   const SizedBox(height: 24),
                   const BannerAdSlot(),
@@ -193,6 +203,7 @@ class _ScopeSwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     return Container(
       decoration: BoxDecoration(
@@ -204,13 +215,13 @@ class _ScopeSwitcher extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _Pill(
-            label: 'شاهد متابعيك',
+            label: l.feedScopeFollowing,
             selected: scope == FeedScope.following,
             onTap: () => onChanged(FeedScope.following),
             colors: colors,
           ),
           _Pill(
-            label: 'شاهد العالم',
+            label: l.feedScopeGlobal,
             selected: scope == FeedScope.global,
             onTap: () => onChanged(FeedScope.global),
             colors: colors,
@@ -317,9 +328,25 @@ class _SectionChip extends StatelessWidget {
     }
   }
 
+  String _label(AppLocalizations l) {
+    switch (section) {
+      case SectionFilter.all:
+        return l.sectionAll;
+      case SectionFilter.moment:
+        return l.sectionMoments;
+      case SectionFilter.face:
+        return l.sectionFaces;
+      case SectionFilter.mind:
+        return l.sectionMinds;
+      case SectionFilter.questions:
+        return l.sectionAnswers;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final accent = _accent();
+    final l = AppLocalizations.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(99),
       onTap: onTap,
@@ -341,7 +368,7 @@ class _SectionChip extends StatelessWidget {
             Text(section.glyph, style: const TextStyle(fontSize: 14)),
             const SizedBox(width: 4),
             Text(
-              section.arabicLabel,
+              _label(l),
               style: TextStyle(
                 color: selected ? accent : colors.textSecondary,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/localization/generated/app_localizations.dart';
 import '../../app/router.dart';
 import '../../app/theme/app_theme.dart';
 
@@ -13,26 +14,34 @@ class AppBottomNav extends StatelessWidget {
   final int active;
 
   static const List<_Item> _items = [
-    _Item(Icons.home_outlined, Icons.home, 'الرئيسية', AppRoutes.feed),
-    _Item(Icons.mail_outline, Icons.mail, 'صندوق', AppRoutes.inbox),
+    _Item(Icons.home_outlined, Icons.home, AppRoutes.feed),
+    _Item(Icons.mail_outline, Icons.mail, AppRoutes.inbox),
+    // Center slot = Games ("Play"). Posting lives on Home (the floating pen +
+    // the top "+"), so the center is freed for a lively games entry point.
     _Item(
-      Icons.add_circle_outline,
-      Icons.add_circle,
-      'نشر',
-      AppRoutes.compose,
+      Icons.sports_esports_outlined,
+      Icons.sports_esports,
+      AppRoutes.gamesHub,
     ),
     _Item(
       Icons.auto_awesome_outlined,
       Icons.auto_awesome,
-      'مرآتي',
       AppRoutes.mirrors,
     ),
-    _Item(Icons.person_outline, Icons.person, 'حسابي', AppRoutes.profile),
+    _Item(Icons.person_outline, Icons.person, AppRoutes.profile),
   ];
 
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final l = AppLocalizations.of(context);
+    final labels = <String, String>{
+      AppRoutes.feed: l.navHome,
+      AppRoutes.inbox: l.navInbox,
+      AppRoutes.gamesHub: l.navGames,
+      AppRoutes.mirrors: l.navMirrors,
+      AppRoutes.profile: l.navProfile,
+    };
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
@@ -56,10 +65,10 @@ class AppBottomNav extends StatelessWidget {
               child: InkWell(
                 onTap: () {
                   if (i == active) return;
-                  // Compose is a *destination* (not a tab) — push so the user
-                  // can swipe / tap back to wherever they were. The four real
-                  // tabs use go() to replace the stack so it stays flat.
-                  if (it.route == AppRoutes.compose) {
+                  // Games is a *destination* (not a tab) — push so the user can
+                  // tap back to wherever they were. The four real tabs use go()
+                  // to replace the stack so it stays flat.
+                  if (it.route == AppRoutes.gamesHub) {
                     GoRouter.of(context).push(it.route);
                   } else {
                     GoRouter.of(context).go(it.route);
@@ -90,7 +99,7 @@ class AppBottomNav extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        it.label,
+                        labels[it.route] ?? '',
                         style: TextStyle(
                           fontSize: 10,
                           color: isActive
@@ -114,9 +123,8 @@ class AppBottomNav extends StatelessWidget {
 }
 
 class _Item {
-  const _Item(this.outline, this.fill, this.label, this.route);
+  const _Item(this.outline, this.fill, this.route);
   final IconData outline;
   final IconData fill;
-  final String label;
   final String route;
 }

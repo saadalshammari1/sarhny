@@ -27,17 +27,6 @@ extension RpsHandX on RpsHand {
     }
   }
 
-  String get arabic {
-    switch (this) {
-      case RpsHand.rock:
-        return 'حجر';
-      case RpsHand.paper:
-        return 'ورقة';
-      case RpsHand.scissors:
-        return 'مقص';
-    }
-  }
-
   String get glyph {
     switch (this) {
       case RpsHand.rock:

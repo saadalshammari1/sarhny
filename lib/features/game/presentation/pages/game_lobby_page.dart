@@ -42,7 +42,8 @@ class _GameLobbyPageState extends ConsumerState<GameLobbyPage> {
       // the invite code is rendered prominently while we wait.
       context.go('/game/play/${r.snapshot.gameId}');
     } on GameApiException catch (e) {
-      Fluttertoast.showToast(msg: e.message);
+      Fluttertoast.showToast(
+          msg: e.message.isEmpty ? l10n.errorUnexpected : e.message);
     } catch (_) {
       Fluttertoast.showToast(msg: l10n.errorGameStart);
     } finally {

@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_theme.dart';
@@ -47,6 +48,7 @@ class _ComposePageState extends ConsumerState<ComposePage> {
 
   Future<void> _pickAndCrop() async {
     if (_images.length >= 4) return;
+    final l = AppLocalizations.of(context);
     setState(() => _error = null);
     try {
       final picker = ImagePicker();
@@ -59,7 +61,7 @@ class _ComposePageState extends ConsumerState<ComposePage> {
       final f = File(picked.path);
       final stat = await f.length();
       if (stat > 15 * 1024 * 1024) {
-        setState(() => _error = 'حجم الصورة أكبر من ١٥ ميجا');
+        setState(() => _error = l.composeImageTooLarge);
         return;
       }
       final cropped = await ImageCropper().cropImage(
@@ -69,13 +71,13 @@ class _ComposePageState extends ConsumerState<ComposePage> {
         compressQuality: 90,
         uiSettings: [
           AndroidUiSettings(
-            toolbarTitle: 'اقتصاص الصورة',
+            toolbarTitle: l.composeCropImage,
             toolbarColor: const Color(0xFF1B1F2B),
             toolbarWidgetColor: Colors.white,
             lockAspectRatio: true,
             initAspectRatio: CropAspectRatioPreset.square,
           ),
-          IOSUiSettings(title: 'اقتصاص الصورة', aspectRatioLockEnabled: true),
+          IOSUiSettings(title: l.composeCropImage, aspectRatioLockEnabled: true),
         ],
       );
       if (cropped == null) return;
@@ -85,9 +87,9 @@ class _ComposePageState extends ConsumerState<ComposePage> {
       if (!mounted) return;
       setState(() => _images.add(path));
     } on ValidationException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
     } catch (_) {
-      setState(() => _error = 'تعذّر رفع الصورة');
+      if (mounted) setState(() => _error = l.composeUploadFailed);
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -97,6 +99,7 @@ class _ComposePageState extends ConsumerState<ComposePage> {
     if (_section == null || _layer1Ctrl.text.trim().isEmpty || _submitting) {
       return;
     }
+    final l = AppLocalizations.of(context);
     setState(() {
       _submitting = true;
       _error = null;
@@ -109,16 +112,16 @@ class _ComposePageState extends ConsumerState<ComposePage> {
         images: _images,
         layer3: _showLayer3 ? _layer3Ctrl.text.trim() : null,
       );
-      Fluttertoast.showToast(msg: 'نُشِر بصدق ✨');
+      Fluttertoast.showToast(msg: l.composePublishedToast);
       if (!mounted) return;
       // pushReplacement so the feed stays underneath in the stack — back
       // from the new post detail returns to the feed. (Previous context.go
       // reset the stack, leaving the user stranded on /post/X.)
       context.pushReplacement('/post/${post.id}');
     } on ValidationException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      setState(() => _error = 'تعذّر النشر');
+      if (mounted) setState(() => _error = l.composePublishFailed);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -129,6 +132,7 @@ class _ComposePageState extends ConsumerState<ComposePage> {
   /// This prevents the "I tapped close by mistake and lost my draft"
   /// regret that the previous flow allowed.
   Future<void> _handleDiscard() async {
+    final l = AppLocalizations.of(context);
     final hasDraft = _layer1Ctrl.text.trim().isNotEmpty ||
         _layer3Ctrl.text.trim().isNotEmpty ||
         _images.isNotEmpty;
@@ -137,19 +141,19 @@ class _ComposePageState extends ConsumerState<ComposePage> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('تجاهل المسودة؟'),
-          content: const Text('ستفقد ما كتبته. هل تريد المتابعة؟'),
+          title: Text(l.composeDiscardTitle),
+          content: Text(l.composeDiscardBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('احتفاظ'),
+              child: Text(l.composeKeep),
             ),
             TextButton(
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFFD22F2F),
               ),
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('تجاهل'),
+              child: Text(l.composeDiscard),
             ),
           ],
         ),
@@ -168,6 +172,7 @@ class _ComposePageState extends ConsumerState<ComposePage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final remaining = 280 - _layer1Ctrl.text.length;
     return Scaffold(
@@ -175,10 +180,10 @@ class _ComposePageState extends ConsumerState<ComposePage> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close),
-          tooltip: 'إغلاق',
+          tooltip: l.composeClose,
           onPressed: _handleDiscard,
         ),
-        title: const Text('منشور جديد'),
+        title: Text(l.composeNewPost),
         actions: [
           TextButton(
             onPressed: _section != null &&
@@ -187,7 +192,7 @@ class _ComposePageState extends ConsumerState<ComposePage> {
                 ? _publish
                 : null,
             child: Text(
-              _submitting ? '…' : 'نشر',
+              _submitting ? '…' : l.composePublish,
               style: TextStyle(
                 color: _section != null &&
                         _layer1Ctrl.text.trim().isNotEmpty
@@ -205,7 +210,7 @@ class _ComposePageState extends ConsumerState<ComposePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'اكتب من قلبك',
+              l.composeWriteFromHeart,
               style: context.textStyles.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -234,7 +239,7 @@ class _ComposePageState extends ConsumerState<ComposePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'منشورك يعيش ٢٤ ساعة فقط',
+                          l.composeLivesTitle,
                           style: TextStyle(
                             color: colors.textPrimary,
                             fontWeight: FontWeight.w700,
@@ -243,8 +248,7 @@ class _ComposePageState extends ConsumerState<ComposePage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'لو نال تفاعلات صادقة قبل انتهائها → يتبلور ✦ ويبقى للأبد. '
-                          'بدونها يختفي بهدوء. اطرح ما يستحق النقاش.',
+                          l.composeLivesBody,
                           style: TextStyle(
                             color: colors.textSecondary,
                             fontSize: 12,
@@ -266,8 +270,8 @@ class _ComposePageState extends ConsumerState<ComposePage> {
             if (_section != null) ...[
               const SizedBox(height: 20),
               _LayerCard(
-                title: 'الطبقة ١ — الجوهر',
-                subtitle: 'الفكرة الأساسية في سطور قليلة',
+                title: l.composeLayer1Title,
+                subtitle: l.composeLayer1Subtitle,
                 trailing: Text(
                   '$remaining',
                   style:
@@ -280,15 +284,15 @@ class _ComposePageState extends ConsumerState<ComposePage> {
                   maxLength: 280,
                   autofocus: true,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    hintText: 'ما الذي يدور في خاطرك؟',
+                  decoration: InputDecoration(
+                    hintText: l.composeLayer1Hint,
                   ),
                 ),
               ).animate().fadeIn(duration: 250.ms),
               const SizedBox(height: 14),
               _LayerCard(
-                title: 'الطبقة ٢ — الصور',
-                subtitle: 'حتى ٤ صور (مربعة)',
+                title: l.composeLayer2Title,
+                subtitle: l.composeLayer2Subtitle,
                 colors: colors,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,7 +301,7 @@ class _ComposePageState extends ConsumerState<ComposePage> {
                       OutlinedButton.icon(
                         icon: const Icon(Icons.add_photo_alternate_outlined,
                             size: 18),
-                        label: Text(_uploading ? 'جارٍ الرفع…' : 'إضافة صورة'),
+                        label: Text(_uploading ? l.composeUploading : l.composeAddImage),
                         onPressed:
                             _uploading || _images.length >= 4 ? null : _pickAndCrop,
                       ),
@@ -341,7 +345,7 @@ class _ComposePageState extends ConsumerState<ComposePage> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      _showLayer3 ? 'إخفاء الطبقة ٣' : 'إضافة طبقة ٣ — تأمّل',
+                      _showLayer3 ? l.composeHideLayer3 : l.composeAddLayer3,
                       style: TextStyle(color: colors.textSecondary),
                     ),
                   ],
@@ -350,15 +354,15 @@ class _ComposePageState extends ConsumerState<ComposePage> {
               if (_showLayer3) ...[
                 const SizedBox(height: 12),
                 _LayerCard(
-                  title: 'الطبقة ٣ — التأمل',
-                  subtitle: 'نص طويل (حتى ٤٠٠٠ حرف)',
+                  title: l.composeLayer3Title,
+                  subtitle: l.composeLayer3Subtitle,
                   colors: colors,
                   child: TextField(
                     controller: _layer3Ctrl,
                     maxLines: 10,
                     maxLength: 4000,
-                    decoration: const InputDecoration(
-                      hintText: 'فكّر معنا… (اختياري)',
+                    decoration: InputDecoration(
+                      hintText: l.composeLayer3Hint,
                     ),
                   ),
                 ).animate().fadeIn(duration: 250.ms),
@@ -388,7 +392,7 @@ class _ComposePageState extends ConsumerState<ComposePage> {
               ],
               const SizedBox(height: 20),
               AppButton(
-                label: 'نشر',
+                label: l.composePublish,
                 onPressed: _publish,
                 loading: _submitting,
               ),
@@ -412,11 +416,12 @@ class _SectionPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'اختر القسم',
+          l.composeChooseSection,
           style: TextStyle(
             color: colors.textSecondary,
             fontSize: 13,
@@ -454,20 +459,21 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final brightness = Theme.of(context).brightness;
     final c = section.resolve(brightness);
     final (label, desc) = switch (section) {
       PostSection.moment => (
-        'لحظة',
-        'سطر خاطف من يومك — شعور سريع، خاطرة، حدث الآن. الأقصر، الأصدق.',
+        l.composeMoment,
+        l.composeMomentDesc,
       ),
       PostSection.face => (
-        'صورة',
-        'صورة تحكي بصمتك مع تعليق قصير. للحظات البصرية التي تستحق الحفظ.',
+        l.composeFace,
+        l.composeFaceDesc,
       ),
       PostSection.mind => (
-        'فكرة',
-        'تأمّل أعمق تكتبه بهدوء. مكان للأفكار التي تحتاج وقتاً للقراءة.',
+        l.composeMind,
+        l.composeMindDesc,
       ),
     };
     return InkWell(

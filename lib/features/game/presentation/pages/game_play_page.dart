@@ -130,7 +130,8 @@ class _GamePlayPageState extends ConsumerState<GamePlayPage> {
       if (!mounted) return;
       setState(() => _snap = next);
     } on GameApiException catch (e) {
-      Fluttertoast.showToast(msg: e.message);
+      Fluttertoast.showToast(
+          msg: e.message.isEmpty ? l10n.errorUnexpected : e.message);
       if (e.cancelled && mounted) {
         await Future<void>.delayed(const Duration(milliseconds: 800));
         if (mounted) context.go('/game');
@@ -1652,7 +1653,8 @@ class _AnsweredViewState extends ConsumerState<_AnsweredView> {
         }
       });
     } on GameApiException catch (e) {
-      Fluttertoast.showToast(msg: e.message);
+      Fluttertoast.showToast(
+          msg: e.message.isEmpty ? l10n.errorUnexpected : e.message);
       if (!mounted) return;
       setState(() => _rematchPhase = 'none');
     } catch (_) {
@@ -1783,7 +1785,7 @@ class _RematchPanel extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2.5),
             ),
             const SizedBox(height: 10),
-            Text('${l10n.rematchWaiting} ($secondsLeft ث)',
+            Text('${l10n.rematchWaiting} (${l10n.secondsShort(secondsLeft)})',
                 style: TextStyle(
                     color: c.textPrimary, fontWeight: FontWeight.w700)),
           ],

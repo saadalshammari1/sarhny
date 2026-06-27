@@ -22,6 +22,9 @@ class AppAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    // Decode the avatar at display resolution, not the full uploaded size —
+    // a feed full of 30–44px avatars otherwise balloons the image cache.
+    final px = (size * MediaQuery.devicePixelRatioOf(context)).round();
     final inner = ClipOval(
       child: SizedBox(
         width: size,
@@ -30,6 +33,8 @@ class AppAvatar extends StatelessWidget {
             ? CachedNetworkImage(
                 imageUrl: url!,
                 fit: BoxFit.cover,
+                memCacheWidth: px,
+                memCacheHeight: px,
                 placeholder: (_, __) => Container(color: colors.elevated),
                 errorWidget: (_, __, ___) => _initialsWidget(context),
               )

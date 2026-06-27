@@ -1,9 +1,25 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/localization/generated/app_localizations.dart';
 import '../../../core/api/dio_client.dart';
 import '../../../core/providers/api_providers.dart';
 import '../domain/xo_state.dart';
+
+/// Internal XO error codes emitted by the controller/repository map to
+/// localized text; any other value (e.g. a server-supplied message) is
+/// shown verbatim.
+String xoErrorMessage(String error, AppLocalizations l) {
+  switch (error) {
+    case 'xo_state_failed':
+    case 'xo_op_failed':
+    case 'xo_request_failed':
+    case 'xo_bad_response':
+      return l.errorUnexpected;
+    default:
+      return error;
+  }
+}
 
 class XoApiException implements Exception {
   XoApiException(this.message, {this.status});
@@ -21,14 +37,14 @@ class XoRepository {
 
   void _ensureSuccess(Response<dynamic> r) {
     if (r.data is! Map) {
-      throw XoApiException('استجابة غير صالحة', status: r.statusCode);
+      throw XoApiException('xo_bad_response', status: r.statusCode);
     }
     final map = r.data as Map;
     if (map['success'] != true) {
       final detail = map['error'] ?? map['detail'];
       final msg = detail is Map ? (detail['message'] ?? detail['error']) : detail;
       throw XoApiException(
-        msg?.toString() ?? 'تعذّر إكمال الطلب',
+        msg?.toString() ?? 'xo_request_failed',
         status: r.statusCode,
       );
     }

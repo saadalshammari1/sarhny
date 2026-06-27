@@ -194,11 +194,16 @@ class FeedPageDto {
             .whereType<Map>()
             .map((e) => PostDto.fromJson(e.cast<String, dynamic>()))
             .toList(),
+        // `next_cursor` is a {gravity,id} Map on the merged "all" feed but a
+        // bare id on sectioned/following feeds — accept both, else sectioned
+        // feeds stopped loading at page 1.
         nextCursor: json['next_cursor'] is Map
             ? FeedCursor.fromJson(
                 (json['next_cursor'] as Map).cast<String, dynamic>(),
               )
-            : null,
+            : (json['next_cursor'] == null
+                ? null
+                : FeedCursor(id: asInt(json['next_cursor']))),
         section: json['section']?.toString(),
       );
 
@@ -250,6 +255,19 @@ class InboxItemDto {
   final bool isSenderHidden;
   final AuthorDto? sender;
   final String? createdAt;
+
+  InboxItemDto copyWith({String? status}) => InboxItemDto(
+        id: id,
+        message: message,
+        status: status ?? this.status,
+        mediaType: mediaType,
+        mediaRef: mediaRef,
+        mediaMeta: mediaMeta,
+        linkRefs: linkRefs,
+        isSenderHidden: isSenderHidden,
+        sender: sender,
+        createdAt: createdAt,
+      );
 }
 
 @immutable

@@ -72,7 +72,7 @@ class XoMatchController extends StateNotifier<XoMatchState> {
       final snap = await _repo.state(gameId);
       _consecutiveErrors = 0;
       if (!mounted) return;
-      state = state.copyWith(snapshot: snap, loading: false, clearError: true);
+      _applySnapshot(snap, loading: false, clearError: true);
       // Stop polling once the match is fully done (no further state
       // transitions possible) AND we're past the rematch window —
       // for now we keep polling so rematch ready arrives reactively.
@@ -88,10 +88,27 @@ class XoMatchController extends StateNotifier<XoMatchState> {
       if (_consecutiveErrors >= 3) {
         state = state.copyWith(
           loading: false,
-          error: 'تعذّر تحديث الحالة',
+          error: 'xo_state_failed',
         );
       }
     }
+  }
+
+  /// Apply a snapshot unless it would regress the board behind what we already
+  /// show — guards against a poll that started before our last move landing
+  /// afterwards and flickering the board back. `movesMade` only ever grows
+  /// within a game, and post-game transitions keep it constant, so they pass.
+  void _applySnapshot(XoSnapshot snap,
+      {bool? loading, bool? busy, bool clearError = false}) {
+    final cur = state.snapshot;
+    if (cur != null && snap.gameId == cur.gameId && snap.movesMade < cur.movesMade) {
+      if (loading != null || busy != null || clearError) {
+        state = state.copyWith(loading: loading, busy: busy, clearError: clearError);
+      }
+      return;
+    }
+    state = state.copyWith(
+        snapshot: snap, loading: loading, busy: busy, clearError: clearError);
   }
 
   Future<void> _wrap(Future<XoSnapshot> Function() op) async {
@@ -100,7 +117,7 @@ class XoMatchController extends StateNotifier<XoMatchState> {
     try {
       final snap = await op();
       if (!mounted) return;
-      state = state.copyWith(snapshot: snap, busy: false);
+      _applySnapshot(snap, busy: false);
     } on XoApiException catch (e) {
       if (!mounted) return;
       state = state.copyWith(busy: false, error: e.message);
@@ -110,7 +127,7 @@ class XoMatchController extends StateNotifier<XoMatchState> {
       unawaited(refresh());
     } catch (_) {
       if (!mounted) return;
-      state = state.copyWith(busy: false, error: 'تعذّر إكمال العملية');
+      state = state.copyWith(busy: false, error: 'xo_op_failed');
       unawaited(refresh());
     }
   }

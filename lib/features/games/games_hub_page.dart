@@ -22,9 +22,9 @@ import 'carrom/data/admob_service.dart';
 ///   * One prominent "watch ad → +1 point" tile so users who don't want
 ///     to play can still grow their wallet
 ///
-/// Carrom and Ludo deliberately do NOT surface here — those flows still
-/// exist at their routes for back-compat, but the entry points are
-/// removed until they reach a quality bar worth showing.
+/// Carrom (Pro) and Ludo both surface here as polished tiles. The Ludo tile
+/// routes to the powers variant (ludo_power) — the live/canonical Ludo game.
+/// (ludo3 exists but is not the surfaced version.)
 class GamesHubPage extends ConsumerStatefulWidget {
   const GamesHubPage({super.key});
   @override
@@ -86,6 +86,74 @@ class _GamesHubPageState extends ConsumerState<GamesHubPage>
     }
   }
 
+  /// Carrom entry point — choose a single-device match vs the AI or an online
+  /// match against a real player.
+  void _pickCarromMode() {
+    final colors = context.sarhnyColors;
+    final l10n = AppLocalizations.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colors.textSecondary.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const Gap(16),
+                Text(l10n.hubCarromTitle,
+                    style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900)),
+                const Gap(4),
+                Text(l10n.hubChooseMode,
+                    style: TextStyle(
+                        color: colors.textSecondary, fontSize: 13)),
+                const Gap(18),
+                _CarromModeTile(
+                  icon: Icons.smart_toy_rounded,
+                  title: l10n.hubModeAi,
+                  subtitle: l10n.hubModeAiSub,
+                  accent: colors.mind,
+                  colors: colors,
+                  onTap: () {
+                    Navigator.of(sheetCtx).pop();
+                    GameHaptics.uiPop();
+                    context.push(AppRoutes.carrom3);
+                  },
+                ),
+                const Gap(12),
+                _CarromModeTile(
+                  icon: Icons.public_rounded,
+                  title: l10n.hubModeOnline,
+                  subtitle: l10n.hubModeOnlineSub,
+                  accent: colors.moment,
+                  colors: colors,
+                  onTap: () {
+                    Navigator.of(sheetCtx).pop();
+                    GameHaptics.uiPop();
+                    context.push(AppRoutes.carrom3Online);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
@@ -135,6 +203,36 @@ class _GamesHubPageState extends ConsumerState<GamesHubPage>
             const Gap(12),
             _SectionLabel(text: l10n.hubSectionPlay, colors: colors),
             const Gap(10),
+            _GameTile(
+              title: l10n.hubCarromTitle,
+              subtitle: l10n.hubCarromSubtitle,
+              icon: Icons.adjust_rounded,
+              tag: l10n.hubCarromTag,
+              accent: colors.mind,
+              colors: colors,
+              shimmer: _shimmer,
+              decoration: _GameTileDecoration.coins,
+              onTap: () {
+                GameHaptics.uiPop();
+                _pickCarromMode();
+              },
+            ),
+            const Gap(12),
+            _GameTile(
+              title: l10n.ludoTitle,
+              subtitle: l10n.ludoHubSubtitle,
+              icon: Icons.casino_rounded,
+              tag: l10n.ludoHubTag,
+              accent: colors.moment,
+              colors: colors,
+              shimmer: _shimmer,
+              decoration: _GameTileDecoration.grid,
+              onTap: () {
+                GameHaptics.uiPop();
+                context.push(AppRoutes.ludoPower);
+              },
+            ),
+            const Gap(12),
             _GameTile(
               title: l10n.hubGameRps,
               subtitle: l10n.hubGameRpsSub,
@@ -255,7 +353,7 @@ class _WalletPill extends StatelessWidget {
 // Game tile — the premium hero cards
 // ─────────────────────────────────────────────────────────────────────
 
-enum _GameTileDecoration { shapes, grid }
+enum _GameTileDecoration { shapes, grid, coins }
 
 class _GameTile extends StatefulWidget {
   const _GameTile({
@@ -507,6 +605,46 @@ class _TileBackgroundPainter extends CustomPainter {
         Offset(cellCx - slot / 2 + pad, cellCy + slot / 2 - pad),
         xPaint,
       );
+    } else if (decoration == _GameTileDecoration.coins) {
+      // Carrom motif — a striker flanked by two coins.
+      final cx = size.width - 52;
+      final cy = size.height / 2;
+      canvas.drawCircle(
+        Offset(cx, cy),
+        22,
+        Paint()..color = accent.withValues(alpha: 0.10),
+      );
+      canvas.drawCircle(
+        Offset(cx, cy),
+        22,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..color = accent.withValues(alpha: 0.45),
+      );
+      canvas.drawCircle(
+        Offset(cx, cy),
+        4,
+        Paint()..color = accent.withValues(alpha: 0.55),
+      );
+      canvas.drawCircle(
+        Offset(cx - 30, cy + 16),
+        13,
+        Paint()..color = accent.withValues(alpha: 0.20),
+      );
+      canvas.drawCircle(
+        Offset(cx - 30, cy + 16),
+        13,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4
+          ..color = lineColor,
+      );
+      canvas.drawCircle(
+        Offset(cx + 8, cy - 26),
+        10,
+        Paint()..color = fadeColor,
+      );
     } else {
       // Rotating triangle (RPS = three choices) motif.
       final cx = size.width - 50;
@@ -667,6 +805,73 @@ class _AdEarnTile extends StatelessWidget {
                     size: 13,
                   ),
                 ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CarromModeTile extends StatelessWidget {
+  const _CarromModeTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.accent,
+    required this.colors,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color accent;
+  final SarhnyColors colors;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: accent.withValues(alpha: 0.4), width: 1),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.18),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: accent, size: 24),
+              ),
+              const Gap(14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900)),
+                    const Gap(2),
+                    Text(subtitle,
+                        style: TextStyle(
+                            color: colors.textSecondary, fontSize: 12)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_left_rounded, color: accent),
             ],
           ),
         ),

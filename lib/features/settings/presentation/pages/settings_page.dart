@@ -470,6 +470,7 @@ class _SubscriptionCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.sarhnyColors;
+    final l = AppLocalizations.of(context);
     return state.when(
       loading: () => const SizedBox(height: 100),
       error: (e, _) => const SizedBox(),
@@ -510,7 +511,7 @@ class _SubscriptionCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'باقة ${_tierArabic(s.tier as String)}',
+                      '${l.settingsPackagePrefix} ${_tierLabel(l, s.tier as String)}',
                       style: TextStyle(
                         color: colors.textPrimary,
                         fontWeight: FontWeight.w700,
@@ -519,8 +520,8 @@ class _SubscriptionCard extends ConsumerWidget {
                     const SizedBox(height: 2),
                     Text(
                       s.balance != null && s.dailyMax != null
-                          ? 'الانتباه: ${s.balance}/${s.dailyMax}'
-                          : 'إدارة الاشتراك',
+                          ? '${l.settingsAttentionPrefix} ${s.balance}/${s.dailyMax}'
+                          : l.settingsManageSubscription,
                       style: TextStyle(
                         color: colors.textSecondary,
                         fontSize: 12,
@@ -547,16 +548,16 @@ void _openSubscriptionSheet(BuildContext context, WidgetRef ref) {
   );
 }
 
-String _tierArabic(String tier) {
+String _tierLabel(AppLocalizations l, String tier) {
   switch (tier) {
     case 'pro':
-      return 'برو';
+      return l.settingsTierPro;
     case 'creator':
-      return 'المبدع';
+      return l.settingsTierCreator;
     case 'eternal':
-      return 'الخالدة';
+      return l.settingsTierEternal;
     default:
-      return 'مجانية';
+      return l.settingsTierFree;
   }
 }
 
@@ -566,6 +567,7 @@ class _SubscriptionSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.sarhnyColors;
+    final l = AppLocalizations.of(context);
     final tiers = ref.watch(subscriptionTiersProvider);
     final me = ref.watch(subscriptionStateProvider);
     return DraggableScrollableSheet(
@@ -599,14 +601,14 @@ class _SubscriptionSheet extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  'الباقات',
+                  l.settingsPlansTitle,
                   style: context.textStyles.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'باقات سرحني تعطيك ميزانية انتباه أكبر، وحضوراً أعلى.',
+                  l.settingsPlansSubtitle,
                   style: TextStyle(color: colors.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 16),
@@ -621,9 +623,9 @@ class _SubscriptionSheet extends ConsumerWidget {
                             .upgrade(t.key);
                         ref.invalidate(subscriptionStateProvider);
                         if (context.mounted) Navigator.of(context).pop();
-                        Fluttertoast.showToast(msg: 'تم الترقية ✨');
+                        Fluttertoast.showToast(msg: l.settingsUpgraded);
                       } catch (_) {
-                        Fluttertoast.showToast(msg: 'تعذّر الترقية');
+                        Fluttertoast.showToast(msg: l.settingsUpgradeFailed);
                       }
                     },
                     onCancel: () async {
@@ -633,9 +635,9 @@ class _SubscriptionSheet extends ConsumerWidget {
                             .cancel();
                         ref.invalidate(subscriptionStateProvider);
                         if (context.mounted) Navigator.of(context).pop();
-                        Fluttertoast.showToast(msg: 'تم الإلغاء');
+                        Fluttertoast.showToast(msg: l.settingsSubscriptionCancelled);
                       } catch (_) {
-                        Fluttertoast.showToast(msg: 'تعذّر الإلغاء');
+                        Fluttertoast.showToast(msg: l.settingsCancelFailed);
                       }
                     },
                   ),
@@ -663,6 +665,7 @@ class _TierCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final l = AppLocalizations.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -682,7 +685,7 @@ class _TierCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                _tierArabic(tier.key),
+                _tierLabel(l, tier.key),
                 style: TextStyle(
                   color: colors.textPrimary,
                   fontSize: 16,
@@ -703,7 +706,7 @@ class _TierCard extends StatelessWidget {
           if (tier.dailyMax != null) ...[
             const SizedBox(height: 6),
             Text(
-              'الانتباه اليومي: ${tier.dailyMax}',
+              '${l.settingsDailyAttentionPrefix} ${tier.dailyMax}',
               style: TextStyle(color: colors.textSecondary, fontSize: 12),
             ),
           ],
@@ -734,7 +737,7 @@ class _TierCard extends StatelessWidget {
           if (isCurrent)
             tier.key == 'free'
                 ? Text(
-                    'باقتك الحالية',
+                    l.settingsCurrentPlan,
                     style: TextStyle(
                       color: colors.textSecondary,
                       fontSize: 12,
@@ -742,13 +745,13 @@ class _TierCard extends StatelessWidget {
                     ),
                   )
                 : AppButton(
-                    label: 'إلغاء الاشتراك',
+                    label: l.settingsCancelSubscription,
                     variant: AppButtonVariant.secondary,
                     onPressed: onCancel,
                   )
           else
             AppButton(
-              label: 'ترقية',
+              label: l.settingsUpgrade,
               onPressed: onUpgrade,
             ),
         ],

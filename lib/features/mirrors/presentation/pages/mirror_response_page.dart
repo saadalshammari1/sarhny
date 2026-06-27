@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
@@ -41,6 +42,7 @@ class _MirrorResponsePageState extends ConsumerState<MirrorResponsePage> {
   }
 
   Future<void> _send() async {
+    final l = AppLocalizations.of(context);
     final txt = _ctrl.text.trim();
     if (txt.length < 2 || _sending) return;
     setState(() {
@@ -61,15 +63,15 @@ class _MirrorResponsePageState extends ConsumerState<MirrorResponsePage> {
       }
       if (mounted) setState(() => _done = true);
     } on UnauthorizedException {
-      setState(() => _error = 'سجّل دخولك للرد على المرآة');
+      setState(() => _error = l.mirrorsLoginToRespond);
     } on ValidationException catch (e) {
       setState(() => _error = e.message);
     } on RateLimitException {
-      setState(() => _error = 'لقد رددت كثيراً مؤخراً — انتظر قليلاً');
+      setState(() => _error = l.mirrorsRateLimit);
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } catch (_) {
-      setState(() => _error = 'تعذّر الإرسال');
+      setState(() => _error = l.mirrorsSendFailed);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -78,12 +80,13 @@ class _MirrorResponsePageState extends ConsumerState<MirrorResponsePage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final l = AppLocalizations.of(context);
     final authed = ref.watch(authStateProvider).valueOrNull?.status ==
         AuthStatus.authenticated;
     final mirror = ref.watch(_publicMirrorProvider(widget.token));
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(title: const Text('مرآة')),
+      appBar: AppBar(title: Text(l.mirrorsBadgeShort)),
       body: mirror.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorView(
@@ -131,7 +134,7 @@ class _MirrorResponsePageState extends ConsumerState<MirrorResponsePage> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    'السؤال',
+                                    l.mirrorsQuestionTitle,
                                     style: TextStyle(
                                       color: colors.textSecondary,
                                       fontSize: 11,
@@ -161,15 +164,15 @@ class _MirrorResponsePageState extends ConsumerState<MirrorResponsePage> {
                           maxLines: 6,
                           maxLength: 300,
                           autofocus: true,
-                          decoration: const InputDecoration(
-                            hintText: 'اكتب ردك بصدق — هويتك لن تظهر',
+                          decoration: InputDecoration(
+                            hintText: l.mirrorsResponseHint,
                           ),
                         ),
                         if (!authed)
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
-                              'يمكنك الرد بدون تسجيل — هويتك لن تظهر مطلقاً',
+                              l.mirrorsAnonymousNote,
                               style: TextStyle(
                                 color: colors.textSecondary,
                                 fontSize: 11,
@@ -203,7 +206,7 @@ class _MirrorResponsePageState extends ConsumerState<MirrorResponsePage> {
                         ],
                         const SizedBox(height: 16),
                         AppButton(
-                          label: 'أرسل ردي',
+                          label: l.mirrorsSendResponse,
                           icon: Icons.send_rounded,
                           loading: _sending,
                           onPressed: _send,
@@ -224,6 +227,7 @@ class _OwnerCard extends StatelessWidget {
   final SarhnyColors colors;
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -244,7 +248,7 @@ class _OwnerCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'مرآة من',
+                  l.mirrorsFrom,
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontSize: 11,
@@ -273,6 +277,7 @@ class _Sent extends StatelessWidget {
   final SarhnyColors colors;
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -293,14 +298,14 @@ class _Sent extends StatelessWidget {
               .shimmer(delay: 100.ms, duration: 900.ms),
         ),
         Text(
-          'تم إرسال ردك',
+          l.mirrorsSentTitle,
           textAlign: TextAlign.center,
           style: context.textStyles.headlineSmall
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
         Text(
-          'كلماتك ستضيف لسحابة الكلمات التي يراها صاحب المرآة. شكراً لصدقك 🌙',
+          l.mirrorsSentBody,
           textAlign: TextAlign.center,
           style: TextStyle(
             color: colors.textSecondary,
@@ -309,7 +314,7 @@ class _Sent extends StatelessWidget {
         ),
         const SizedBox(height: 32),
         AppButton(
-          label: 'عودة للرئيسية',
+          label: l.mirrorsBackHome,
           onPressed: () => GoRouter.of(context).go(AppRoutes.feed),
         ),
       ],

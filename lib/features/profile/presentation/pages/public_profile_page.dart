@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/dto.dart';
 import '../../../../core/utils/media.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/report_sheet.dart';
 import '../../../feed/presentation/widgets/post_card.dart';
 import '../../../feed/presentation/widgets/post_card_skeleton.dart';
 import '../providers/profile_provider.dart';
@@ -48,23 +50,24 @@ Future<void> _onMenu(
   PublicProfileDto profile,
   String v,
 ) async {
+  final l = AppLocalizations.of(context);
   if (v == 'block') {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('حظر هذا المستخدم'),
-        content: const Text(
-          'لن تستقبل أي رسائل أو منشورات منه، ولن يراك أيضاً. تستطيع إلغاء الحظر لاحقاً من شاشة الإعدادات.',
+        title: Text(l.profileBlockUser),
+        content: Text(
+          l.profileBlockUserBody,
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(c).pop(false),
-              child: const Text('إلغاء')),
+              child: Text(l.commonCancel)),
           FilledButton(
             onPressed: () => Navigator.of(c).pop(true),
             style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(c).colorScheme.error),
-            child: const Text('حظر'),
+            child: Text(l.profileBlock),
           ),
         ],
       ),
@@ -72,13 +75,14 @@ Future<void> _onMenu(
     if (confirm != true) return;
     try {
       await ref.read(profileRepositoryProvider).block(profile.user.id);
-      Fluttertoast.showToast(msg: 'تم الحظر');
+      Fluttertoast.showToast(msg: l.profileBlocked);
       if (context.mounted) Navigator.of(context).maybePop();
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الحظر');
+      Fluttertoast.showToast(msg: l.profileBlockFailed);
     }
   } else if (v == 'report') {
-    Fluttertoast.showToast(msg: 'تم إرسال البلاغ — سنراجعه');
+    await ReportSheet.show(context,
+        target: ReportTarget.user, targetId: profile.user.id);
   }
 }
 
@@ -124,6 +128,7 @@ class _BodyState extends ConsumerState<_Body> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final profile = widget.profile;
     final username = widget.username;
@@ -150,7 +155,7 @@ class _BodyState extends ConsumerState<_Body> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.ios_share_rounded),
-                tooltip: 'مشاركة هذا البروفايل',
+                tooltip: l.profileShareThis,
                 onPressed: () => shareProfile(
                   context,
                   username: profile.user.username,
@@ -161,21 +166,21 @@ class _BodyState extends ConsumerState<_Body> {
                 PopupMenuButton<String>(
                   icon: Icon(Icons.more_horiz, color: colors.textPrimary),
                   onSelected: (v) => _onMenu(context, ref, profile, v),
-                  itemBuilder: (_) => const [
+                  itemBuilder: (_) => [
                     PopupMenuItem(
                       value: 'block',
                       child: Row(children: [
-                        Icon(Icons.block, size: 18),
-                        SizedBox(width: 8),
-                        Text('حظر هذا المستخدم'),
+                        const Icon(Icons.block, size: 18),
+                        const SizedBox(width: 8),
+                        Text(l.profileBlockUser),
                       ]),
                     ),
                     PopupMenuItem(
                       value: 'report',
                       child: Row(children: [
-                        Icon(Icons.flag_outlined, size: 18),
-                        SizedBox(width: 8),
-                        Text('إبلاغ'),
+                        const Icon(Icons.flag_outlined, size: 18),
+                        const SizedBox(width: 8),
+                        Text(l.profileReport),
                       ]),
                     ),
                   ],
@@ -218,7 +223,7 @@ class _BodyState extends ConsumerState<_Body> {
                   sliver: SliverToBoxAdapter(
                     child: Center(
                       child: Text(
-                        'لا يوجد شيء هنا بعد',
+                        l.profileNothingHere,
                         style: TextStyle(color: colors.textSecondary),
                       ),
                     ),
@@ -262,6 +267,7 @@ class _Header extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     return Column(
       children: [
@@ -304,7 +310,7 @@ class _Header extends ConsumerWidget {
                       _FollowButton(profile: profile)
                     else
                       AppButton(
-                        label: 'تعديل البروفايل',
+                        label: l.profileEditTitle,
                         variant: AppButtonVariant.secondary,
                         expand: false,
                         // Own profile edit lives in /profile (the private
@@ -365,6 +371,7 @@ class _Stats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     Widget cell(String label, int value, [Color? color]) {
       return Padding(
@@ -392,11 +399,11 @@ class _Stats extends StatelessWidget {
 
     return Row(
       children: [
-        cell('متابعون', stats.followers),
-        cell('متابَعون', stats.following),
-        cell('متبلور', stats.crystals, colors.crystal),
-        cell('نشط', stats.active, colors.moment),
-        cell('مرايا', stats.mirrors, colors.mind),
+        cell(l.profileFollowers, stats.followers),
+        cell(l.profileFollowingStat, stats.following),
+        cell(l.profileTabCrystalsShort, stats.crystals, colors.crystal),
+        cell(l.profileTabActiveShort, stats.active, colors.moment),
+        cell(l.profileBadgeMirrors, stats.mirrors, colors.mind),
       ],
     );
   }
@@ -415,6 +422,7 @@ class _FollowButtonState extends ConsumerState<_FollowButton> {
   bool _busy = false;
 
   Future<void> _toggle() async {
+    final l = AppLocalizations.of(context);
     setState(() => _busy = true);
     final repo = ref.read(profileRepositoryProvider);
     try {
@@ -425,7 +433,7 @@ class _FollowButtonState extends ConsumerState<_FollowButton> {
       }
       setState(() => _following = !_following);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر تنفيذ الطلب');
+      Fluttertoast.showToast(msg: l.profileActionFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -433,8 +441,9 @@ class _FollowButtonState extends ConsumerState<_FollowButton> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return AppButton(
-      label: _following ? 'تتابعه' : 'تابع',
+      label: _following ? l.profileFollowingState : l.profileFollowAction,
       variant:
           _following ? AppButtonVariant.secondary : AppButtonVariant.primary,
       expand: false,
@@ -456,13 +465,14 @@ class _TabsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final tabs = [
-      (ProfileTab.active, 'نشط', Icons.flash_on_outlined),
-      (ProfileTab.moments, 'لحظات', Icons.bolt_outlined),
-      (ProfileTab.answers, 'أجوبة', Icons.question_answer_outlined),
-      (ProfileTab.crystals, 'متبلور', Icons.diamond_outlined),
-      (ProfileTab.likes, 'إعجابات', Icons.favorite_border),
+      (ProfileTab.active, l.profileTabActiveShort, Icons.flash_on_outlined),
+      (ProfileTab.moments, l.profileTabMoments, Icons.bolt_outlined),
+      (ProfileTab.answers, l.profileTabAnswers, Icons.question_answer_outlined),
+      (ProfileTab.crystals, l.profileTabCrystalsShort, Icons.diamond_outlined),
+      (ProfileTab.likes, l.profileTabLikesShort, Icons.favorite_border),
     ];
     return SizedBox(
       height: 44,

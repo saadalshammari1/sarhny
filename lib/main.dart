@@ -67,6 +67,7 @@ Future<void> main() async {
   }
 
   final prefs = await PrefsStorage.create();
+  await prefs.incrementAppOpens(); // drives the "ask to rate after a few opens"
   final cache = await CacheStorage.init();
   final secure = SecureStorage();
 

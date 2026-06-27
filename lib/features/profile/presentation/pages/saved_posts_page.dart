@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/dto.dart';
 import '../../../../core/widgets/empty_state.dart';
@@ -103,11 +104,12 @@ class _SavedPostsPageState extends ConsumerState<SavedPostsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final state = ref.watch(_savedProvider);
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(title: const Text('المحفوظات')),
+      appBar: AppBar(title: Text(l.profileSavedTitle)),
       body: RefreshIndicator(
         color: colors.moment,
         onRefresh: () async {
@@ -130,12 +132,12 @@ class _SavedPostsPageState extends ConsumerState<SavedPostsPage> {
               return ListView(
                 controller: _scroll,
                 physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 80),
+                children: [
+                  const SizedBox(height: 80),
                   EmptyState(
                     icon: Icons.bookmark_outline,
-                    title: 'لا توجد محفوظات',
-                    subtitle: 'احفظ منشوراً بالضغط على 🔖 ليظهر هنا',
+                    title: l.profileSavedEmptyTitle,
+                    subtitle: l.profileSavedEmptySubtitle,
                   ),
                 ],
               );

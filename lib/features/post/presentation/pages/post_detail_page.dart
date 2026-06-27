@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../feed/presentation/widgets/post_card.dart';
@@ -13,12 +14,13 @@ class PostDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final post = ref.watch(postProvider(postId));
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('منشور'),
+        title: Text(l.postTitle),
       ),
       body: post.when(
         loading: () => const Center(child: CircularProgressIndicator()),

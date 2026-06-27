@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -31,7 +33,10 @@ class SarhnyApp extends ConsumerWidget {
       if (!wasAuthed && isAuthed) {
         ref.read(fcmServiceProvider).register();
       } else if (wasAuthed && !isAuthed) {
-        ref.read(fcmServiceProvider).dispose();
+        final fcm = ref.read(fcmServiceProvider);
+        // Drop the device token server-side first, then tear down subscriptions.
+        unawaited(fcm.unregister());
+        fcm.dispose();
         ref.invalidate(fcmServiceProvider);
       }
     });
@@ -42,7 +47,7 @@ class SarhnyApp extends ConsumerWidget {
       splitScreenMode: true,
       builder: (_, __) {
         return MaterialApp.router(
-          title: 'صارحني',
+          onGenerateTitle: (context) => AppLocalizations.of(context).appName,
           debugShowCheckedModeBanner: false,
           routerConfig: router,
           theme: AppTheme.light(),

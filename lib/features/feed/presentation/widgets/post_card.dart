@@ -5,11 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart' as intl;
+import '../../../../core/utils/relative_time.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:fluttertoast/fluttertoast.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/dto.dart';
@@ -149,6 +150,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final hideSectionBadge = post.originQuestion != null;
     return Row(
@@ -202,7 +204,7 @@ class _Header extends StatelessWidget {
                   Text(' · ',
                       style: TextStyle(color: colors.textSecondary, fontSize: 12)),
                   Text(
-                    _formatRelative(post.createdAt),
+                    formatRelative(context, post.createdAt),
                     style:
                         TextStyle(color: colors.textSecondary, fontSize: 12),
                   ),
@@ -215,9 +217,9 @@ class _Header extends StatelessWidget {
                         PostSectionKind.face => '🎨',
                         PostSectionKind.mind => '🧠',
                       }} ${switch (post.section) {
-                        PostSectionKind.moment => 'لحظات',
-                        PostSectionKind.face => 'صور',
-                        PostSectionKind.mind => 'أفكار',
+                        PostSectionKind.moment => l.feedSectionMoment,
+                        PostSectionKind.face => l.feedSectionFace,
+                        PostSectionKind.mind => l.feedSectionMind,
                       }}',
                       style: TextStyle(color: sectionInk, fontSize: 12),
                     ),
@@ -236,7 +238,7 @@ class _Header extends StatelessWidget {
               borderRadius: BorderRadius.circular(99),
             ),
             child: Text(
-              '✦ متبلور',
+              l.feedCrystalBadge,
               style: TextStyle(
                 color: colors.crystal,
                 fontSize: 10,
@@ -352,6 +354,7 @@ class _OriginQuestion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     return Container(
       padding: const EdgeInsets.all(12),
@@ -370,8 +373,8 @@ class _OriginQuestion extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 q.senderHidden || q.senderUsername == null
-                    ? 'سؤال من مجهول'
-                    : 'سؤال من @${q.senderUsername}',
+                    ? l.feedQuestionFromAnonymous
+                    : '${l.feedQuestionFrom} @${q.senderUsername}',
                 style: TextStyle(
                   color: moment,
                   fontSize: 10,
@@ -403,6 +406,7 @@ class _Footer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
     final inter = ref.watch(postInteractionProvider(post.id));
     final repo = ref.read(postRepositoryProvider);
     // Author check — compared by username because legacy `userId` and
@@ -445,7 +449,7 @@ class _Footer extends ConsumerWidget {
               ? Icons.bookmark_rounded
               : Icons.bookmark_border_rounded,
           color: bookmarkColor,
-          tooltip: inter.saved ? 'إلغاء الحفظ' : 'حفظ',
+          tooltip: inter.saved ? l.feedUnsave : l.feedSave,
           onTap: inter.saveBusy
               ? null
               : () => ref
@@ -456,7 +460,7 @@ class _Footer extends ConsumerWidget {
         _IconButton(
           icon: Icons.ios_share_rounded,
           color: colors.textSecondary,
-          tooltip: 'مشاركة',
+          tooltip: l.commonShare,
           onTap: () => _share(context, post),
         ),
         const SizedBox(width: 2),
@@ -467,14 +471,14 @@ class _Footer extends ConsumerWidget {
           _IconButton(
             icon: Icons.delete_outline_rounded,
             color: const Color(0xFFD22F2F),
-            tooltip: 'حذف',
+            tooltip: l.commonDelete,
             onTap: () => _confirmDelete(context, ref, post, repo),
           )
         else
           _IconButton(
             icon: Icons.flag_outlined,
             color: colors.textSecondary,
-            tooltip: 'إبلاغ',
+            tooltip: l.commonReport,
             onTap: () => ReportSheet.show(
               context,
               target: ReportTarget.post,
@@ -486,6 +490,7 @@ class _Footer extends ConsumerWidget {
   }
 
   Future<void> _share(BuildContext context, PostDto p) async {
+    final l = AppLocalizations.of(context);
     final box = context.findRenderObject() as RenderBox?;
     // Canonical web URL is locale-prefixed (next-intl middleware
     // forces it). `/post/X` would 308 to `/ar/post/X` anyway — sending
@@ -493,8 +498,8 @@ class _Footer extends ConsumerWidget {
     final url = 'https://sarhny.com/ar/post/${p.id}';
     final body = p.body.length > 120 ? '${p.body.substring(0, 117)}…' : p.body;
     await Share.share(
-      '$body\n\n— من صارحني\n$url',
-      subject: 'صارحني',
+      '$body\n\n${l.feedShareFooter}\n$url',
+      subject: l.appName,
       sharePositionOrigin:
           box == null ? null : box.localToGlobal(Offset.zero) & box.size,
     );
@@ -506,24 +511,25 @@ class _Footer extends ConsumerWidget {
     PostDto p,
     dynamic repo,
   ) async {
+    final l = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('حذف المنشور'),
-        content: const Text(
-          'سيُحذف منشورك نهائياً ولن يظهر للآخرين. هل أنت متأكد؟',
+        title: Text(l.feedDeleteTitle),
+        content: Text(
+          l.feedDeleteBody,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('إلغاء'),
+            child: Text(l.commonCancel),
           ),
           TextButton(
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFFD22F2F),
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('حذف'),
+            child: Text(l.commonDelete),
           ),
         ],
       ),
@@ -531,7 +537,7 @@ class _Footer extends ConsumerWidget {
     if (ok != true) return;
     try {
       await repo.deletePost(p.id);
-      Fluttertoast.showToast(msg: 'تم حذف المنشور');
+      Fluttertoast.showToast(msg: l.feedDeleteSuccess);
       // If we were on the detail page, pop back to wherever brought us
       // here so the now-deleted post doesn't linger on screen.
       if (context.mounted) {
@@ -540,7 +546,7 @@ class _Footer extends ConsumerWidget {
         }
       }
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الحذف');
+      Fluttertoast.showToast(msg: l.feedDeleteFailed);
     }
   }
 }
@@ -615,14 +621,3 @@ class _IconButton extends StatelessWidget {
   }
 }
 
-String _formatRelative(String? iso) {
-  if (iso == null) return '';
-  final dt = DateTime.tryParse(iso);
-  if (dt == null) return iso;
-  final delta = DateTime.now().toUtc().difference(dt.toUtc());
-  if (delta.inMinutes < 1) return 'الآن';
-  if (delta.inMinutes < 60) return 'قبل ${delta.inMinutes} د';
-  if (delta.inHours < 24) return 'قبل ${delta.inHours} س';
-  if (delta.inDays < 7) return 'قبل ${delta.inDays} يوم';
-  return intl.DateFormat('d MMM', 'ar').format(dt.toLocal());
-}

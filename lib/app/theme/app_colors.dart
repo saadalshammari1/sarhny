@@ -76,17 +76,6 @@ extension PostSectionColor on PostSection {
     }
   }
 
-  String get arabicLabel {
-    switch (this) {
-      case PostSection.moment:
-        return 'لحظة';
-      case PostSection.face:
-        return 'صورة';
-      case PostSection.mind:
-        return 'فكرة';
-    }
-  }
-
   String get glyph {
     switch (this) {
       case PostSection.moment:
@@ -115,36 +104,6 @@ extension PostSectionColor on PostSection {
 enum SectionFilter { all, moment, face, mind, questions }
 
 extension SectionFilterLabel on SectionFilter {
-  String get arabicLabel {
-    switch (this) {
-      case SectionFilter.all:
-        return 'الكل';
-      case SectionFilter.moment:
-        return 'لحظات';
-      case SectionFilter.face:
-        return 'صور';
-      case SectionFilter.mind:
-        return 'أفكار';
-      case SectionFilter.questions:
-        return 'أجوبة';
-    }
-  }
-
-  String get englishLabel {
-    switch (this) {
-      case SectionFilter.all:
-        return 'All';
-      case SectionFilter.moment:
-        return 'Moments';
-      case SectionFilter.face:
-        return 'Faces';
-      case SectionFilter.mind:
-        return 'Minds';
-      case SectionFilter.questions:
-        return 'Answers';
-    }
-  }
-
   String get glyph {
     switch (this) {
       case SectionFilter.all:

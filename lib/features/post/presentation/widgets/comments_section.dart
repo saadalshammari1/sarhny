@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
-import '../../../../core/providers/auth_providers.dart';
 import '../../../../core/utils/media.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../data/comment_dto.dart';
@@ -30,22 +30,23 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
   }
 
   Future<void> _confirmDelete(CommentDto c) async {
+    final l = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('حذف التعليق'),
-        content: const Text('سيُحذف التعليق نهائياً. متابعة؟'),
+        title: Text(l.postDeleteCommentTitle),
+        content: Text(l.postDeleteCommentConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('إلغاء'),
+            child: Text(l.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('حذف'),
+            child: Text(l.commonDelete),
           ),
         ],
       ),
@@ -57,14 +58,15 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
           .read(commentsControllerProvider(widget.postId).notifier)
           .removeLocal(c.id);
       await ref.read(postRepositoryProvider).deleteComment(c.id);
-      Fluttertoast.showToast(msg: 'تم الحذف');
+      Fluttertoast.showToast(msg: l.postDeleted);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الحذف');
+      Fluttertoast.showToast(msg: l.postDeleteFailed);
       ref.invalidate(commentsControllerProvider(widget.postId));
     }
   }
 
   Future<void> _send() async {
+    final l = AppLocalizations.of(context);
     final txt = _ctrl.text.trim();
     if (txt.isEmpty || _sending) return;
     setState(() => _sending = true);
@@ -75,13 +77,13 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
           .read(commentsControllerProvider(widget.postId).notifier)
           .add(c);
       _ctrl.clear();
-      Fluttertoast.showToast(msg: 'تم النشر');
+      Fluttertoast.showToast(msg: l.postPublished);
     } on UnauthorizedException {
-      Fluttertoast.showToast(msg: 'سجّل دخولك للتعليق');
+      Fluttertoast.showToast(msg: l.postLoginToComment);
     } on ValidationException catch (e) {
       Fluttertoast.showToast(msg: e.message);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر النشر');
+      Fluttertoast.showToast(msg: l.postPublishFailed);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -89,6 +91,7 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final state = ref.watch(commentsControllerProvider(widget.postId));
     return Container(
@@ -107,7 +110,7 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                 color: colors.textSecondary, size: 18),
             const SizedBox(width: 6),
             Text(
-              'التعليقات',
+              l.postCommentsTitle,
               style: TextStyle(
                 color: colors.textPrimary,
                 fontWeight: FontWeight.w700,
@@ -144,7 +147,7 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                     maxLines: 3,
                     decoration: InputDecoration(
                       border: InputBorder.none,
-                      hintText: 'اكتب تعليقاً…',
+                      hintText: l.postCommentHint,
                       hintStyle: TextStyle(color: colors.textSecondary),
                       isCollapsed: true,
                     ),
@@ -174,7 +177,7 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: Text(
-                  'تعذّر تحميل التعليقات',
+                  l.postCommentsLoadFailed,
                   style: TextStyle(color: colors.textSecondary),
                 ),
               ),
@@ -185,20 +188,18 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Center(
                     child: Text(
-                      'كن أول من يعلّق',
+                      l.postCommentsEmpty,
                       style: TextStyle(color: colors.textSecondary),
                     ),
                   ),
                 );
               }
-              final myUserId = ref.read(authStateProvider).valueOrNull?.userId;
               return Column(children: [
                 for (final c in s.comments)
                   _CommentTile(
                     comment: c,
                     colors: colors,
-                    isMine: myUserId != null &&
-                        c.author?.id == myUserId,
+                    isMine: c.canDelete,
                     onDelete: () => _confirmDelete(c),
                   ),
                 if (!s.reachedEnd)
@@ -210,7 +211,7 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                               .notifier)
                           .loadMore(),
                       child: Text(
-                        s.loadingMore ? 'جارٍ التحميل…' : 'تحميل المزيد',
+                        s.loadingMore ? l.commonLoading : l.postLoadMore,
                         style: TextStyle(color: colors.moment),
                       ),
                     ),
@@ -238,6 +239,7 @@ class _CommentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final hasAuthor = !comment.isAnonymous && comment.author != null;
     return Container(
       margin: const EdgeInsets.only(top: 10),
@@ -281,7 +283,7 @@ class _CommentTile extends StatelessWidget {
                   hasAuthor
                       ? (comment.author!.displayName ??
                           '@${comment.author!.username}')
-                      : 'مجهول',
+                      : l.postAnonymous,
                   style: TextStyle(
                     color: colors.textPrimary,
                     fontSize: 12,
@@ -306,7 +308,7 @@ class _CommentTile extends StatelessWidget {
                   size: 16, color: colors.textSecondary),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-              tooltip: 'حذف',
+              tooltip: l.commonDelete,
               onPressed: onDelete,
             ),
         ],

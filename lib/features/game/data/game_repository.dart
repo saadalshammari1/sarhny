@@ -245,7 +245,7 @@ class GameRepository {
     }
     // Surface backend messages so the UI can show them.
     final err = (body is Map) ? body['error'] : null;
-    String msg = 'حدث خطأ غير متوقع';
+    String msg = '';
     bool cancelled = false;
     if (err is String) {
       msg = err;

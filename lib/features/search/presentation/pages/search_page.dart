@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/providers/api_providers.dart';
@@ -86,6 +87,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     return Scaffold(
       backgroundColor: colors.background,
@@ -94,8 +96,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           controller: _ctrl,
           autofocus: true,
           textInputAction: TextInputAction.search,
-          decoration: const InputDecoration(
-            hintText: 'ابحث عن مستخدم أو تصفح المقترحين',
+          decoration: InputDecoration(
+            hintText: l.searchHint,
             border: InputBorder.none,
             isCollapsed: true,
           ),
@@ -140,6 +142,7 @@ class _BodyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     if (loading && results.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -149,8 +152,8 @@ class _BodyView extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: Text(
             query.isEmpty
-                ? 'لا يوجد مستخدمون لعرضهم بعد'
-                : 'لا توجد نتائج تطابق "$query"',
+                ? l.searchEmptyBrowse
+                : l.searchNoResults(query),
             textAlign: TextAlign.center,
             style: TextStyle(color: colors.textSecondary),
           ),
@@ -172,7 +175,7 @@ class _BodyView extends StatelessWidget {
                 Icon(Icons.trending_up, size: 16, color: colors.moment),
                 const SizedBox(width: 6),
                 Text(
-                  'مقترحون لك',
+                  l.searchSuggestedForYou,
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontWeight: FontWeight.w700,

@@ -42,7 +42,7 @@ class _XoLobbyPageState extends ConsumerState<XoLobbyPage> {
       if (!mounted) return;
       context.go('/xo/play/${r.snapshot.gameId}');
     } on XoApiException catch (e) {
-      Fluttertoast.showToast(msg: e.message);
+      Fluttertoast.showToast(msg: xoErrorMessage(e.message, l10n));
     } catch (_) {
       Fluttertoast.showToast(msg: l10n.errorGameStart);
     } finally {

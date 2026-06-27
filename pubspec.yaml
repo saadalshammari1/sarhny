@@ -93,15 +93,11 @@ dependencies:
   share_plus: ^10.1.3
   package_info_plus: ^8.1.1
   connectivity_plus: ^6.1.0
+  in_app_review: ^2.0.10
   flutter_dotenv: ^5.2.1
 
   cupertino_icons: ^1.0.8
 
-  # Carrom v2 — flame_forge2d (Box2D) is the physics engine for client-side
-  # prediction; backend remains authoritative on rules + outcomes. Bumped
-  # flame from 1.18 → 1.37 to satisfy flame_forge2d's lower bound.
-  flame: ^1.37.0
-  flame_forge2d: ^0.19.2+6
   web_socket_channel: ^3.0.0
   # Low-latency SFX for game events (piece strike, dice roll, pocket).
   audioplayers: ^6.1.0
@@ -128,4 +124,5 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/lottie/
+    - assets/audio/
     - .env

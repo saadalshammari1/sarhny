@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
@@ -35,6 +36,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _submitting) return;
+    final l = AppLocalizations.of(context);
     setState(() {
       _submitting = true;
       _serverError = null;
@@ -51,17 +53,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           );
       if (mounted) context.go(AppRoutes.feed);
     } on UnauthorizedException {
-      setState(() => _serverError = 'بيانات الدخول غير صحيحة');
+      setState(() => _serverError = l.errorInvalidCredentials);
     } on ValidationException catch (e) {
       setState(() => _serverError = e.message);
     } on NetworkException {
-      setState(() => _serverError = 'تعذّر الاتصال بالخادم');
+      setState(() => _serverError = l.errorServerUnreachable);
     } on TimeoutException {
-      setState(() => _serverError = 'انقطع الاتصال');
+      setState(() => _serverError = l.errorConnectionLost);
     } on ApiException catch (e) {
       setState(() => _serverError = e.message);
     } catch (_) {
-      setState(() => _serverError = 'حدث خطأ غير متوقع');
+      setState(() => _serverError = l.errorUnexpected);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -70,6 +72,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final l = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: colors.background,
       body: SafeArea(
@@ -87,18 +90,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     const SizedBox(height: 32),
                     AppTextField(
                       controller: _userCtrl,
-                      label: 'اسم المستخدم أو البريد',
-                      hint: 'مثلاً: ssarhny',
+                      label: l.loginEmailOrUsername,
+                      hint: l.loginUsernameHint,
                       prefixIcon: Icons.person_outline,
                       keyboardType: TextInputType.text,
                       textInputAction: TextInputAction.next,
                       validator: (v) =>
-                          (v ?? '').trim().isEmpty ? 'الحقل مطلوب' : null,
+                          (v ?? '').trim().isEmpty ? l.fieldRequired : null,
                     ),
                     const SizedBox(height: 14),
                     AppTextField(
                       controller: _passCtrl,
-                      label: 'كلمة المرور',
+                      label: l.loginPassword,
                       prefixIcon: Icons.lock_outline,
                       obscure: _obscure,
                       textInputAction: TextInputAction.done,
@@ -113,7 +116,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         ),
                       ),
                       validator: (v) =>
-                          (v ?? '').isEmpty ? 'الحقل مطلوب' : null,
+                          (v ?? '').isEmpty ? l.fieldRequired : null,
                       onSubmitted: (_) => _submit(),
                     ),
                     Align(
@@ -128,7 +131,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           onPressed: () =>
                               context.push(AppRoutes.forgotPassword),
                           child: Text(
-                            'نسيت كلمة المرور؟',
+                            l.loginForgotPassword,
                             style: TextStyle(color: colors.textSecondary),
                           ),
                         ),
@@ -140,7 +143,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ],
                     const SizedBox(height: 16),
                     AppButton(
-                      label: 'دخول',
+                      label: l.loginButton,
                       onPressed: _submit,
                       loading: _submitting,
                     ),
@@ -149,13 +152,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'ليس لديك حساب؟ ',
+                          '${l.loginNoAccount} ',
                           style: TextStyle(color: colors.textSecondary),
                         ),
                         GestureDetector(
                           onTap: () => context.go(AppRoutes.register),
                           child: Text(
-                            'أنشئ حساباً',
+                            l.loginSignUp,
                             style: TextStyle(
                               color: colors.moment,
                               fontWeight: FontWeight.w600,
@@ -182,6 +185,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
+    final l = AppLocalizations.of(context);
     return Column(
       children: [
         Container(
@@ -219,14 +223,14 @@ class _Header extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Text(
-          'أهلاً بعودتك',
+          l.loginTitle,
           style: context.textStyles.headlineSmall?.copyWith(
             fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: 6),
         Text(
-          'سجّل دخولك للمتابعة في صارحني',
+          l.loginSubtitle,
           style: TextStyle(color: colors.textSecondary),
         ),
       ],

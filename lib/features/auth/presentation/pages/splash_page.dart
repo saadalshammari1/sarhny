@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../app/theme/app_typography.dart';
@@ -13,6 +14,7 @@ class SplashPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
     final auth = ref.watch(authStateProvider);
     final colors = context.sarhnyColors;
     final brightness = Theme.of(context).brightness;
@@ -96,7 +98,7 @@ class SplashPage extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'صارحني',
+                    l.appName,
                     style: AppTypography.tajawal(
                       size: 36,
                       weight: FontWeight.w800,
@@ -119,7 +121,7 @@ class SplashPage extends ConsumerWidget {
                   .slideY(begin: 0.15, end: 0),
               const SizedBox(height: 10),
               Text(
-                'تعبير أصيل عن الذات',
+                l.tagline,
                 style: AppTypography.tajawal(
                   size: 14,
                   color: colors.textSecondary,

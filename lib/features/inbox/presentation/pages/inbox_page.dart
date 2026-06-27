@@ -3,8 +3,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart' as intl;
+import '../../../../core/utils/relative_time.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/dto.dart';
 import '../../../../core/utils/media.dart';
@@ -50,13 +51,14 @@ class _InboxPageState extends ConsumerState<InboxPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final filter = ref.watch(inboxFilterProvider);
     final state = ref.watch(inboxControllerProvider(filter));
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('الصندوق'),
+        title: Text(l.inboxAppBarTitle),
       ),
       bottomNavigationBar: const AppBottomNav(active: 1),
       body: RefreshIndicator(
@@ -73,11 +75,11 @@ class _InboxPageState extends ConsumerState<InboxPage> {
           ),
           data: (s) {
             if (s.items.isEmpty) {
-              return const Center(
+              return Center(
                 child: EmptyState(
                   icon: Icons.mark_email_read_outlined,
-                  title: 'الصندوق فارغ',
-                  subtitle: 'الرسائل المجهولة ستظهر هنا',
+                  title: l.inboxEmptyTitle,
+                  subtitle: l.inboxEmptySubtitle,
                 ),
               );
             }
@@ -133,32 +135,45 @@ class _InboxPageState extends ConsumerState<InboxPage> {
 
   Future<void> _ignore(InboxItemDto item) async {
     if (item.status != 'unread') return;
+    final l = AppLocalizations.of(context);
+    final filter = ref.read(inboxFilterProvider);
+    final notifier = ref.read(inboxControllerProvider(filter).notifier);
+    // Optimistically clear the unread state so the dot/chips update at once
+    // instead of lingering until a manual refresh.
+    if (filter == InboxFilter.unread) {
+      notifier.removeLocal(item.id);
+    } else {
+      notifier.updateLocal(item.id, item.copyWith(status: 'read'));
+    }
     try {
       await ref.read(inboxRepositoryProvider).markRead(item.id);
-      Fluttertoast.showToast(msg: 'تم وضعها كمقروءة');
+      Fluttertoast.showToast(msg: l.inboxMarkedRead);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر التحديث');
+      Fluttertoast.showToast(msg: l.inboxUpdateFailed);
+      ref.invalidate(inboxControllerProvider(filter));
     }
   }
 
   Future<void> _delete(InboxItemDto item) async {
+    final l = AppLocalizations.of(context);
     final filter = ref.read(inboxFilterProvider);
     ref.read(inboxControllerProvider(filter).notifier).removeLocal(item.id);
     try {
       await ref.read(inboxRepositoryProvider).delete(item.id);
-      Fluttertoast.showToast(msg: 'تم الحذف');
+      Fluttertoast.showToast(msg: l.inboxDeleted);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الحذف');
+      Fluttertoast.showToast(msg: l.inboxDeleteFailed);
       ref.invalidate(inboxControllerProvider(filter));
     }
   }
 
   Future<void> _report(InboxItemDto item) async {
+    final l = AppLocalizations.of(context);
     try {
       await ref.read(inboxRepositoryProvider).report(item.id);
-      Fluttertoast.showToast(msg: 'تم الإبلاغ — سنراجعها');
+      Fluttertoast.showToast(msg: l.inboxReported);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الإبلاغ');
+      Fluttertoast.showToast(msg: l.inboxReportFailed);
     }
   }
 }
@@ -180,6 +195,7 @@ class _InboxTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final unread = item.status == 'unread';
     final answered = item.status == 'answered';
@@ -230,7 +246,7 @@ class _InboxTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      revealed ? '@${item.sender!.username}' : 'مجهول',
+                      revealed ? '@${item.sender!.username}' : l.inboxAnonymous,
                       style: TextStyle(
                         color: revealed
                             ? colors.textPrimary
@@ -241,7 +257,7 @@ class _InboxTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _formatRelative(item.createdAt),
+                      formatRelative(context, item.createdAt),
                       style: TextStyle(
                         color: colors.textSecondary,
                         fontSize: 11,
@@ -276,7 +292,7 @@ class _InboxTile extends StatelessWidget {
               if (!answered) ...[
                 _ActionChip(
                   icon: Icons.reply_outlined,
-                  label: 'الرد بمنشور',
+                  label: l.inboxReplyWithPost,
                   color: colors.moment,
                   primary: true,
                   onTap: onAnswer,
@@ -284,26 +300,26 @@ class _InboxTile extends StatelessWidget {
                 const SizedBox(width: 6),
                 _ActionChip(
                   icon: Icons.mark_email_read_outlined,
-                  label: 'تجاهل',
+                  label: l.inboxIgnore,
                   color: colors.textSecondary,
                   onTap: onIgnore,
                 ),
               ] else
                 _ActionChip(
                   icon: Icons.check,
-                  label: 'مُجاب',
+                  label: l.inboxAnswered,
                   color: colors.success,
                   onTap: () {},
                 ),
               const Spacer(),
               IconButton(
-                tooltip: 'إبلاغ',
+                tooltip: l.inboxReportTooltip,
                 onPressed: onReport,
                 icon: Icon(Icons.flag_outlined,
                     size: 18, color: colors.textSecondary),
               ),
               IconButton(
-                tooltip: 'حذف',
+                tooltip: l.commonDelete,
                 onPressed: onDelete,
                 icon: Icon(Icons.delete_outline,
                     size: 18, color: colors.danger),
@@ -362,16 +378,4 @@ class _ActionChip extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatRelative(String? iso) {
-  if (iso == null) return '';
-  final dt = DateTime.tryParse(iso);
-  if (dt == null) return iso;
-  final delta = DateTime.now().toUtc().difference(dt.toUtc());
-  if (delta.inMinutes < 1) return 'الآن';
-  if (delta.inMinutes < 60) return 'قبل ${delta.inMinutes} د';
-  if (delta.inHours < 24) return 'قبل ${delta.inHours} س';
-  if (delta.inDays < 7) return 'قبل ${delta.inDays} يوم';
-  return intl.DateFormat('d MMM', 'ar').format(dt.toLocal());
 }

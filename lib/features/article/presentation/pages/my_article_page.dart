@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
 import '../../data/article_repository.dart';
@@ -28,6 +29,7 @@ class MyArticlePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final eligibility = ref.watch(articleEligibilityProvider);
     final article = ref.watch(myArticleProvider);
@@ -64,7 +66,7 @@ class MyArticlePage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(title: const Text('شخصيتي ✨')),
+      appBar: AppBar(title: Text(l.articleAppBarTitle)),
       body: RefreshIndicator(
         color: colors.moment,
         onRefresh: () async {
@@ -111,17 +113,18 @@ class _BodyState extends ConsumerState<_Body> {
   bool _generating = false;
 
   Future<void> _generate() async {
+    final l = AppLocalizations.of(context);
     setState(() => _generating = true);
     try {
       await ref.read(articleRepositoryProvider).generate();
       ref.invalidate(myArticleProvider);
       ref.invalidate(articleEligibilityProvider);
       ref.invalidate(articleHistoryProvider);
-      Fluttertoast.showToast(msg: 'تم إنشاء مقالتك ✨');
+      Fluttertoast.showToast(msg: l.articleGenerated);
     } on ApiException catch (e) {
       Fluttertoast.showToast(msg: e.message);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الإنشاء');
+      Fluttertoast.showToast(msg: l.articleGenerateFailed);
     } finally {
       if (mounted) setState(() => _generating = false);
     }
@@ -129,6 +132,7 @@ class _BodyState extends ConsumerState<_Body> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final e = widget.eligibility;
     final a = widget.article;
@@ -146,7 +150,7 @@ class _BodyState extends ConsumerState<_Body> {
         if (a != null) ...[
           const SizedBox(height: 22),
           Text(
-            'مقالتي الحالية',
+            l.articleCurrentLabel,
             style: TextStyle(
               color: colors.textSecondary,
               fontWeight: FontWeight.w800,
@@ -159,7 +163,7 @@ class _BodyState extends ConsumerState<_Body> {
         if (widget.history.isNotEmpty) ...[
           const SizedBox(height: 22),
           Text(
-            'الأرشيف · مقالات سابقة (${widget.history.length})',
+            l.articleArchiveLabel(widget.history.length),
             style: TextStyle(
               color: colors.textSecondary,
               fontWeight: FontWeight.w800,
@@ -184,6 +188,7 @@ class _HeaderCard extends StatelessWidget {
   final ArticleEligibility eligibility;
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final c = context.sarhnyColors;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -202,7 +207,7 @@ class _HeaderCard extends StatelessWidget {
             const Text('✨', style: TextStyle(fontSize: 22)),
             const SizedBox(width: 8),
             Text(
-              'مقالتك الشخصية',
+              l.articleHeaderTitle,
               style: TextStyle(
                 color: c.textPrimary,
                 fontWeight: FontWeight.w800,
@@ -212,7 +217,7 @@ class _HeaderCard extends StatelessWidget {
           ]),
           const SizedBox(height: 8),
           Text(
-            'تُكتب مقالتك من إجاباتك العامّة على الرسائل المجهولة. كلما أجبت أكثر بصدق، كلما عرفك الذكاء أكثر — وكتب عنك أصدق.',
+            l.articleHeaderBody,
             style: TextStyle(color: c.textSecondary, fontSize: 13, height: 1.6),
           ),
         ],
@@ -237,6 +242,7 @@ class _CtaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final c = context.sarhnyColors;
     final e = eligibility;
 
@@ -256,13 +262,13 @@ class _CtaCard extends StatelessWidget {
               Icon(Icons.hourglass_bottom_rounded, color: c.textSecondary, size: 20),
               const SizedBox(width: 8),
               Text(
-                'المقالة التالية',
+                l.articleNextTitle,
                 style: TextStyle(color: c.textPrimary, fontWeight: FontWeight.w800),
               ),
             ]),
             const SizedBox(height: 10),
             Text(
-              'باقي ${e.daysRemaining} يوم على إنشاء مقالتك التالية.',
+              l.articleDaysRemaining(e.daysRemaining),
               style: TextStyle(color: c.textSecondary, fontSize: 13, height: 1.6),
             ),
             const SizedBox(height: 12),
@@ -282,7 +288,7 @@ class _CtaCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'كل ${e.cooldownDays} يوم تستطيع إنشاء نسخة جديدة. النسخة الجديدة ستُبنى من إجاباتك الأحدث.',
+              l.articleCooldownNote(e.cooldownDays),
               style: TextStyle(color: c.textSecondary, fontSize: 11),
             ),
           ],
@@ -305,7 +311,7 @@ class _CtaCard extends StatelessWidget {
           children: [
             Row(children: [
               Text(
-                'تقدّمك',
+                l.articleProgress,
                 style: TextStyle(
                   color: c.textPrimary,
                   fontWeight: FontWeight.w800,
@@ -330,7 +336,7 @@ class _CtaCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'تحتاج ${e.minRequired - e.realAnswersCount} إجابة عامّة إضافية على رسائل مجهولة لتفتح مقالتك. هذه الإجابات هي ما يجعل المقالة تشبهك حقاً.',
+              l.articleNeedMore(e.minRequired - e.realAnswersCount),
               style: TextStyle(color: c.textSecondary, fontSize: 13, height: 1.6),
             ),
           ],
@@ -355,10 +361,10 @@ class _CtaCard extends StatelessWidget {
               )
             : const Icon(Icons.auto_awesome),
         label: Text(busy
-            ? 'يجري الإنشاء…'
+            ? l.articleGenerating
             : hasArticle
-                ? 'أنشئ نسخة جديدة من مقالتي'
-                : 'اكتب مقالتي الآن ✨'),
+                ? l.articleRegenerateCta
+                : l.articleGenerateCta),
       ),
     );
   }
@@ -387,30 +393,30 @@ class _ArticleCardState extends ConsumerState<_ArticleCard> {
   }
 
   Future<void> _save() async {
+    final l = AppLocalizations.of(context);
     setState(() => _busy = true);
     try {
       await ref.read(articleRepositoryProvider).edit(_ctrl.text.trim());
       ref.invalidate(myArticleProvider);
       setState(() => _editing = false);
-      Fluttertoast.showToast(msg: 'تم الحفظ');
+      Fluttertoast.showToast(msg: l.articleSaved);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الحفظ');
+      Fluttertoast.showToast(msg: l.articleSaveFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _publish() async {
+    final l = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('نشر المقالة للعموم'),
-        content: const Text(
-          'بعد 24 ساعة من النشر تصبح المقالة متاحة لأي شخص على رابط عام في المدوّنة. تستطيع حذفها متى شئت.',
-        ),
+        title: Text(l.articlePublishTitle),
+        content: Text(l.articlePublishBody),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('إلغاء')),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('انشر')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l.commonCancel)),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l.articlePublishConfirm)),
         ],
       ),
     );
@@ -419,26 +425,27 @@ class _ArticleCardState extends ConsumerState<_ArticleCard> {
     try {
       await ref.read(articleRepositoryProvider).publish();
       ref.invalidate(myArticleProvider);
-      Fluttertoast.showToast(msg: 'سَتظهر بعد 24 ساعة 🌙');
+      Fluttertoast.showToast(msg: l.articlePublishScheduled);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر النشر');
+      Fluttertoast.showToast(msg: l.articlePublishFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _delete() async {
+    final l = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('حذف المقالة'),
-        content: const Text('سيتم حذف المقالة الحالية. ستظل النسخ السابقة محفوظة في الأرشيف.'),
+        title: Text(l.articleDeleteTitle),
+        content: Text(l.articleDeleteBody),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l.commonCancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('حذف'),
+            child: Text(l.commonDelete),
           ),
         ],
       ),
@@ -448,9 +455,9 @@ class _ArticleCardState extends ConsumerState<_ArticleCard> {
     try {
       await ref.read(articleRepositoryProvider).deleteArticle();
       ref.invalidate(myArticleProvider);
-      Fluttertoast.showToast(msg: 'تم الحذف');
+      Fluttertoast.showToast(msg: l.articleDeleted);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الحذف');
+      Fluttertoast.showToast(msg: l.articleDeleteFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -458,6 +465,7 @@ class _ArticleCardState extends ConsumerState<_ArticleCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final c = context.sarhnyColors;
     final a = widget.article;
     return Container(
@@ -489,7 +497,7 @@ class _ArticleCardState extends ConsumerState<_ArticleCard> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      a.isPublished ? 'منشورة' : 'خاصة',
+                      a.isPublished ? l.articleStatusPublished : l.articleStatusPrivate,
                       style: TextStyle(
                         color: a.isPublished ? c.crystal : c.textSecondary,
                         fontSize: 10,
@@ -540,12 +548,12 @@ class _ArticleCardState extends ConsumerState<_ArticleCard> {
                     ? [
                         OutlinedButton(
                           onPressed: _busy ? null : () => setState(() => _editing = false),
-                          child: const Text('إلغاء'),
+                          child: Text(l.commonCancel),
                         ),
                         FilledButton.icon(
                           onPressed: _busy ? null : _save,
                           icon: const Icon(Icons.save_outlined, size: 16),
-                          label: const Text('حفظ'),
+                          label: Text(l.commonSave),
                         ),
                       ]
                     : [
@@ -554,19 +562,19 @@ class _ArticleCardState extends ConsumerState<_ArticleCard> {
                             style: FilledButton.styleFrom(backgroundColor: c.crystal),
                             onPressed: _busy ? null : _publish,
                             icon: const Icon(Icons.public, size: 16),
-                            label: const Text('نشرها'),
+                            label: Text(l.articlePublishAction),
                           ),
                         OutlinedButton.icon(
                           onPressed: _busy ? null : () => setState(() => _editing = true),
                           icon: const Icon(Icons.edit_outlined, size: 16),
-                          label: const Text('تعديل'),
+                          label: Text(l.articleEdit),
                         ),
                         OutlinedButton.icon(
                           onPressed: _busy ? null : _delete,
                           style: OutlinedButton.styleFrom(
                               foregroundColor: Theme.of(context).colorScheme.error),
                           icon: const Icon(Icons.delete_outline, size: 16),
-                          label: const Text('حذف'),
+                          label: Text(l.commonDelete),
                         ),
                       ],
               ),
@@ -591,17 +599,18 @@ class _HistoryCardState extends ConsumerState<_HistoryCard> {
   bool _expanded = false;
 
   Future<void> _delete() async {
+    final l = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('حذف من الأرشيف'),
-        content: const Text('سيُحذف هذا الإصدار نهائياً من أرشيفك.'),
+        title: Text(l.articleDeleteHistoryTitle),
+        content: Text(l.articleDeleteHistoryBody),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l.commonCancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('حذف'),
+            child: Text(l.commonDelete),
           ),
         ],
       ),
@@ -610,14 +619,15 @@ class _HistoryCardState extends ConsumerState<_HistoryCard> {
     try {
       await ref.read(articleRepositoryProvider).deleteHistory(widget.item.id);
       ref.invalidate(articleHistoryProvider);
-      Fluttertoast.showToast(msg: 'تم الحذف');
+      Fluttertoast.showToast(msg: l.articleDeleted);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الحذف');
+      Fluttertoast.showToast(msg: l.articleDeleteFailed);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final c = context.sarhnyColors;
     final h = widget.item;
     final preview = h.content.length > 120 ? '${h.content.substring(0, 120)}…' : h.content;
@@ -684,7 +694,7 @@ class _HistoryCardState extends ConsumerState<_HistoryCard> {
                 onPressed: _delete,
                 style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
                 icon: const Icon(Icons.delete_outline, size: 16),
-                label: const Text('حذف من الأرشيف'),
+                label: Text(l.articleDeleteHistoryTitle),
               ),
             ),
             const SizedBox(height: 6),
@@ -703,6 +713,7 @@ class _ErrorBox extends StatelessWidget {
   final VoidCallback onRetry;
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -713,7 +724,7 @@ class _ErrorBox extends StatelessWidget {
             const SizedBox(height: 10),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            FilledButton(onPressed: onRetry, child: const Text('إعادة المحاولة')),
+            FilledButton(onPressed: onRetry, child: Text(l.commonRetry)),
           ],
         ),
       ),

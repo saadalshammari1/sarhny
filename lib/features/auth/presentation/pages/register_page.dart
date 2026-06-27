@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
@@ -51,15 +52,16 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   Future<void> _submit() async {
+    final l = AppLocalizations.of(context);
     setState(() => _serverError = null);
     if (!_formKey.currentState!.validate()) return;
     if (!_agreeAge18) {
       setState(() =>
-          _fieldErrors['agree_age_18'] = 'يجب تأكيد بلوغك ١٨ سنة فأكثر');
+          _fieldErrors['agree_age_18'] = l.registerAgeConfirmError);
       return;
     }
     if (!_agreeTerms) {
-      setState(() => _fieldErrors['agree'] = 'يجب الموافقة على الشروط');
+      setState(() => _fieldErrors['agree'] = l.registerTermsError);
       return;
     }
     setState(() {
@@ -95,77 +97,83 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       });
       _formKey.currentState!.validate();
     } on NetworkException {
-      setState(() => _serverError = 'تعذّر الاتصال بالخادم');
+      setState(() => _serverError = l.errorServerUnreachable);
     } on TimeoutException {
-      setState(() => _serverError = 'انقطع الاتصال');
+      setState(() => _serverError = l.errorConnectionLost);
     } on ApiException catch (e) {
       setState(() => _serverError = e.message);
     } catch (_) {
-      setState(() => _serverError = 'حدث خطأ غير متوقع');
+      setState(() => _serverError = l.errorUnexpected);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
 
   String _humanize(String field, String raw) {
+    final l = AppLocalizations.of(context);
     final r = raw.toLowerCase();
     switch (field) {
       case 'username':
-        if (r.contains('taken')) return 'اسم المستخدم محجوز';
+        if (r.contains('taken')) return l.registerUsernameTaken;
         if (r.contains('invalid') || r.contains('format')) {
-          return 'حروف لاتينية وأرقام وشرطة سفلية فقط';
+          return l.registerUsernameFormat;
         }
-        return 'اسم المستخدم غير صالح';
+        return l.registerUsernameInvalid;
       case 'email':
         if (r.contains('taken') || r.contains('already')) {
-          return 'البريد مستخدم بالفعل';
+          return l.registerEmailTaken;
         }
-        return 'البريد غير صالح';
+        return l.registerEmailInvalid;
       case 'password':
-        return 'كلمة المرور قصيرة أو غير متطابقة';
+        return l.registerPasswordWeak;
       case 'sex':
-        return 'اختر الجنس';
+        return l.registerSexRequired;
       case 'agree_age_18':
-        return 'يجب تأكيد بلوغك ١٨ سنة فأكثر';
+        return l.registerAgeConfirmError;
       default:
         return raw;
     }
   }
 
   String? _validateUsername(String? v) {
+    final l = AppLocalizations.of(context);
     final raw = (v ?? '').trim();
-    if (raw.length < 3) return 'الحد الأدنى ٣ أحرف';
+    if (raw.length < 3) return l.registerUsernameMin;
     if (!RegExp(r'^[A-Za-z0-9_]+$').hasMatch(raw)) {
-      return 'حروف لاتينية وأرقام وشرطة سفلية فقط';
+      return l.registerUsernameFormat;
     }
-    if (_kReserved.contains(raw.toLowerCase())) return 'اسم محجوز';
+    if (_kReserved.contains(raw.toLowerCase())) return l.registerUsernameReserved;
     return _fieldErrors['username'];
   }
 
   String? _validateEmail(String? v) {
+    final l = AppLocalizations.of(context);
     final raw = (v ?? '').trim();
-    if (raw.isEmpty) return 'الحقل مطلوب';
-    if (!raw.contains('@') || !raw.contains('.')) return 'بريد غير صالح';
+    if (raw.isEmpty) return l.fieldRequired;
+    if (!raw.contains('@') || !raw.contains('.')) return l.registerEmailInvalidShort;
     return _fieldErrors['email'];
   }
 
   String? _validatePassword(String? v) {
-    if ((v ?? '').length < 8) return 'الحد الأدنى ٨ أحرف';
+    final l = AppLocalizations.of(context);
+    if ((v ?? '').length < 8) return l.registerPasswordMin;
     return _fieldErrors['password'];
   }
 
   String? _validatePassword2(String? v) {
-    if (v != _passCtrl.text) return 'لا تتطابق مع كلمة المرور';
+    final l = AppLocalizations.of(context);
+    if (v != _passCtrl.text) return l.registerPasswordMismatch;
     return null;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('إنشاء حساب'),
+        title: Text(l.registerButton),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go(AppRoutes.login),
@@ -214,7 +222,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'انضم إلى صارحني',
+                      l.registerJoinTitle,
                       textAlign: TextAlign.center,
                       style: context.textStyles.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w700,
@@ -222,19 +230,19 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'مساحة للتعبير الأصيل عن الذات — للبالغين فقط',
+                      l.registerJoinSubtitle,
                       textAlign: TextAlign.center,
                       style: TextStyle(color: colors.textSecondary),
                     ),
                     const SizedBox(height: 24),
                     AppTextField(
                       controller: _nameCtrl,
-                      label: 'الاسم المعروض',
+                      label: l.registerDisplayName,
                       prefixIcon: Icons.badge_outlined,
                       textInputAction: TextInputAction.next,
                       validator: (v) {
                         if ((v ?? '').trim().length < 2) {
-                          return 'الحد الأدنى حرفان';
+                          return l.registerNameMin;
                         }
                         return null;
                       },
@@ -242,8 +250,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     const SizedBox(height: 14),
                     AppTextField(
                       controller: _userCtrl,
-                      label: 'اسم المستخدم',
-                      hint: 'مثال: amal_x',
+                      label: l.registerUsername,
+                      hint: l.registerUsernameHint,
                       prefixIcon: Icons.alternate_email,
                       textInputAction: TextInputAction.next,
                       validator: _validateUsername,
@@ -256,7 +264,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     const SizedBox(height: 14),
                     AppTextField(
                       controller: _emailCtrl,
-                      label: 'البريد الإلكتروني',
+                      label: l.registerEmail,
                       prefixIcon: Icons.mail_outline,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
@@ -270,7 +278,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     const SizedBox(height: 14),
                     AppTextField(
                       controller: _passCtrl,
-                      label: 'كلمة المرور',
+                      label: l.registerPassword,
                       prefixIcon: Icons.lock_outline,
                       obscure: _obscure,
                       textInputAction: TextInputAction.next,
@@ -290,7 +298,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     const SizedBox(height: 14),
                     AppTextField(
                       controller: _pass2Ctrl,
-                      label: 'تأكيد كلمة المرور',
+                      label: l.registerPasswordConfirm,
                       prefixIcon: Icons.lock_outline,
                       obscure: _obscure2,
                       textInputAction: TextInputAction.done,
@@ -324,8 +332,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                           }
                         });
                       },
-                      label: 'أؤكّد أنّ عمري ١٨ سنة فأكثر',
-                      sub: 'صارحني مساحة للبالغين فقط',
+                      label: l.registerAgeConfirm,
+                      sub: l.registerAdultsOnly,
                       error: _fieldErrors['agree_age_18'],
                       colors: colors,
                     ),
@@ -338,7 +346,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                           if (_agreeTerms) _fieldErrors.remove('agree');
                         });
                       },
-                      label: 'أوافق على شروط الاستخدام وسياسة الخصوصية',
+                      label: l.registerAgreeTerms,
                       error: _fieldErrors['agree'],
                       colors: colors,
                     ),
@@ -366,7 +374,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     ],
                     const SizedBox(height: 18),
                     AppButton(
-                      label: 'إنشاء حساب',
+                      label: l.registerButton,
                       onPressed: _submit,
                       loading: _submitting,
                     ),
@@ -375,13 +383,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'لديك حساب؟ ',
+                          '${l.registerHaveAccount} ',
                           style: TextStyle(color: colors.textSecondary),
                         ),
                         GestureDetector(
                           onTap: () => context.go(AppRoutes.login),
                           child: Text(
-                            'سجّل دخولك',
+                            l.registerSignInCta,
                             style: TextStyle(
                               color: colors.moment,
                               fontWeight: FontWeight.w600,
@@ -413,13 +421,14 @@ class _SexSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsetsDirectional.only(start: 4, bottom: 6),
           child: Text(
-            'النوع',
+            l.registerGender,
             style: TextStyle(
               color: colors.textSecondary,
               fontSize: 13,
@@ -431,7 +440,7 @@ class _SexSelector extends StatelessWidget {
           children: [
             Expanded(
               child: _SexChip(
-                label: 'ذكر',
+                label: l.registerGenderMale,
                 icon: Icons.male,
                 selected: value == 'male',
                 onTap: () => onChanged('male'),
@@ -441,7 +450,7 @@ class _SexSelector extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: _SexChip(
-                label: 'أنثى',
+                label: l.registerGenderFemale,
                 icon: Icons.female,
                 selected: value == 'female',
                 onTap: () => onChanged('female'),

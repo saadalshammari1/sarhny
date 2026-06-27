@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
+import '../../app/localization/generated/app_localizations.dart';
 import '../api/api_endpoints.dart';
 import '../providers/api_providers.dart';
 
@@ -12,24 +13,24 @@ enum ReportTarget { post, user }
 
 /// Pre-baked reasons keep the report flow fast (one tap + optional notes).
 /// Free-text "Other" lets the user write a custom reason.
-const _kReasonsPost = <String>[
-  'محتوى مسيء أو شتائم',
-  'تحرّش أو تنمّر',
-  'محتوى جنسي',
-  'عنصرية أو تحريض',
-  'spam أو محتوى مكرّر',
-  'انتهاك خصوصية',
-  'معلومات مضلّلة',
-  'أخرى',
+List<String> _reasonsPost(AppLocalizations l) => <String>[
+  l.reportReasonPostAbusive,
+  l.reportReasonPostHarassment,
+  l.reportReasonPostSexual,
+  l.reportReasonPostRacism,
+  l.reportReasonPostSpam,
+  l.reportReasonPostPrivacy,
+  l.reportReasonPostMisinfo,
+  l.reportReasonOther,
 ];
-const _kReasonsUser = <String>[
-  'حساب مسيء أو متنمّر',
-  'انتحال شخصية',
-  'حساب احتيالي / spam',
-  'يستهدف قاصرين',
-  'يكرّر إرسال رسائل مزعجة',
-  'محتوى ملف شخصي مخالف',
-  'أخرى',
+List<String> _reasonsUser(AppLocalizations l) => <String>[
+  l.reportReasonUserAbusive,
+  l.reportReasonUserImpersonation,
+  l.reportReasonUserScam,
+  l.reportReasonUserMinors,
+  l.reportReasonUserSpamMessages,
+  l.reportReasonUserProfile,
+  l.reportReasonOther,
 ];
 
 class ReportSheet extends ConsumerStatefulWidget {
@@ -79,12 +80,13 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
   }
 
   Future<void> _submit() async {
+    final l = AppLocalizations.of(context);
     final reasonBase = _picked;
     if (reasonBase == null) return;
-    final isOther = reasonBase == 'أخرى';
+    final isOther = reasonBase == l.reportReasonOther;
     final note = _noteCtrl.text.trim();
     if (isOther && note.length < 5) {
-      Fluttertoast.showToast(msg: 'اكتب سبباً واضحاً للإبلاغ');
+      Fluttertoast.showToast(msg: l.reportNeedClearReason);
       return;
     }
     setState(() => _sending = true);
@@ -113,12 +115,12 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
       if (!mounted) return;
       if (ok) {
         Navigator.of(context).pop();
-        Fluttertoast.showToast(msg: 'تم استلام البلاغ. شكراً لك 🌙');
+        Fluttertoast.showToast(msg: l.reportReceived);
       } else {
-        Fluttertoast.showToast(msg: 'تعذّر إرسال البلاغ');
+        Fluttertoast.showToast(msg: l.reportSendFailed);
       }
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر إرسال البلاغ');
+      Fluttertoast.showToast(msg: l.reportSendFailed);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -126,8 +128,9 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final reasons = widget.target == ReportTarget.post ? _kReasonsPost : _kReasonsUser;
-    final isOther = _picked == 'أخرى';
+    final l = AppLocalizations.of(context);
+    final reasons = widget.target == ReportTarget.post ? _reasonsPost(l) : _reasonsUser(l);
+    final isOther = _picked == l.reportReasonOther;
     final theme = Theme.of(context);
     return SafeArea(
       child: Padding(
@@ -150,14 +153,14 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
               const SizedBox(width: 8),
               Text(
                 widget.target == ReportTarget.post
-                    ? 'الإبلاغ عن منشور'
-                    : 'الإبلاغ عن مستخدم',
+                    ? l.reportTitlePost
+                    : l.reportTitleUser,
                 style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
             ]),
             const SizedBox(height: 6),
             Text(
-              'البلاغات سرّية. فريق الإشراف يراجعها خلال 24 ساعة.',
+              l.reportConfidentialNote,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
@@ -191,8 +194,8 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
               maxLength: 250,
               decoration: InputDecoration(
                 hintText: isOther
-                    ? 'اشرح السبب باختصار'
-                    : 'تفاصيل إضافية (اختياري)',
+                    ? l.reportExplainBriefly
+                    : l.reportExtraDetails,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
@@ -210,7 +213,7 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text('إرسال البلاغ', style: TextStyle(fontWeight: FontWeight.w700)),
+                  : Text(l.reportSubmit, style: const TextStyle(fontWeight: FontWeight.w700)),
             ),
           ],
         ),

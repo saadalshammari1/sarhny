@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
@@ -21,16 +22,17 @@ class MyMirrorPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.sarhnyColors;
+    final l = AppLocalizations.of(context);
     final mirrors = ref.watch(myMirrorsProvider);
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(title: const Text('المرايا')),
+      appBar: AppBar(title: Text(l.mirrorsTitle)),
       bottomNavigationBar: const AppBottomNav(active: 3),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: colors.mind,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
-        label: const Text('مرآة جديدة'),
+        label: Text(l.mirrorsNewMirror),
         onPressed: () => _showCreateSheet(context, ref),
       ),
       body: RefreshIndicator(
@@ -49,15 +51,15 @@ class MyMirrorPage extends ConsumerWidget {
             if (list.isEmpty) {
               return ListView(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                children: const [
-                  SizedBox(height: 60),
+                children: [
+                  const SizedBox(height: 60),
                   EmptyState(
                     icon: Icons.auto_awesome_outlined,
-                    title: 'لا توجد مرايا بعد',
-                    subtitle: 'ابدأ بنشر المرايا — اطرح سؤالاً ودَع الناس يجيبون بإخلاص',
+                    title: l.mirrorsEmptyTitle,
+                    subtitle: l.mirrorsEmptySubtitle,
                   ),
-                  SizedBox(height: 32),
-                  BannerAdSlot(),
+                  const SizedBox(height: 32),
+                  const BannerAdSlot(),
                 ],
               );
             }
@@ -100,6 +102,7 @@ class _MirrorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final l = AppLocalizations.of(context);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       padding: const EdgeInsets.all(14),
@@ -121,7 +124,7 @@ class _MirrorCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(99),
                 ),
                 child: Text(
-                  '🪞 مرآة',
+                  l.mirrorsBadge,
                   style: TextStyle(
                     color: colors.mind,
                     fontSize: 11,
@@ -131,7 +134,7 @@ class _MirrorCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${mirror.responseCount} ردًا',
+                '${mirror.responseCount} ${l.mirrorsResponsesSuffix}',
                 style: TextStyle(
                   color: colors.textSecondary,
                   fontSize: 11,
@@ -179,17 +182,17 @@ class _MirrorCard extends StatelessWidget {
             children: [
               OutlinedButton.icon(
                 icon: const Icon(Icons.copy_outlined, size: 16),
-                label: const Text('نسخ الرابط'),
+                label: Text(l.mirrorsCopyLink),
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: _shareUrl));
-                  Fluttertoast.showToast(msg: 'تم النسخ');
+                  Fluttertoast.showToast(msg: l.errorClipboardCopied);
                 },
               ),
               const SizedBox(width: 8),
               Builder(builder: (btnCtx) {
                 return FilledButton.icon(
                   icon: const Icon(Icons.share, size: 16),
-                  label: const Text('مشاركة'),
+                  label: Text(l.commonShare),
                   style:
                       FilledButton.styleFrom(backgroundColor: colors.mind),
                   onPressed: () async {
@@ -199,14 +202,14 @@ class _MirrorCard extends StatelessWidget {
                     final box = btnCtx.findRenderObject() as RenderBox?;
                     try {
                       await Share.share(
-                        'شارك معي إجابتك على هذه المرآة:\n$_shareUrl',
-                        subject: 'صارحني — مرآة',
+                        '${l.mirrorsShareMessage}\n$_shareUrl',
+                        subject: l.mirrorsShareSubject,
                         sharePositionOrigin: box == null
                             ? null
                             : box.localToGlobal(Offset.zero) & box.size,
                       );
                     } catch (e) {
-                      Fluttertoast.showToast(msg: 'تعذّر فتح المشاركة');
+                      Fluttertoast.showToast(msg: l.mirrorsShareFailed);
                     }
                   },
                 );
@@ -275,6 +278,7 @@ class _CreateMirrorSheetState extends ConsumerState<_CreateMirrorSheet> {
   }
 
   Future<void> _submit() async {
+    final l = AppLocalizations.of(context);
     final txt = _ctrl.text.trim();
     if (txt.length < 5 || _sending) return;
     setState(() => _sending = true);
@@ -283,12 +287,12 @@ class _CreateMirrorSheetState extends ConsumerState<_CreateMirrorSheet> {
       ref.invalidate(myMirrorsProvider);
       if (mounted) {
         Navigator.of(context).pop();
-        Fluttertoast.showToast(msg: 'تم إنشاء المرآة');
+        Fluttertoast.showToast(msg: l.mirrorsCreated);
       }
     } on ValidationException catch (e) {
       Fluttertoast.showToast(msg: e.message);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الإنشاء');
+      Fluttertoast.showToast(msg: l.mirrorsCreateFailed);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -297,6 +301,7 @@ class _CreateMirrorSheetState extends ConsumerState<_CreateMirrorSheet> {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final l = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -323,12 +328,12 @@ class _CreateMirrorSheetState extends ConsumerState<_CreateMirrorSheet> {
               ),
             ),
             Text(
-              'سؤال المرآة',
+              l.mirrorsQuestionLabel,
               style: context.textStyles.titleMedium,
             ),
             const SizedBox(height: 4),
             Text(
-              'سؤال موجَّه يقصد كشف الذات — الردود مجهولة وتبني سحابة كلمات.',
+              l.mirrorsCreateHint,
               style:
                   TextStyle(color: colors.textSecondary, fontSize: 12),
             ),
@@ -337,15 +342,15 @@ class _CreateMirrorSheetState extends ConsumerState<_CreateMirrorSheet> {
               controller: _ctrl,
               minLines: 2,
               maxLines: 5,
-              maxLength: 300,
+              maxLength: 200,
               autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'مثلاً: ما الذي يجعلك فخوراً بنفسك؟',
+              decoration: InputDecoration(
+                hintText: l.mirrorsQuestionHint,
               ),
             ),
             const SizedBox(height: 8),
             AppButton(
-              label: 'إنشاء المرآة',
+              label: l.mirrorsCreateButton,
               onPressed: _submit,
               loading: _sending,
             ),

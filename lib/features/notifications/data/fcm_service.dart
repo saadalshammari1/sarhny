@@ -14,8 +14,12 @@ import 'notifications_repository.dart';
 /// stripped. The diagnostic call is fire-and-forget; any failure is
 /// swallowed so it never disrupts the real flow.
 class FcmService {
-  FcmService(this._notifications);
+  FcmService(this._notifications, {this.onNavigate});
   final NotificationsRepository _notifications;
+
+  /// Navigates to an in-app route when a push notification is tapped. Wired by
+  /// the provider to the app's GoRouter. Null in tests / when unwired.
+  final void Function(String route)? onNavigate;
 
   StreamSubscription<String>? _tokenSub;
   StreamSubscription<RemoteMessage>? _foregroundSub;
@@ -103,7 +107,12 @@ class FcmService {
       _openedSub?.cancel();
       _openedSub = FirebaseMessaging.onMessageOpenedApp.listen((msg) {
         _log('tap msg: ${msg.data}');
+        _openRoute(msg.data);
       });
+
+      // Cold-start: a tap that launched the app from a terminated state is
+      // delivered here, not via onMessageOpenedApp.
+      unawaited(_handleInitialMessage(messaging));
 
       if (!canReadFcmToken) {
         unawaited(_pollForToken(messaging));
@@ -205,6 +214,34 @@ class FcmService {
     _periodicTicker = null;
   }
 
+  void _openRoute(Map<String, dynamic> data) {
+    final route = routeForPushData(data);
+    if (route != null) onNavigate?.call(route);
+  }
+
+  Future<void> _handleInitialMessage(FirebaseMessaging messaging) async {
+    try {
+      final initial = await messaging.getInitialMessage();
+      if (initial == null) return;
+      // Let the home shell mount before navigating on cold start.
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      _openRoute(initial.data);
+    } catch (e) {
+      _log('initial message error: $e');
+    }
+  }
+
+  /// Best-effort: drop this device's push token server-side on sign-out so the
+  /// signed-out user stops receiving pushes here. Call BEFORE dispose().
+  Future<void> unregister() async {
+    try {
+      final token = _lastSentToken ?? await FirebaseMessaging.instance.getToken();
+      if (token != null && token.isNotEmpty) {
+        await _notifications.unregisterDevice(token);
+      }
+    } catch (_) {/* never throws to caller */}
+  }
+
   Future<void> dispose() async {
     _cancelTicker();
     await _tokenSub?.cancel();
@@ -216,4 +253,41 @@ class FcmService {
     _registered = false;
     _lastSentToken = null;
   }
+}
+
+/// Maps an FCM data payload to an in-app route, mirroring the in-app
+/// notifications list targets. Returns null when there's nothing to open.
+String? routeForPushData(Map<String, dynamic> data) {
+  String? field(String k) {
+    final v = data[k];
+    if (v == null) return null;
+    final s = v.toString();
+    return s.isEmpty ? null : s;
+  }
+
+  final type = field('type');
+  final postId = field('post_id');
+  final username = field('username');
+  final inboxId = field('inbox_id');
+
+  switch (type) {
+    case 'like':
+    case 'comment':
+    case 'crystal':
+    case 'crystallized':
+      if (postId != null) return '/post/$postId';
+      break;
+    case 'follow':
+      if (username != null) return '/u/$username';
+      break;
+    case 'question':
+    case 'anon_question':
+    case 'anon_message':
+      return '/inbox';
+  }
+  // Fallback by payload shape when type is missing/unknown.
+  if (postId != null) return '/post/$postId';
+  if (username != null) return '/u/$username';
+  if (inboxId != null) return '/inbox';
+  return null;
 }

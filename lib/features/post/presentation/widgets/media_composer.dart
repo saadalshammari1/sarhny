@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
 import '../../../../core/media/upload_repository.dart';
@@ -37,7 +38,7 @@ class MediaComposer extends ConsumerStatefulWidget {
   const MediaComposer({
     super.key,
     required this.onSend,
-    this.placeholder = 'اكتب ردّك…',
+    this.placeholder,
     this.maxLength = 600,
     this.allowVoice = true,
     this.allowImage = true,
@@ -46,7 +47,7 @@ class MediaComposer extends ConsumerStatefulWidget {
 
   /// Sends a composed media bundle; returns true on success (clears composer).
   final Future<bool> Function(ComposedMedia) onSend;
-  final String placeholder;
+  final String? placeholder;
   final int maxLength;
   final bool allowVoice;
   final bool allowImage;
@@ -85,9 +86,10 @@ class _MediaComposerState extends ConsumerState<MediaComposer> {
   }
 
   Future<void> _startRecording() async {
+    final l = AppLocalizations.of(context);
     try {
       if (!await _record.hasPermission()) {
-        Fluttertoast.showToast(msg: 'يلزم إذن الميكروفون');
+        Fluttertoast.showToast(msg: l.postMicPermission);
         return;
       }
       final path = await _newAudioPath();
@@ -119,7 +121,7 @@ class _MediaComposerState extends ConsumerState<MediaComposer> {
         }
       });
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر بدء التسجيل');
+      Fluttertoast.showToast(msg: l.postRecordStartFailed);
     }
   }
 
@@ -145,6 +147,7 @@ class _MediaComposerState extends ConsumerState<MediaComposer> {
   }
 
   Future<void> _pickImage() async {
+    final l = AppLocalizations.of(context);
     try {
       final picked = await ImagePicker()
           .pickImage(source: ImageSource.gallery, maxWidth: 1600);
@@ -161,7 +164,7 @@ class _MediaComposerState extends ConsumerState<MediaComposer> {
         _mode = _Mode.imageReady;
       });
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر اختيار الصورة');
+      Fluttertoast.showToast(msg: l.postImagePickFailed);
     }
   }
 
@@ -175,6 +178,7 @@ class _MediaComposerState extends ConsumerState<MediaComposer> {
 
   Future<void> _send() async {
     if (_sending) return;
+    final l = AppLocalizations.of(context);
     final text = _ctrl.text.trim();
     final hasMedia = _recordedPath != null || _pickedImagePath != null;
     if (text.isEmpty && !hasMedia) return;
@@ -211,9 +215,9 @@ class _MediaComposerState extends ConsumerState<MediaComposer> {
     } on ValidationException catch (e) {
       Fluttertoast.showToast(msg: e.message);
     } on RateLimitException {
-      Fluttertoast.showToast(msg: 'تمهّل قليلاً ثم أعد المحاولة');
+      Fluttertoast.showToast(msg: l.postSlowDownRetry);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الإرسال');
+      Fluttertoast.showToast(msg: l.postSendFailed);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -221,6 +225,7 @@ class _MediaComposerState extends ConsumerState<MediaComposer> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     return Container(
       padding: const EdgeInsets.all(10),
@@ -260,7 +265,7 @@ class _MediaComposerState extends ConsumerState<MediaComposer> {
               maxLines: 5,
               decoration: InputDecoration(
                 border: InputBorder.none,
-                hintText: widget.placeholder,
+                hintText: widget.placeholder ?? l.postReplyHint,
                 hintStyle: TextStyle(color: colors.textSecondary),
                 isCollapsed: true,
                 counterText: '',
@@ -274,7 +279,7 @@ class _MediaComposerState extends ConsumerState<MediaComposer> {
               if (widget.allowImage && _mode == _Mode.idle)
                 _ToolButton(
                   icon: Icons.image_outlined,
-                  tooltip: 'صورة',
+                  tooltip: l.postTooltipImage,
                   color: colors.face,
                   onTap: _pickImage,
                 ),
@@ -282,7 +287,7 @@ class _MediaComposerState extends ConsumerState<MediaComposer> {
                 const SizedBox(width: 4),
                 _ToolButton(
                   icon: Icons.mic_none_rounded,
-                  tooltip: 'تسجيل صوتي',
+                  tooltip: l.postTooltipVoice,
                   color: colors.moment,
                   onTap: _startRecording,
                 ),
@@ -356,6 +361,7 @@ class _SendButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final c = enabled ? colors.moment : colors.textSecondary;
     return InkWell(
       borderRadius: BorderRadius.circular(10),
@@ -380,7 +386,7 @@ class _SendButton extends StatelessWidget {
                   Icon(Icons.send_rounded,
                       color: enabled ? Colors.white : c, size: 16),
                   const SizedBox(width: 4),
-                  Text('إرسال',
+                  Text(l.actionSend,
                       style: TextStyle(
                         color: enabled ? Colors.white : c,
                         fontWeight: FontWeight.w700,
@@ -492,6 +498,7 @@ class _VoicePreview extends StatelessWidget {
   final SarhnyColors colors;
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -504,7 +511,7 @@ class _VoicePreview extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Text(
-            'تسجيل صوتي — ${duration.inSeconds} ث',
+            '${l.postVoiceRecording} — ${duration.inSeconds} ${l.postSecondsShort}',
             style: TextStyle(
               color: colors.textPrimary,
               fontWeight: FontWeight.w600,

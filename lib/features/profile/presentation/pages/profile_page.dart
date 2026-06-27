@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
@@ -34,13 +35,14 @@ class ProfilePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final auth = ref.watch(authStateProvider).valueOrNull;
     final username = auth?.username;
     if (username == null || username.isEmpty) {
       return Scaffold(
         backgroundColor: colors.background,
-        appBar: AppBar(title: const Text('حسابي')),
+        appBar: AppBar(title: Text(l.navProfile)),
         bottomNavigationBar: const AppBottomNav(active: 4),
         body: Center(
           child: Padding(
@@ -55,19 +57,19 @@ class ProfilePage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'جلستك غير مكتملة',
+                  l.profileSessionIncomplete,
                   textAlign: TextAlign.center,
                   style: context.textStyles.titleMedium,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'سجّل دخولك من جديد ليعمل كل شيء بشكل صحيح.',
+                  l.profileSessionIncompleteHint,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: colors.textSecondary),
                 ),
                 const SizedBox(height: 24),
                 AppButton(
-                  label: 'تسجيل خروج وإعادة دخول',
+                  label: l.profileLogoutRelogin,
                   expand: false,
                   onPressed: () async {
                     await ref.read(authStateProvider.notifier).logout();
@@ -139,6 +141,7 @@ class _AuthedProfileBodyState extends ConsumerState<_AuthedProfileBody> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final tab = ref.watch(selectedProfileTabProvider(widget.username));
     final posts = ref.watch(
@@ -162,7 +165,7 @@ class _AuthedProfileBodyState extends ConsumerState<_AuthedProfileBody> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.ios_share_rounded),
-                tooltip: 'مشاركة بروفايلي',
+                tooltip: l.profileShareMine,
                 onPressed: () => shareProfile(
                   context,
                   username: widget.profile.user.username,
@@ -186,7 +189,7 @@ class _AuthedProfileBodyState extends ConsumerState<_AuthedProfileBody> {
                           ? Icons.light_mode_outlined
                           : Icons.dark_mode_outlined,
                     ),
-                    tooltip: isDark ? 'الوضع النهاري' : 'الوضع الليلي',
+                    tooltip: isDark ? l.profileThemeLight : l.profileThemeDark,
                     onPressed: () =>
                         ref.read(themeModeProvider.notifier).toggle(),
                   );
@@ -232,27 +235,27 @@ class _AuthedProfileBodyState extends ConsumerState<_AuthedProfileBody> {
                 final (icon, title, subtitle) = switch (tab) {
                   ProfileTab.active => (
                       Icons.flash_on_outlined,
-                      'لا يوجد منشور نشط',
-                      'أنشئ منشوراً ⚡',
+                      l.profileEmptyActiveTitle,
+                      l.profileEmptyActiveSubtitle,
                     ),
                   ProfileTab.moments => (
                       Icons.bolt_outlined,
-                      'لا توجد لحظات بعد',
-                      'شارك لحظة من يومك ⚡',
+                      l.profileEmptyMomentsTitle,
+                      l.profileEmptyMomentsSubtitle,
                     ),
                   ProfileTab.answers => (
                       Icons.question_answer_outlined,
-                      'لا توجد أجوبة بعد',
-                      'ردودك على الرسائل المجهولة ستظهر هنا 🕶️',
+                      l.profileEmptyAnswersTitle,
+                      l.profileEmptyAnswersSubtitle,
                     ),
                   ProfileTab.crystals => (
                       Icons.diamond_outlined,
-                      'لا توجد بلورات بعد',
+                      l.profileEmptyCrystalsTitle,
                       null,
                     ),
                   ProfileTab.likes => (
                       Icons.favorite_outline,
-                      'لم تعجبك أي بلورة بعد',
+                      l.profileEmptyLikesTitle,
                       null,
                     ),
                 };
@@ -322,6 +325,7 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
   bool _avatarBusy = false;
 
   Future<void> _changeAvatar() async {
+    final l = AppLocalizations.of(context);
     final picked = await ImagePicker()
         .pickImage(source: ImageSource.gallery, maxWidth: 1024);
     if (picked == null) return;
@@ -332,21 +336,23 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
       compressQuality: 88,
     );
     if (cropped == null) return;
+    if (!mounted) return;
     setState(() => _avatarBusy = true);
     try {
       await ref
           .read(profileRepositoryProvider)
           .uploadAvatar(File(cropped.path));
       ref.invalidate(publicProfileProvider(widget.username));
-      Fluttertoast.showToast(msg: 'تم تحديث الصورة');
+      Fluttertoast.showToast(msg: l.profileAvatarUpdated);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر الرفع');
+      Fluttertoast.showToast(msg: l.profileUploadFailed);
     } finally {
       if (mounted) setState(() => _avatarBusy = false);
     }
   }
 
   Future<void> _showEditSheet() async {
+    final l = AppLocalizations.of(context);
     final name = TextEditingController(text: widget.profile.user.displayName);
     final bio = TextEditingController(text: widget.profile.user.bio ?? '');
     final loc =
@@ -387,27 +393,27 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
                     ),
                   ),
                   Text(
-                    'تعديل البروفايل',
+                    l.profileEditTitle,
                     style: context.textStyles.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  AppTextField(controller: name, label: 'الاسم المعروض'),
+                  AppTextField(controller: name, label: l.profileFieldDisplayName),
                   const SizedBox(height: 10),
                   AppTextField(
                     controller: bio,
-                    label: 'نبذة',
+                    label: l.profileFieldBio,
                     maxLines: 3,
                     maxLength: 200,
                   ),
                   const SizedBox(height: 10),
-                  AppTextField(controller: loc, label: 'الموقع'),
+                  AppTextField(controller: loc, label: l.profileFieldLocation),
                   const SizedBox(height: 10),
-                  AppTextField(controller: web, label: 'الموقع الإلكتروني'),
+                  AppTextField(controller: web, label: l.profileFieldWebsite),
                   const SizedBox(height: 16),
                   AppButton(
-                    label: 'حفظ',
+                    label: l.commonSave,
                     loading: saving,
                     onPressed: () async {
                       set(() => saving = true);
@@ -423,13 +429,15 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
                         ref.invalidate(
                             publicProfileProvider(widget.username));
                         if (c.mounted) Navigator.of(c).pop();
-                        Fluttertoast.showToast(msg: 'تم الحفظ');
+                        Fluttertoast.showToast(msg: l.profileSaved);
                       } on ValidationException catch (e) {
                         Fluttertoast.showToast(msg: e.message);
                       } catch (_) {
-                        Fluttertoast.showToast(msg: 'تعذّر الحفظ');
+                        Fluttertoast.showToast(msg: l.profileSaveFailed);
                       } finally {
-                        set(() => saving = false);
+                        // The sheet may already be popped (success path) — guard
+                        // the StatefulBuilder setter against a disposed element.
+                        if (c.mounted) set(() => saving = false);
                       }
                     },
                   ),
@@ -440,6 +448,11 @@ class _AuthedHeaderState extends ConsumerState<_AuthedHeader> {
         });
       },
     );
+    // Dispose the sheet's controllers once it closes (they were leaking).
+    name.dispose();
+    bio.dispose();
+    loc.dispose();
+    web.dispose();
   }
 
   @override
@@ -587,6 +600,7 @@ class _ProfileActionsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final items = <({
       IconData icon,
@@ -597,21 +611,21 @@ class _ProfileActionsRow extends StatelessWidget {
     })>[
       (
         icon: Icons.edit_outlined,
-        label: 'تعديل',
+        label: l.profileEdit,
         color: colors.textPrimary,
         onTap: onEdit,
         filled: false,
       ),
       (
         icon: Icons.ios_share_rounded,
-        label: 'انشر حسابك',
+        label: l.profileShareAccount,
         color: colors.moment,
         onTap: onShare,
         filled: true,
       ),
       (
         icon: Icons.auto_awesome,
-        label: 'شخصيتي',
+        label: l.profilePersona,
         color: colors.crystal,
         onTap: onArticle,
         filled: false,
@@ -761,6 +775,7 @@ class _Stats extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
 
     Widget cell(String label, int value, {VoidCallback? onTap, Color? accent}) {
@@ -806,12 +821,12 @@ class _Stats extends ConsumerWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            cell('متابعون', stats.followers),
+            cell(l.profileFollowers, stats.followers),
             VerticalDivider(color: colors.divider, thickness: 0.6, width: 1),
-            cell('أتابع', stats.following),
+            cell(l.profileFollowingCount, stats.following),
             VerticalDivider(color: colors.divider, thickness: 0.6, width: 1),
             cell(
-              'أجوبة',
+              l.profileAnswers,
               stats.answers,
               accent: colors.moment,
               onTap: () => ref
@@ -831,6 +846,7 @@ class _BadgesRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final badges = <({
       IconData icon,
@@ -841,21 +857,21 @@ class _BadgesRow extends StatelessWidget {
     })>[
       (
         icon: Icons.diamond_outlined,
-        label: 'بلورات',
+        label: l.profileBadgeCrystals,
         count: profile.stats.crystals,
         color: colors.crystal,
         kind: 'crystals',
       ),
       (
         icon: Icons.local_fire_department_outlined,
-        label: 'وهج',
+        label: l.profileBadgeStreak,
         count: profile.streak.count,
         color: colors.moment,
         kind: 'streak',
       ),
       (
         icon: Icons.auto_awesome_outlined,
-        label: 'مرايا',
+        label: l.profileBadgeMirrors,
         count: profile.mirrors.count,
         color: colors.mind,
         kind: 'mirrors',
@@ -936,15 +952,16 @@ class _TabsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     // 5 tabs is too many for an Expanded row on small phones — switch to a
     // horizontally scrollable pill row so labels never get clipped.
     final tabs = [
-      (ProfileTab.active, 'نشط', Icons.flash_on_outlined),
-      (ProfileTab.moments, 'لحظات', Icons.bolt_outlined),
-      (ProfileTab.answers, 'أجوبة', Icons.question_answer_outlined),
-      (ProfileTab.crystals, 'متبلور', Icons.diamond_outlined),
-      (ProfileTab.likes, 'إعجابات', Icons.favorite_border),
+      (ProfileTab.active, l.profileTabActiveShort, Icons.flash_on_outlined),
+      (ProfileTab.moments, l.profileTabMoments, Icons.bolt_outlined),
+      (ProfileTab.answers, l.profileTabAnswers, Icons.question_answer_outlined),
+      (ProfileTab.crystals, l.profileTabCrystalsShort, Icons.diamond_outlined),
+      (ProfileTab.likes, l.profileTabLikesShort, Icons.favorite_border),
     ];
     return SizedBox(
       height: 36,
@@ -1005,6 +1022,7 @@ class _QuickLinks extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     // 3-up row: محفوظاتي / العب وتحدى / المساعدة.
     // العب وتحدى sits in the middle with a purple (mind) accent so it
@@ -1019,13 +1037,13 @@ class _QuickLinks extends StatelessWidget {
     })>[
       (
         icon: Icons.bookmark_outline,
-        label: 'محفوظاتي',
+        label: l.profileQuickSaved,
         onTap: () => context.push(AppRoutes.saved),
         highlight: false,
       ),
       (
         icon: Icons.sports_esports_outlined,
-        label: 'العب وتحدى',
+        label: l.profileQuickPlay,
         // Route to the games hub (الساحة) — Carrom + RPS + Ludo teaser —
         // not directly into the RPS lobby which the old build did.
         onTap: () => context.push(AppRoutes.gamesHub),
@@ -1033,7 +1051,7 @@ class _QuickLinks extends StatelessWidget {
       ),
       (
         icon: Icons.help_outline,
-        label: 'المساعدة',
+        label: l.profileQuickHelp,
         onTap: () => context.push(AppRoutes.help),
         highlight: false,
       ),

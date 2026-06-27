@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/localization/generated/app_localizations.dart';
 import '../../app/theme/app_theme.dart';
 import 'app_button.dart';
 
@@ -12,6 +13,7 @@ class ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final l = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -26,7 +28,7 @@ class ErrorView extends StatelessWidget {
             if (onRetry != null) ...[
               const SizedBox(height: 20),
               AppButton(
-                label: 'إعادة المحاولة',
+                label: l.commonRetry,
                 onPressed: onRetry,
                 variant: AppButtonVariant.secondary,
                 expand: false,

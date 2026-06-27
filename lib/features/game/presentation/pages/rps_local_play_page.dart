@@ -29,6 +29,17 @@ import '../../data/random_question_repo.dart';
 ///          (/api/v1/game/random-question?mood=X) and asks it. The
 ///          player can type a reflective answer; nothing is recorded.
 ///        * Draw → calm "round ends in a draw" banner.
+String _rpsHandLabel(AppLocalizations l10n, RpsHand h) {
+  switch (h) {
+    case RpsHand.rock:
+      return l10n.rpsRock;
+    case RpsHand.paper:
+      return l10n.rpsPaper;
+    case RpsHand.scissors:
+      return l10n.rpsScissors;
+  }
+}
+
 class RpsLocalPlayPage extends ConsumerStatefulWidget {
   const RpsLocalPlayPage({super.key});
   @override
@@ -105,10 +116,14 @@ class _RpsLocalPlayPageState extends ConsumerState<RpsLocalPlayPage> {
     }
     // Fetch the AI's question only when the AI actually won.
     if (_engine.winner == 'opp') {
+      final l10n = AppLocalizations.of(context);
+      final fallback = _mood == 'bold'
+          ? l10n.gameAiQBold
+          : (_mood == 'funny' ? l10n.gameAiQFunny : l10n.gameAiQLight);
       setState(() => _aiQuestionLoading = true);
       final q = await ref
           .read(randomQuestionRepoProvider)
-          .fetch(mood: _mood);
+          .fetch(mood: _mood, fallback: fallback);
       if (!mounted) return;
       setState(() {
         _aiQuestion = q;
@@ -588,6 +603,7 @@ class _HandRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: RpsHand.values.map((h) {
         final isSel = h == selected;
@@ -628,7 +644,7 @@ class _HandRow extends StatelessWidget {
                       Text(h.glyph, style: const TextStyle(fontSize: 30)),
                       const SizedBox(height: 4),
                       Text(
-                        h.arabic,
+                        _rpsHandLabel(l10n, h),
                         style: TextStyle(
                           color: isSel ? accent : colors.textPrimary,
                           fontWeight: FontWeight.w800,

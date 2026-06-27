@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 
 /// What a single badge explainer screen displays. Driven by the badge kind
@@ -25,8 +26,9 @@ class BadgeExplainerPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
-    final (icon, accent, title, lead, steps, tip) = _content(colors);
+    final (icon, accent, title, lead, steps, tip) = _content(colors, l);
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(title: Text(title)),
@@ -83,7 +85,7 @@ class BadgeExplainerPage extends StatelessWidget {
           ),
           const SizedBox(height: 22),
           Text(
-            'كيف تحصل عليها',
+            l.profileBadgeHowToGet,
             style: TextStyle(
               color: colors.textPrimary,
               fontWeight: FontWeight.w800,
@@ -128,49 +130,49 @@ class BadgeExplainerPage extends StatelessWidget {
   }
 
   (IconData, Color, String, String, List<String>, String?) _content(
-      SarhnyColors c) {
+      SarhnyColors c, AppLocalizations l) {
     switch (kind) {
       case BadgeKind.crystals:
         return (
           Icons.diamond_outlined,
           c.crystal,
-          'البلورات ✦',
-          'البلورات هي منشوراتك التي صمدت ٢٤ ساعة ونالت تفاعلاً صادقاً، فتحوّلت من لحظة عابرة إلى أثر دائم.',
+          l.profileBadgeCrystalsTitle,
+          l.profileBadgeCrystalsLead,
           <String>[
-            'انشر شيئاً يستحق النقاش — لحظة، صورة، أو فكرة.',
-            'كل تفاعل (إعجاب، رد) يرفع جاذبية المنشور.',
-            'عند الوصول لعتبة التبلور قبل انتهاء الـ ٢٤ ساعة → يصبح ✦ دائماً ويُحفظ في بلوراتك.',
-            'منشورات بدون تفاعل تختفي بهدوء بعد ٢٤ ساعة (هذا ما يجعل البلورة قيّمة).',
+            l.profileBadgeCrystalsStep1,
+            l.profileBadgeCrystalsStep2,
+            l.profileBadgeCrystalsStep3,
+            l.profileBadgeCrystalsStep4,
           ],
-          'البلورات تظهر للزائر في بروفايلك كدليل على بصمتك. اطرح ما يصمد، لا ما يكثر.',
+          l.profileBadgeCrystalsTip,
         );
       case BadgeKind.streak:
         return (
           Icons.local_fire_department_outlined,
           c.moment,
-          'الوهج 🔥',
-          'الوهج هو سلسلة أيامك المتتالية في صارحني. كل يوم تنشر فيه يضيف لومة لشعلتك.',
+          l.profileBadgeStreakTitle,
+          l.profileBadgeStreakLead,
           <String>[
-            'افتح التطبيق وانشر منشوراً واحداً على الأقل كل ٢٤ ساعة.',
-            'الوهج يحفظ تسلسلك حتى ٤٨ ساعة كحدّ أقصى للتنفّس.',
-            'كلما طالت السلسلة كلما أصبح وهجك أنبل وأبرز في مرئيات بروفايلك.',
-            'كسر السلسلة يصفّر العدّاد — لكن لا يمحو ما بنيته من بلورات.',
+            l.profileBadgeStreakStep1,
+            l.profileBadgeStreakStep2,
+            l.profileBadgeStreakStep3,
+            l.profileBadgeStreakStep4,
           ],
-          'الوهج لا يقيس الجودة بل الإخلاص. اكتب قليلاً كل يوم خير من كثير في يوم.',
+          l.profileBadgeStreakTip,
         );
       case BadgeKind.mirrors:
         return (
           Icons.auto_awesome_outlined,
           c.mind,
-          'المرايا 🪞',
-          'المرآة سؤال مفتوح تطرحه ودَع الناس يصفونك من خلاله بإخلاص. تتراكم الإجابات لتشكّل سحابة تعكس كيف يراك من حولك.',
+          l.profileBadgeMirrorsTitle,
+          l.profileBadgeMirrorsLead,
           <String>[
-            'اضغط على تبويب «المرايا» وأنشئ سؤالاً تأمّلياً (مثل: ما أكثر ما يميّزني؟).',
-            'شارك رابط المرآة مع أصدقائك أو على حسابك في تطبيق آخر.',
-            'تأتيك الإجابات مجهولة — لا تعرف من قال ماذا، فيقول الناس بصراحة.',
-            'كل مرآة تكسبك بادج 🪞 يظهر في بروفايلك ويرفع ثقلك في صارحني.',
+            l.profileBadgeMirrorsStep1,
+            l.profileBadgeMirrorsStep2,
+            l.profileBadgeMirrorsStep3,
+            l.profileBadgeMirrorsStep4,
           ],
-          'المرايا تعمل أحسن مع أسئلة محدّدة لا فضفاضة. اسأل عمّا تريد فعلاً أن تعرفه.',
+          l.profileBadgeMirrorsTip,
         );
     }
   }

@@ -30,27 +30,15 @@ import '../features/xo/presentation/pages/xo_lobby_page.dart';
 import '../features/xo/presentation/pages/xo_local_play_page.dart';
 import '../features/xo/presentation/pages/xo_play_page.dart';
 import '../features/games/games_hub_page.dart';
-import '../features/games/codex/codex_games_page.dart';
-import '../features/games/carrom/application/carrom_match_state.dart';
-import '../features/games/carrom/presentation/pages/carrom_cosmetics_page.dart';
-import '../features/games/carrom/presentation/pages/carrom_game_over_page.dart';
-import '../features/games/carrom/presentation/pages/carrom_lobby_page.dart';
-import '../features/games/carrom/presentation/pages/carrom_match_page.dart';
-import '../features/games/carrom/presentation/pages/carrom_matchmaking_page.dart';
-import '../features/games/carrom_v2/presentation/carrom_match_page_v2.dart';
-import '../features/games/carrom_v2/presentation/carrom_v2_matchmaking_page.dart';
-import '../features/games/carrom_v2/presentation/carrom_v2_online_match_page.dart';
-import '../features/games/carrom_v2/world/board_dimensions.dart' as carrom_v2;
-import '../features/games/ludo/application/ludo_match_state.dart';
-import '../features/games/ludo/domain/ludo_state.dart';
-import '../features/games/ludo/presentation/pages/ludo_game_over_page.dart';
-import '../features/games/ludo/presentation/pages/ludo_lobby_page.dart';
-import '../features/games/ludo/presentation/pages/ludo_match_page.dart';
-import '../features/games/ludo/presentation/pages/ludo_matchmaking_page.dart';
-import '../features/games/ludo_v2/presentation/ludo_v2_match_page.dart';
+import '../features/games/carrom3/presentation/carrom3_match_page.dart';
+import '../features/games/ludo3/presentation/ludo3_lobby_page.dart';
+import '../features/games/ludo_power/screens/ludo_power_lobby.dart';
+import '../features/games/carrom3/presentation/carrom3_matchmaking_page.dart';
+import '../features/games/carrom3/presentation/carrom3_online_match_page.dart';
 import '../features/profile/presentation/pages/saved_posts_page.dart';
 import '../features/settings/presentation/pages/blocked_accounts_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
+import 'localization/generated/app_localizations.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -101,6 +89,18 @@ class AppRoutes {
   /// independently of the WS matchmaking flow above.
   static const String carromPracticeV2 = '/games/carrom/practice-v2';
 
+  /// Carrom Pro — single-device match vs the heuristic AI (Box2D physics,
+  /// predictive aim, real scoring). The flagship Carrom entry in the hub.
+  static const String carromPro = '/games/carrom/pro';
+
+  /// Carrom v3 — full from-scratch rebuild (hand-written engine, 3 tables +
+  /// 4 coin sets, precise controls). The current Carrom entry in the hub.
+  static const String carrom3 = '/games/carrom3';
+
+  /// Carrom v3 online — matchmaking lobby + the deterministic-lockstep match.
+  static const String carrom3Online = '/games/carrom3/online';
+  static const String carrom3OnlineMatch = '/games/carrom3/online/match';
+
   /// Carrom v2 — online matchmaking + online match.
   static const String carromV2Matchmaking = '/games/carrom/online-v2/find';
   static const String carromV2Match = '/games/carrom/online-v2/match';
@@ -115,6 +115,12 @@ class AppRoutes {
   /// Query string supports ?players=2|3|4 (default 4) and
   /// ?variant=normal|magic.
   static const String ludoLocalV2 = '/games/ludo/local-v2';
+
+  // Ludo v3 — from-scratch rebuild (classic + magic, 1v1 / 2v2 / 4p).
+  static const String ludo3 = '/games/ludo3';
+
+  // Ludo Power — premium royal 4-player Ludo with on-board powers.
+  static const String ludoPower = '/games/ludo-power';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -255,111 +261,34 @@ final routerProvider = Provider<GoRouter>((ref) {
       // ────────── Games Hub + Carrom ──────────
       GoRoute(
           path: AppRoutes.gamesHub, builder: (_, __) => const GamesHubPage()),
+      // Carrom v3 — from-scratch rebuild.
       GoRoute(
-        path: AppRoutes.codexLudo,
-        builder: (_, __) => const CodexLudoPage(),
+        path: AppRoutes.carrom3,
+        builder: (_, __) => const Carrom3MatchPage(),
       ),
+      // Carrom v3 — online matchmaking lobby.
       GoRoute(
-        path: AppRoutes.codexCarrom,
-        builder: (_, __) => const CodexCarromPage(),
+        path: AppRoutes.carrom3Online,
+        builder: (_, __) => const Carrom3MatchmakingPage(),
       ),
+      // Carrom v3 — online deterministic-lockstep match.
       GoRoute(
-        path: AppRoutes.carromLobby,
-        builder: (_, __) => const CarromLobbyPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.carromCosmetics,
-        builder: (_, __) => const CarromCosmeticsPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.carromMatchmaking,
-        builder: (_, __) => const CarromMatchmakingPage(),
-      ),
-      GoRoute(
-        path: '/games/carrom/match/:roomId',
-        builder: (_, state) => CarromMatchPage(
-          roomId: state.pathParameters['roomId'] ?? '',
-        ),
-      ),
-      // Carrom v2 — local Box2D practice (no roomId, no WS).
-      GoRoute(
-        path: AppRoutes.carromPracticeV2,
-        builder: (_, __) => const CarromMatchPageV2(),
-      ),
-      // Carrom v2 — online matchmaking.
-      GoRoute(
-        path: AppRoutes.carromV2Matchmaking,
-        builder: (_, __) => const CarromV2MatchmakingPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.carromV2Match,
-        builder: (_, state) {
-          final roomId = state.uri.queryParameters['room'] ?? '';
-          final seatRaw = state.uri.queryParameters['seat'] ?? 'a';
-          final seat = seatRaw == 'b' ? carrom_v2.Seat.b : carrom_v2.Seat.a;
-          return CarromV2OnlineMatchPage(roomId: roomId, mySeat: seat);
+        path: AppRoutes.carrom3OnlineMatch,
+        builder: (context, state) {
+          final room = state.uri.queryParameters['room'] ?? '';
+          final seat = state.uri.queryParameters['seat'] == 'b' ? 'b' : 'a';
+          return Carrom3OnlineMatchPage(roomId: room, mySeat: seat);
         },
       ),
+      // Ludo v3 — lobby (classic + magic, 1v1 / 2v2 / 4p).
       GoRoute(
-        path: '/games/carrom/over/:roomId',
-        builder: (_, state) {
-          final outcome = state.extra;
-          // Fallback لو المستخدم refreshe الصفحة بدون extra — نرجعه للوبي.
-          if (outcome is! CarromOutcome) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              // ignore: use_build_context_synchronously
-            });
-            return const CarromLobbyPage();
-          }
-          return CarromGameOverPage(
-            roomId: state.pathParameters['roomId'] ?? '',
-            outcome: outcome,
-          );
-        },
+        path: AppRoutes.ludo3,
+        builder: (_, __) => const Ludo3LobbyPage(),
       ),
-      // ────────── Ludo ──────────
+      // Ludo Power — lobby (game type + cosmetics) → premium royal Ludo.
       GoRoute(
-        path: AppRoutes.ludoLobby,
-        builder: (_, __) => const LudoLobbyPage(),
-      ),
-      // Ludo v2 — local pass-and-play.
-      GoRoute(
-        path: AppRoutes.ludoLocalV2,
-        builder: (_, state) {
-          final raw = state.uri.queryParameters['players'] ?? '4';
-          final n = int.tryParse(raw) ?? 4;
-          final players = (n == 2 || n == 3 || n == 4) ? n : 4;
-          final variant = LudoV2VariantX.parse(
-            state.uri.queryParameters['variant'],
-          );
-          return LudoV2MatchPage(playerCount: players, variant: variant);
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.ludoMatchmaking,
-        builder: (_, state) {
-          final raw = state.uri.queryParameters['mode'] ?? '2p';
-          return LudoMatchmakingPage(mode: LudoModeParse.parse(raw));
-        },
-      ),
-      GoRoute(
-        path: '/games/ludo/match/:roomId',
-        builder: (_, state) => LudoMatchPage(
-          roomId: state.pathParameters['roomId'] ?? '',
-        ),
-      ),
-      GoRoute(
-        path: '/games/ludo/over/:roomId',
-        builder: (_, state) {
-          final outcome = state.extra;
-          if (outcome is! LudoOutcome) {
-            return const LudoLobbyPage();
-          }
-          return LudoGameOverPage(
-            roomId: state.pathParameters['roomId'] ?? '',
-            outcome: outcome,
-          );
-        },
+        path: AppRoutes.ludoPower,
+        builder: (_, __) => const LudoPowerLobby(),
       ),
       GoRoute(path: AppRoutes.help, builder: (_, __) => const HelpPage()),
       GoRoute(
@@ -384,6 +313,7 @@ class ComingSoonPage extends StatelessWidget {
   final String title;
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
@@ -392,7 +322,7 @@ class ComingSoonPage extends StatelessWidget {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
       ),
-      body: const Center(child: Text('قريباً…')),
+      body: Center(child: Text(l.commonComingSoon)),
     );
   }
 }

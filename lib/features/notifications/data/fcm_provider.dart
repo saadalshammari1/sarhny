@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/router.dart';
 import '../../../core/providers/api_providers.dart';
 import 'fcm_service.dart';
 import 'notifications_repository.dart';
@@ -10,7 +11,14 @@ import 'notifications_repository.dart';
 final fcmServiceProvider = Provider<FcmService>((ref) {
   final dio = ref.watch(dioClientProvider);
   final repo = NotificationsRepository(dio);
-  final service = FcmService(repo);
+  final service = FcmService(
+    repo,
+    onNavigate: (route) {
+      try {
+        ref.read(routerProvider).push(route);
+      } catch (_) {/* router not ready yet — ignore */}
+    },
+  );
   ref.onDispose(service.dispose);
   return service;
 });

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
 import '../../../../core/api/dto.dart';
@@ -49,9 +50,10 @@ class _AnswerSheetState extends ConsumerState<AnswerSheet> {
       _bodyCtrl.text.trim().isNotEmpty && !_sending;
 
   Future<void> _send() async {
+    final l = AppLocalizations.of(context);
     final body = _bodyCtrl.text.trim();
     if (body.isEmpty) {
-      setState(() => _error = 'اكتب ردك أولاً');
+      setState(() => _error = l.inboxAnswerEmptyError);
       return;
     }
     if (_sending) return;
@@ -71,21 +73,21 @@ class _AnswerSheetState extends ConsumerState<AnswerSheet> {
           .removeLocal(widget.item.id);
       if (!mounted) return;
       Navigator.of(context).pop();
-      Fluttertoast.showToast(msg: 'تم نشر الرد ✨');
+      Fluttertoast.showToast(msg: l.inboxReplyPublished);
       if (postId > 0) context.push('/post/$postId');
     } on ValidationException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } on UnauthorizedException {
-      if (mounted) setState(() => _error = 'سجّل دخولك من جديد');
+      if (mounted) setState(() => _error = l.inboxSessionExpired);
     } on RateLimitException {
-      if (mounted) setState(() => _error = 'مهلاً قليلاً، أعد المحاولة بعد دقيقة');
+      if (mounted) setState(() => _error = l.inboxRateLimited);
     } on DioException catch (e) {
       if (mounted) {
         setState(() => _error =
-            'فشل الاتصال — ${e.response?.statusCode ?? e.type.name}');
+            '${l.inboxConnectionFailed} ${e.response?.statusCode ?? e.type.name}');
       }
     } catch (e) {
-      if (mounted) setState(() => _error = 'خطأ غير متوقع: $e');
+      if (mounted) setState(() => _error = '${l.errorUnexpected}: $e');
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -93,6 +95,7 @@ class _AnswerSheetState extends ConsumerState<AnswerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     return Padding(
       padding: EdgeInsets.only(
@@ -114,7 +117,7 @@ class _AnswerSheetState extends ConsumerState<AnswerSheet> {
                 IconButton(
                   icon: Icon(Icons.close, color: colors.textSecondary),
                   onPressed: () => Navigator.of(context).pop(),
-                  tooltip: 'إغلاق',
+                  tooltip: l.commonClose,
                 ),
                 Expanded(
                   child: Center(
@@ -132,107 +135,119 @@ class _AnswerSheetState extends ConsumerState<AnswerSheet> {
               ],
             ),
             const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colors.moment.withValues(alpha: 0.06),
-                border:
-                    Border.all(color: colors.moment.withValues(alpha: 0.25)),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.visibility_off_outlined,
-                      size: 14, color: colors.moment),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      widget.item.message,
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 13,
-                        height: 1.5,
+            // The message + reply fields scroll, while the publish button below
+            // stays pinned. Without this, a long incoming message plus the
+            // keyboard pushed the button off-screen with no way to reach it.
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colors.moment.withValues(alpha: 0.06),
+                        border: Border.all(
+                            color: colors.moment.withValues(alpha: 0.25)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.visibility_off_outlined,
+                              size: 14, color: colors.moment),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              widget.item.message,
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontSize: 13,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'ردك (سيُنشر كمنشور 🎨)',
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _bodyCtrl,
-              minLines: 3,
-              maxLines: 8,
-              maxLength: 2000,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'اكتب ردك…',
-                counterText: '${_bodyCtrl.text.length}/2000',
-              ),
-            ),
-            Row(
-              children: [
-                TextButton.icon(
-                  onPressed: () =>
-                      setState(() => _showLayer3 = !_showLayer3),
-                  icon: Icon(
-                    _showLayer3
-                        ? Icons.remove_circle_outline
-                        : Icons.add_circle_outline,
-                    size: 16,
-                  ),
-                  label: Text(_showLayer3
-                      ? 'إخفاء الطبقة ٣'
-                      : 'إضافة طبقة ٣ — تأمل'),
-                ),
-              ],
-            ),
-            if (_showLayer3)
-              TextField(
-                controller: _layer3Ctrl,
-                minLines: 3,
-                maxLines: 6,
-                maxLength: 4000,
-                decoration:
-                    const InputDecoration(hintText: 'تأمّلك (اختياري)'),
-              ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: colors.danger.withValues(alpha: 0.10),
-                  border: Border.all(
-                      color: colors.danger.withValues(alpha: 0.30)),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(children: [
-                  Icon(Icons.error_outline,
-                      color: colors.danger, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _error!,
-                      style:
-                          TextStyle(color: colors.danger, fontSize: 13),
+                    const SizedBox(height: 14),
+                    Text(
+                      l.inboxYourReplyLabel,
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                ]),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _bodyCtrl,
+                      minLines: 3,
+                      maxLines: 8,
+                      maxLength: 2000,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: l.inboxReplyHint,
+                        counterText: '${_bodyCtrl.text.length}/2000',
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        TextButton.icon(
+                          onPressed: () =>
+                              setState(() => _showLayer3 = !_showLayer3),
+                          icon: Icon(
+                            _showLayer3
+                                ? Icons.remove_circle_outline
+                                : Icons.add_circle_outline,
+                            size: 16,
+                          ),
+                          label: Text(_showLayer3
+                              ? l.inboxHideLayer3
+                              : l.inboxAddLayer3),
+                        ),
+                      ],
+                    ),
+                    if (_showLayer3)
+                      TextField(
+                        controller: _layer3Ctrl,
+                        minLines: 3,
+                        maxLines: 6,
+                        maxLength: 4000,
+                        decoration:
+                            InputDecoration(hintText: l.inboxLayer3Hint),
+                      ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: colors.danger.withValues(alpha: 0.10),
+                          border: Border.all(
+                              color: colors.danger.withValues(alpha: 0.30)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(children: [
+                          Icon(Icons.error_outline,
+                              color: colors.danger, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: TextStyle(
+                                  color: colors.danger, fontSize: 13),
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ],
+            ),
             const SizedBox(height: 12),
             AppButton(
-              label: 'نشر الرد',
+              label: l.inboxPublishReply,
               onPressed: _canSubmit ? _send : null,
               loading: _sending,
             ),

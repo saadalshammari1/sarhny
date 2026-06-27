@@ -79,7 +79,12 @@ class DioClient {
       dio: dio,
       cookieJar: cookieJar,
     );
-    dio.interceptors.add(CookieManager(cookieJar));
+    // dio_cookie_manager asserts !kIsWeb — on web the browser owns the cookie
+    // store and sends the HttpOnly refresh cookie automatically, so we skip
+    // the interceptor there (adding it throws and white-screens the app).
+    if (!kIsWeb) {
+      dio.interceptors.add(CookieManager(cookieJar));
+    }
     dio.interceptors.add(client._authInterceptor());
     dio.interceptors.add(client._refreshInterceptor());
     if (kDebugMode) {

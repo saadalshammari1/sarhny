@@ -12,18 +12,6 @@ enum InboxFilter { all, unread, read, answered }
 
 extension InboxFilterX on InboxFilter {
   String get apiValue => name;
-  String get arabicLabel {
-    switch (this) {
-      case InboxFilter.all:
-        return 'الكل';
-      case InboxFilter.unread:
-        return 'جديدة';
-      case InboxFilter.read:
-        return 'مقروءة';
-      case InboxFilter.answered:
-        return 'مُجاب عنها';
-    }
-  }
 }
 
 final inboxFilterProvider =

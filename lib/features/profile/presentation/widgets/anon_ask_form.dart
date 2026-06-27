@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_exceptions.dart';
 import '../../../../core/providers/auth_providers.dart';
@@ -28,11 +29,12 @@ class _AnonAskFormState extends ConsumerState<AnonAskForm> {
   }
 
   Future<void> _send() async {
+    final l = AppLocalizations.of(context);
     final txt = _ctrl.text.trim();
     if (txt.isEmpty || _sending) return;
     final auth = ref.read(authStateProvider).valueOrNull;
     if (auth == null || auth.status != AuthStatus.authenticated) {
-      setState(() => _error = 'سجّل دخولك لإرسال رسالة');
+      setState(() => _error = l.profileAnonLoginRequired);
       return;
     }
     setState(() {
@@ -46,16 +48,16 @@ class _AnonAskFormState extends ConsumerState<AnonAskForm> {
           );
       _ctrl.clear();
       if (mounted) {
-        Fluttertoast.showToast(msg: 'وصلت رسالتك 🌙');
+        Fluttertoast.showToast(msg: l.profileAnonSent);
       }
     } on ValidationException catch (e) {
       setState(() => _error = e.message);
     } on RateLimitException {
-      setState(() => _error = 'الكثير من المحاولات — انتظر قليلاً');
+      setState(() => _error = l.profileAnonRateLimited);
     } on ForbiddenException catch (e) {
       setState(() => _error = e.message);
     } catch (_) {
-      setState(() => _error = 'تعذّر الإرسال');
+      setState(() => _error = l.profileAnonSendFailed);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -63,6 +65,7 @@ class _AnonAskFormState extends ConsumerState<AnonAskForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     return Container(
       padding: const EdgeInsets.all(14),
@@ -79,7 +82,7 @@ class _AnonAskFormState extends ConsumerState<AnonAskForm> {
                 color: colors.moment, size: 18),
             const SizedBox(width: 6),
             Text(
-              'اسأله بهوية مجهولة',
+              l.profileAnonTitle,
               style: TextStyle(
                 color: colors.textPrimary,
                 fontWeight: FontWeight.w700,
@@ -88,7 +91,7 @@ class _AnonAskFormState extends ConsumerState<AnonAskForm> {
           ]),
           const SizedBox(height: 4),
           Text(
-            'لن يعرف من أرسل — إلا إذا كشفت عن نفسك',
+            l.profileAnonSubtitle,
             style:
                 TextStyle(color: colors.textSecondary, fontSize: 11),
           ),
@@ -97,9 +100,9 @@ class _AnonAskFormState extends ConsumerState<AnonAskForm> {
             controller: _ctrl,
             minLines: 2,
             maxLines: 5,
-            maxLength: 600,
-            decoration: const InputDecoration(
-              hintText: 'اكتب سؤالك أو رسالتك…',
+            maxLength: 500,
+            decoration: InputDecoration(
+              hintText: l.profileAnonHint,
             ),
           ),
           if (_error != null)
@@ -111,7 +114,7 @@ class _AnonAskFormState extends ConsumerState<AnonAskForm> {
               ),
             ),
           AppButton(
-            label: 'أرسل',
+            label: l.profileAnonSend,
             onPressed: _send,
             loading: _sending,
           ),

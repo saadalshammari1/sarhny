@@ -8,6 +8,7 @@ class CommentDto {
     required this.id,
     required this.body,
     required this.isAnonymous,
+    this.canDelete = false,
     this.author,
     this.createdAt,
   });
@@ -16,6 +17,10 @@ class CommentDto {
         id: asInt(json['id']),
         body: '${json['body'] ?? ''}',
         isAnonymous: json['is_anonymous'] == true,
+        // Server-stamped: whether the requester may delete this comment.
+        // Trusting the server avoids the V2/legacy id-space mismatch that a
+        // client-side author-id comparison hit.
+        canDelete: json['can_delete'] == true,
         author: json['author'] is Map
             ? AuthorDto.fromJson(
                 (json['author'] as Map).cast<String, dynamic>(),
@@ -27,6 +32,7 @@ class CommentDto {
   final int id;
   final String body;
   final bool isAnonymous;
+  final bool canDelete;
   final AuthorDto? author;
   final String? createdAt;
 }

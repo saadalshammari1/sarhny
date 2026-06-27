@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/providers/api_providers.dart';
 import '../../../../core/utils/media.dart';
@@ -25,10 +26,11 @@ class BlockedAccountsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.sarhnyColors;
+    final l = AppLocalizations.of(context);
     final blocks = ref.watch(_blocksProvider);
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(title: const Text('الحسابات المحظورة')),
+      appBar: AppBar(title: Text(l.settingsBlockedAccounts)),
       body: RefreshIndicator(
         color: colors.moment,
         onRefresh: () async {
@@ -45,13 +47,12 @@ class BlockedAccountsPage extends ConsumerWidget {
             if (list.isEmpty) {
               return ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 80),
+                children: [
+                  const SizedBox(height: 80),
                   EmptyState(
                     icon: Icons.block_outlined,
-                    title: 'لا يوجد محظورون',
-                    subtitle:
-                        'لما تحظر حساب، يظهر هنا و تقدر تلغي الحظر في أي وقت.',
+                    title: l.settingsBlockedEmptyTitle,
+                    subtitle: l.settingsBlockedEmptySubtitle,
                   ),
                 ],
               );
@@ -85,13 +86,14 @@ class _BlockedTileState extends ConsumerState<_BlockedTile> {
   bool _busy = false;
 
   Future<void> _unblock() async {
+    final l = AppLocalizations.of(context);
     setState(() => _busy = true);
     try {
       await ref.read(_repoProvider).unblock(widget.account.id);
-      Fluttertoast.showToast(msg: 'تم إلغاء الحظر');
+      Fluttertoast.showToast(msg: l.settingsUnblocked);
       ref.invalidate(_blocksProvider);
     } catch (_) {
-      Fluttertoast.showToast(msg: 'تعذّر إلغاء الحظر');
+      Fluttertoast.showToast(msg: l.settingsUnblockFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -100,6 +102,7 @@ class _BlockedTileState extends ConsumerState<_BlockedTile> {
   @override
   Widget build(BuildContext context) {
     final colors = context.sarhnyColors;
+    final l = AppLocalizations.of(context);
     final a = widget.account;
     return InkWell(
       onTap: () => context.push('/u/${a.username}'),
@@ -165,7 +168,7 @@ class _BlockedTileState extends ConsumerState<_BlockedTile> {
                       height: 14,
                       child: CircularProgressIndicator(strokeWidth: 1.6),
                     )
-                  : const Text('إلغاء الحظر'),
+                  : Text(l.settingsUnblock),
             ),
           ],
         ),

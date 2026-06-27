@@ -13,8 +13,9 @@ class RandomQuestionRepo {
   final DioClient _client;
 
   /// Pull one random active question for [mood]. Returns the question
-  /// text, or a local fallback when the API is unreachable.
-  Future<String> fetch({String mood = 'light'}) async {
+  /// text, or [fallback] (a localized string supplied by the caller)
+  /// when the API is unreachable.
+  Future<String> fetch({String mood = 'light', String fallback = ''}) async {
     try {
       final r = await _client.raw.get<dynamic>(
         '/api/v1/game/random-question',
@@ -24,18 +25,7 @@ class RandomQuestionRepo {
       final text = data['text']?.toString();
       if (text != null && text.isNotEmpty) return text;
     } catch (_) {/* network/parse failure → fall through */}
-    return _hardFallback(mood);
-  }
-
-  String _hardFallback(String mood) {
-    switch (mood) {
-      case 'bold':
-        return 'ما السر الذي لم تخبر به أحداً؟';
-      case 'funny':
-        return 'أحرج موقف صار لك أمام الناس؟';
-      default:
-        return 'ما أكثر شيء يضحكك حالياً؟';
-    }
+    return fallback;
   }
 }
 

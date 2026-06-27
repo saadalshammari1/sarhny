@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/localization/generated/app_localizations.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/providers/api_providers.dart';
 
@@ -68,13 +69,14 @@ class _DiagnosticsPageState extends ConsumerState<DiagnosticsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final colors = context.sarhnyColors;
     final envLoaded = dotenv.isInitialized;
     final envUrl = envLoaded ? dotenv.maybeGet('API_BASE_URL') : null;
 
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(title: const Text('تشخيص الاتصال')),
+      appBar: AppBar(title: Text(l.diagnosticsTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -82,7 +84,7 @@ class _DiagnosticsPageState extends ConsumerState<DiagnosticsPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Card(
-                title: 'حالة .env',
+                title: l.diagnosticsEnvStatus,
                 children: [
                   _Row('dotenv.isInitialized', '$envLoaded'),
                   _Row(
@@ -93,13 +95,13 @@ class _DiagnosticsPageState extends ConsumerState<DiagnosticsPage> {
               ),
               const SizedBox(height: 12),
               _Card(
-                title: 'حالة الاتصال',
+                title: l.diagnosticsConnectionStatus,
                 children: [
                   if (_result == null && !_running)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Text(
-                        'اضغط "اختبر الاتصال" لرؤية ما يحصل عند الاتصال بالخادم.',
+                        l.diagnosticsHint,
                         style: TextStyle(color: colors.textSecondary),
                       ),
                     ),
@@ -123,12 +125,12 @@ class _DiagnosticsPageState extends ConsumerState<DiagnosticsPage> {
               FilledButton.icon(
                 onPressed: _running ? null : _runTest,
                 icon: const Icon(Icons.wifi_tethering),
-                label: const Text('اختبر الاتصال'),
+                label: Text(l.diagnosticsTestButton),
               ),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('رجوع'),
+                child: Text(l.actionBack),
               ),
             ],
           ),
